@@ -9,10 +9,12 @@ CC BY-NC-SA 4.0 instead — see LICENSE-ICONS
 
 ## Current state
 
-Not yet published to GitHub. **Do not add `.github/workflows/`, remote URLs,
-or push anything** until told otherwise. `make ci` (lint → hooks → test) is
-the local stand-in for CI on this machine — treat it as the test gate for
-every milestone until a GitHub remote exists.
+Published to GitHub (`origin` → `git@github.com:ppoilbarbe/PBNightingale.git`,
+`main` tracks `origin/main`). `.github/workflows/ci.yml` runs tests, hooks,
+docs build and per-OS PyInstaller builds on every push/PR, and cuts a
+GitHub release from `CHANGELOG.md` on semver tags. **Still never push without an explicit request from the user**
+(see global CLAUDE.md). `make ci` (lint → hooks → test) remains the local
+gate to run before pushing.
 
 Implementation proceeds milestone by milestone; each milestone is validated
 (`make ci` green + manual check) before the next one starts.
@@ -30,7 +32,8 @@ Implementation proceeds milestone by milestone; each milestone is validated
 - Lint: ruff (line-length 88, target py314), default rule set + `I`/`PGH`/
   `UP`/`BLE`/`S` (no explicit `select` — see pyproject.toml comment)
 - Env: pixi (conda-forge channel only) — `make venv`
-- CI/CD: local only for now — `make ci`
+- CI/CD: GitHub Actions (`.github/workflows/ci.yml`) + `make ci` locally
+  before pushing
 - i18n: French + English only, pybabel/gettext (see `i18n.py`)
 - Auto-update: GitHub-releases self-update, `--auto-update` CLI flag —
   only meaningful (and only registered) in a PyInstaller-frozen executable

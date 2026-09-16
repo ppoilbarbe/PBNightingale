@@ -1,0 +1,169 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+    # Semver tags only (glob syntax — + quantifier not supported by GitHub)
+    tags: ["v[0-9]*.[0-9]*.[0-9]*"]
+  pull_request:
+
+# Cancel in-flight runs for the same ref when a newer push arrives.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Tests ────────────────────────────────────────────────────────────────────
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up pixi environment
+        uses: prefix-dev/setup-pixi@v0.10.0
+        with:
+          pixi-version: latest
+          cache: true
+
+      - name: Compile translation catalogues
+        run: pixi run -- pybabel compile -d src/pbnightingale/locale -D pbnightingale
+
+      - name: Run test suite
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: make test
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+          fail_ci_if_error: true
+
+  # ── Pre-commit hooks ─────────────────────────────────────────────────────────
+  hooks:
+    name: Pre-commit hooks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up pixi environment
+        uses: prefix-dev/setup-pixi@v0.10.0
+        with:
+          pixi-version: latest
+          cache: true
+
+      - name: Cache pre-commit hook environments
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      - name: Run hooks on all files
+        run: pixi run -- pre-commit run --all-files
+
+  # ── Documentation ───────────────────────────────────────────────────────────
+  docs:
+    name: Build docs
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up pixi environment
+        uses: prefix-dev/setup-pixi@v0.10.0
+        with:
+          pixi-version: latest
+          cache: true
+
+      - name: Build HTML documentation
+        run: make docs
+
+      - name: Upload documentation artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: docs-html
+          path: docs/_build/html/
+          if-no-files-found: error
+
+  # ── Build executables ────────────────────────────────────────────────────────
+  build:
+    name: Build / ${{ matrix.os }}
+    needs: [test, hooks]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up pixi environment
+        uses: prefix-dev/setup-pixi@v0.10.0
+        with:
+          pixi-version: latest
+          cache: true
+
+      - name: Compile translation catalogues
+        # .mo files are gitignored generated artifacts; rebuild from .po sources.
+        run: pixi run -- pybabel compile -d src/pbnightingale/locale -D pbnightingale
+
+      - name: Build with PyInstaller
+        # Call PyInstaller directly to avoid GNU Make portability issues
+        # on Windows runners. Single-line command: the `\` line-continuation
+        # used by bash is not valid PowerShell, the default shell on
+        # windows-latest runners.
+        run: pixi run -- pyinstaller --clean --noconfirm --distpath dist --workpath build/pyinstaller pbnightingale.spec
+
+      - name: Zip .app bundle (macOS)
+        # A .app bundle is a directory; zip it for upload and release attachment.
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          cd dist
+          for app in *.app; do
+            zip -r "${app%.app}.zip" "$app"
+            rm -rf "$app"
+          done
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          # One artifact per runner; merged in the release job.
+          name: build-${{ runner.os }}
+          path: dist/pbnightingale-*
+          if-no-files-found: error
+
+  # ── GitHub release ───────────────────────────────────────────────────────────
+  release:
+    name: Release ${{ github.ref_name }}
+    needs: [build]
+    # Only create a release on semver tags; the tag filter on push already
+    # restricts the trigger, but this guard makes the intent explicit.
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # required to create a release and upload assets
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          # Merge all per-OS artifacts into a single flat directory.
+          path: dist
+          merge-multiple: true
+
+      - name: Extract changelog entry for ${{ github.ref_name }}
+        id: changelog
+        run: python3 tools/extract_changelog.py
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          body: ${{ steps.changelog.outputs.body }}
+          files: dist/pbnightingale-*
+          fail_on_unmatched_files: true

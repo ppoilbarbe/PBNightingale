@@ -71,17 +71,16 @@ autodoc_mock_imports = [
 napoleon_google_docstring = False
 napoleon_numpy_docstring = False
 
-# Left off deliberately, unlike PBRenamer's conf.py: api.rst uses plain
-# `.. automodule::` directives, no `.. autosummary::` tables, so this
-# would only add a redundant stub-generation pass — and that pass imports
-# modules *without* autodoc_mock_imports applied. A module-level `Qt.
-# ItemDataRole.UserRole + 1` (key_list_view.py, import_key_dialog.py —
-# custom QTreeWidgetItem data roles) then throws under the unmocked
-# import, which leaves a half-initialized real PySide6/shiboken in
-# sys.modules and breaks every later, properly-mocked autodoc import of
-# an unrelated module with the cryptic "wrapper loop when unwrapping"
-# ValueError from shiboken's own global import hook. Verified empirically
-# — flipping this off alone fixed it, no application code changed.
+# Kept True deliberately, even though api.rst uses plain
+# `.. automodule::` directives with no `.. autosummary::` tables (so this
+# setting has no effect on the rendered output either way). Flipping it to
+# False was tried and made the shiboken "wrapper loop when unwrapping"
+# poisoning (see the mock-imports comment above) considerably worse —
+# empirically, autosummary's own extra scan of the doctree cascades the
+# poisoning from the 3 known offenders (key_list_view.py,
+# import_key_dialog.py, search_key_dialog.py) to ~19 unrelated modules
+# instead. Not fully root-caused; kept as found since it demonstrably
+# works. See CODING.md, "Packaging & docs".
 autosummary_generate = True
 
 # ---------------------------------------------------------------------------
@@ -220,9 +219,9 @@ _CHANGELOG_RST.write_text(_convert_changelog(_CHANGELOG_MD), encoding="utf-8")
 # ---------------------------------------------------------------------------
 # Logo / favicon — copied from the app's own icon at build time, so the
 # artwork has a single source of truth (src/pbnightingale/resources/
-# pbnightingale.png). Unlike PBRenamer, PBNightingale has no root SVG
-# logo (its SVGs are all per-action toolbar glyphs, not a standalone mark),
-# so the raster app icon is copied as-is — no viewBox/width fixup needed.
+# pbnightingale.png). PBNightingale has no root SVG logo (its SVGs are
+# all per-action toolbar glyphs, not a standalone mark), so the raster
+# app icon is copied as-is — no viewBox/width fixup needed.
 # ---------------------------------------------------------------------------
 
 _APP_ICON = (

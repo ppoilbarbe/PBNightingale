@@ -18,3 +18,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keyserver search, publish, and refresh
 - French and English interface, with a preferences dialog
 - Packaging (PyInstaller) and Sphinx user documentation
+- GitHub Actions CI: tests, pre-commit hooks, documentation build, per-OS
+  PyInstaller builds, and GitHub Releases cut from this changelog on
+  semver tags

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Normalise PO files after pybabel update.
 
 - Resets POT-Creation-Date to a fixed sentinel (the .pot is untracked, so its

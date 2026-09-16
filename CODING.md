@@ -1751,8 +1751,7 @@ the CLI surface and packaging naming convention (`pbnightingale-<version>-
 
 ## Packaging
 
-`pbnightingale.spec` (ported from PBRenamer's own, same
-family of gotchas) drives PyInstaller: `make dist` builds a standalone
+`pbnightingale.spec` drives PyInstaller: `make dist` builds a standalone
 executable for the *current* platform only — PyInstaller doesn't
 cross-compile, so a Linux/Windows/macOS release means running `make dist`
 natively on each — and `make srcdist` builds a matching source archive via
@@ -1776,8 +1775,8 @@ matches GitHub release assets against this exact `pbnightingale-<prefix>`/
 `<suffix>` shape (see "Auto-update" above), so the spec file and the
 updater's `_ARCH_MAP`/`asset_suffix()` must stay in lockstep.
 
-Two gotchas carried over from PBRenamer, both empirically verified there
-and not re-derived here:
+Two known PyInstaller gotchas, both empirically verified and not
+re-derived here:
 
 - **Fonts, Linux only.** PyInstaller bundles the conda env's fonts
   (`fonts-conda-ecosystem`, added as a pixi dependency purely for this —
@@ -1819,11 +1818,10 @@ PyInstaller's static analysis misses.
 
 ## Documentation
 
-Sphinx docs under `docs/`, published on Read the Docs,
-scaffolded from PBRenamer's own `docs/conf.py` (same `sphinx_rtd_theme`
-setup, the same at-build-time CHANGELOG.md → `changelog.rst` conversion —
-copied verbatim, see its own docstring in `conf.py`) but adding a layer
-PBRenamer's docs don't have: **narrative-only i18n** for the user manual.
+Sphinx docs under `docs/`, published on Read the Docs, using
+`sphinx_rtd_theme` with an at-build-time CHANGELOG.md → `changelog.rst`
+conversion (see its own docstring in `conf.py`), plus **narrative-only
+i18n** for the user manual.
 
 **Scope split.** Only `index.rst` and everything under `manual/` (the
 user manual — GPG/PGP concepts for a complete beginner, then a per-feature
@@ -1855,12 +1853,11 @@ trailing path is silently ignored (with only a warning, easy to miss),
 extracting nothing from it. `DOCS_NARRATIVE` in the Makefile expands to
 an explicit `$(wildcard docs/manual/*.rst)` file list instead.
 
-**autodoc vs. PySide6/shiboken**: same `autodoc_mock_imports` strategy as
-PBRenamer (mock `PySide6` itself plus every generated `*_ui.py` module,
-to dodge shiboken's own import hook choking on `inspect.getsource()`
-against a `MagicMock`) — but computed from the source tree
-(`_UI_ROOT.glob("*_ui.py")`) rather than hardcoded, since this app has
-~25 dialogs (PBRenamer has 3). Three real (non-`_ui`) modules still can't
+**autodoc vs. PySide6/shiboken**: `autodoc_mock_imports` mocks `PySide6`
+itself plus every generated `*_ui.py` module, to dodge shiboken's own
+import hook choking on `inspect.getsource()` against a `MagicMock` — but
+computed from the source tree (`_UI_ROOT.glob("*_ui.py")`) rather than
+hardcoded, since this app has ~25 dialogs. Three real (non-`_ui`) modules still can't
 be autodoc'd even so: `key_list_view.py` and `import_key_dialog.py` each
 define a module-level `Qt.ItemDataRole.UserRole [+ N]` constant (custom
 `QTreeWidgetItem` data roles), and `search_key_dialog.py` transitively
@@ -1874,23 +1871,21 @@ across repeated clean builds. Their `automodule` sections are simply left
 out of `api.rst` (with a `.. note::` explaining why) rather than added to
 `autodoc_mock_imports` — mocking a real logic module would only render an
 empty section, no better than omitting it. `autosummary_generate` stays
-`True` (copied from PBRenamer, unused — no `.. autosummary::` tables in
-`api.rst`) deliberately: flipping it to `False` was tried and made things
+`True` (unused — no `.. autosummary::` tables in `api.rst`) deliberately:
+flipping it to `False` was tried and made things
 *worse* (the same poisoning cascades to every module processed after the
 first `_ui.py` mock instead of staying isolated to the three offenders) —
 not fully root-caused, kept as found since it demonstrably works.
 
-**Logo**: unlike PBRenamer (which has a root SVG mark, resized via a
-`viewBox`-derived `width`/`height` fixup at build time), PBNightingale's
-only app icon is the raster `resources/pbnightingale.png` — `conf.py`
-copies it into `_static/` byte-for-byte at build time instead, no fixup
-needed.
+**Logo**: PBNightingale's only app icon is the raster
+`resources/pbnightingale.png` — `conf.py` copies it into `_static/`
+byte-for-byte at build time; no `viewBox`-derived `width`/`height` fixup
+needed, unlike a vector app icon would require.
 
 **Read the Docs**: `.readthedocs.yaml` builds via `pip install .[dev]`
 (the `dev` extra now carries `sphinx`/`sphinx-rtd-theme`/
-`sphinx-autobuild`/`sphinx-intl` alongside the existing lint/test tools),
-matching PBRenamer's own approach rather than a separate
-`docs/requirements.txt` install step (kept anyway, for a docs-only build
+`sphinx-autobuild`/`sphinx-intl` alongside the existing lint/test tools)
+rather than a separate `docs/requirements.txt` install step (kept anyway, for a docs-only build
 outside the full dev extra). One RTD *project* per language, all
 pointing at this same repo, each with its own language set under
 Admin → Settings → Language (this is what injects `READTHEDOCS_LANGUAGE`,
