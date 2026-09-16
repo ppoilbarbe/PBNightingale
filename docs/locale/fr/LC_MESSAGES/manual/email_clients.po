@@ -1,0 +1,219 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, PBMou
+# This file is distributed under the same license as the PBNightingale
+# package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PBNightingale 0.1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-16 15:17+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: fr\n"
+"Language-Team: fr <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../manual/email_clients.rst:2
+msgid "Using your key with an email client"
+msgstr "Utiliser votre clef avec un client de messagerie"
+
+#: ../../manual/email_clients.rst:4
+msgid ""
+"PBNightingale manages keys; it does not send or receive email itself. "
+"This page explains how the keys you create or import here actually get "
+"used to send encrypted and signed mail, in whichever email client you "
+"already use."
+msgstr ""
+"PBNightingale gère les clefs ; il n'envoie ni ne reçoit de courriels lui-"
+"même. Cette page explique comment les clefs que vous créez ou importez "
+"ici servent réellement à envoyer des courriels chiffrés et signés, quel "
+"que soit le client de messagerie que vous utilisez déjà."
+
+#: ../../manual/email_clients.rst:10
+msgid "The shared keyring"
+msgstr "Le trousseau partagé"
+
+#: ../../manual/email_clients.rst:12
+msgid ""
+"PBNightingale operates on your system's normal GnuPG keyring — the same "
+"one the ``gpg`` command line and most GPG-aware desktop applications use."
+" That means any key you generate or import here is immediately available,"
+" with no extra export step, to **any application that itself relies on "
+"the system's GnuPG installation** — which covers most Linux mail clients "
+"and Windows/macOS setups built on Gpg4win/GPG Suite. There is one "
+"significant exception, covered below: Thunderbird's modern built-in "
+"OpenPGP support keeps its own separate key storage."
+msgstr ""
+"PBNightingale fonctionne sur le trousseau GnuPG normal de votre système, "
+"le même que celui utilisé par la commande ``gpg`` et par la plupart des "
+"applications de bureau compatibles GPG. Cela signifie que toute"
+" clef que vous générez ou importez ici est immédiatement disponible, sans"
+" étape d'exportation supplémentaire, pour **toute application qui "
+"s'appuie elle-même sur l'installation GnuPG du système**, ce qui couvre "
+"la plupart des clients de messagerie Linux ainsi que les configurations "
+"Windows/macOS basées sur Gpg4win/GPG Suite. Il existe une exception "
+"notable, traitée ci-dessous : la prise en charge OpenPGP intégrée moderne"
+" de Thunderbird conserve son propre stockage de clefs séparé."
+
+#: ../../manual/email_clients.rst:22
+msgid "Thunderbird"
+msgstr "Thunderbird"
+
+#: ../../manual/email_clients.rst:24
+msgid ""
+"Thunderbird has built-in OpenPGP support (since version 78) — but its "
+"implementation manages keys **independently of GnuPG**, with its own "
+"storage. A key you create in PBNightingale does not appear there "
+"automatically:"
+msgstr ""
+"Thunderbird dispose d'une prise en charge OpenPGP intégrée (depuis la "
+"version 78), mais son implémentation gère les clefs **indépendamment de "
+"GnuPG**, avec son propre stockage. Une clef créée dans PBNightingale n'y "
+"apparaît pas automatiquement :"
+
+#: ../../manual/email_clients.rst:29
+msgid ""
+"In PBNightingale, **Export…** your key's public part (and, if you want "
+"Thunderbird to be able to decrypt/sign with it, **Back up private key…** "
+"as well — see :doc:`managing_keys`)."
+msgstr ""
+"Dans PBNightingale, **Exportez…** la partie publique de votre clef (et, "
+"si vous voulez que Thunderbird puisse déchiffrer/signer avec elle, faites"
+" aussi **Sauvegarder la clef privée…**, voir :doc:`managing_keys`)."
+
+#: ../../manual/email_clients.rst:32
+msgid ""
+"In Thunderbird: *Account Settings* → *End-to-End Encryption* → *Add Key* "
+"→ *Use your external key* (or *Import an existing OpenPGP Key*, wording "
+"varies by version), and point it at the file(s) you exported."
+msgstr ""
+"Dans Thunderbird : *Paramètres du compte* → *Chiffrement de bout en bout*"
+" → *Ajouter une clef* → *Utiliser votre clef externe* (ou *Importer une "
+"clef OpenPGP existante*, le libellé varie selon la version), et pointez "
+"vers le(s) fichier(s) exporté(s)."
+
+#: ../../manual/email_clients.rst:36
+msgid ""
+"Once added, composing a message offers **Encrypt** and **Digitally Sign**"
+" toggles per message (and a per-recipient default under Account "
+"Settings), and an incoming signed or encrypted message is "
+"verified/decrypted automatically, with a padlock/seal indicator showing "
+"the result."
+msgstr ""
+"Une fois ajoutée, la rédaction d'un message propose des bascules "
+"**Chiffrer** et **Signer numériquement** par message (et une valeur par "
+"défaut par destinataire dans les paramètres du compte), et un message "
+"signé ou chiffré reçu est vérifié/déchiffré automatiquement, avec un "
+"indicateur en forme de cadenas/sceau montrant le résultat."
+
+#: ../../manual/email_clients.rst:42
+msgid "Outlook (Windows)"
+msgstr "Outlook (Windows)"
+
+#: ../../manual/email_clients.rst:44
+msgid ""
+"Outlook has no built-in OpenPGP support. Install `Gpg4win "
+"<https://www.gpg4win.org/>`_ (which PBNightingale on Windows already "
+"relies on for the ``gpg`` binary itself — see the installation notes) — "
+"its bundled **GpgOL** add-in integrates directly into Outlook's compose "
+"window and uses your system GnuPG keyring, so a key created or imported "
+"in PBNightingale is available there immediately, no export needed."
+msgstr ""
+"Outlook n'a pas de prise en charge OpenPGP intégrée. Installez `Gpg4win "
+"<https://www.gpg4win.org/>`_ (dont PBNightingale sous Windows dépend déjà"
+" pour le binaire ``gpg`` lui-même, voir les notes d'installation) : son "
+"module complémentaire **GpgOL** s'intègre directement dans la fenêtre de "
+"rédaction d'Outlook et utilise le trousseau GnuPG de votre système, si "
+"bien qu'une clef créée ou importée dans PBNightingale y est immédiatement"
+" disponible, sans export nécessaire."
+
+#: ../../manual/email_clients.rst:53
+msgid "Apple Mail (macOS)"
+msgstr "Apple Mail (macOS)"
+
+#: ../../manual/email_clients.rst:55
+msgid ""
+"Apple Mail has no built-in OpenPGP support either. Install `GPG Suite "
+"<https://gpgtools.org/>`_, whose **GPGMail** plugin adds encrypt/sign "
+"controls to Mail's compose window and, like GpgOL, uses your system GnuPG"
+" keyring directly."
+msgstr ""
+"Apple Mail n'a pas non plus de prise en charge OpenPGP intégrée. "
+"Installez `GPG Suite <https://gpgtools.org/>`_, dont le module "
+"**GPGMail** ajoute des contrôles de chiffrement/signature à la fenêtre de"
+" rédaction de Mail et, comme GpgOL, utilise directement le trousseau "
+"GnuPG de votre système."
+
+#: ../../manual/email_clients.rst:61
+msgid "Linux mail clients"
+msgstr "Clients de messagerie Linux"
+
+#: ../../manual/email_clients.rst:63
+msgid ""
+"Most Linux mail clients (Evolution, KMail, GNOME's Geary, and others) "
+"have OpenPGP support built on the system's ``gpg``/``gpgme`` directly — "
+"no extra plugin needed, and a key managed in PBNightingale is available "
+"to them immediately. Check your client's account or identity settings for"
+" an \"OpenPGP\" or \"Encryption\" section to select which key to use for "
+"your address."
+msgstr ""
+"La plupart des clients de messagerie Linux (Evolution, KMail, Geary de "
+"GNOME, et d'autres) ont une prise en charge OpenPGP construite "
+"directement sur ``gpg``/``gpgme`` du système, sans module complémentaire "
+"supplémentaire, et une clef gérée dans PBNightingale leur est "
+"immédiatement disponible. Vérifiez les paramètres de compte ou d'identité"
+" de votre client pour une section « OpenPGP » ou « Chiffrement » afin de "
+"choisir quelle clef utiliser pour votre adresse."
+
+#: ../../manual/email_clients.rst:71
+msgid "What to expect once it's set up"
+msgstr "À quoi s'attendre une fois configuré"
+
+#: ../../manual/email_clients.rst:73
+msgid ""
+"Whichever client you use, the everyday behavior is the same once your key"
+" is configured:"
+msgstr ""
+"Quel que soit le client utilisé, le comportement au quotidien est le même"
+" une fois votre clef configurée :"
+
+#: ../../manual/email_clients.rst:76
+msgid ""
+"**Sending** — a compose-window toggle to sign, encrypt, or both (see "
+":doc:`concepts`, \"Encrypted **and** signed\") for the current message, "
+"using the *recipient's* public key to encrypt and *your own* private key "
+"to sign. Encrypting requires already having the recipient's public key "
+"(see :doc:`importing_keys`) — most clients will tell you plainly if they "
+"don't."
+msgstr ""
+"**Envoi** : une bascule dans la fenêtre de rédaction pour signer, "
+"chiffrer, ou les deux (voir :doc:`concepts`, « Chiffré **et** signé ») "
+"pour le message en cours, en utilisant la clef publique *du destinataire*"
+" pour chiffrer et votre *propre* clef privée pour signer. Le chiffrement "
+"nécessite de déjà posséder la clef publique du destinataire (voir "
+":doc:`importing_keys`) ; la plupart des clients vous le signaleront "
+"clairement s'ils ne l'ont pas."
+
+#: ../../manual/email_clients.rst:82
+msgid ""
+"**Receiving** — decryption and signature verification happen "
+"automatically on open, with a clear indicator of the result: decrypted "
+"successfully or not, signature valid/invalid/from an unverified key. Pay "
+"attention to that indicator — a mail client that silently displayed an "
+"unverified or tampered message the same as a verified one would defeat "
+"the entire point."
+msgstr ""
+"**Réception** : le déchiffrement et la vérification de signature se font "
+"automatiquement à l'ouverture, avec un indicateur clair du résultat : "
+"déchiffré avec succès ou non, signature valide/invalide/provenant d'une "
+"clef non vérifiée. Portez attention à cet indicateur : un client de "
+"messagerie qui afficherait silencieusement un message non vérifié ou "
+"altéré de la même façon qu'un message vérifié irait à l'encontre du but "
+"même de la démarche."

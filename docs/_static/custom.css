@@ -1,0 +1,26 @@
+.wy-nav-content {
+    max-width: none;
+}
+
+.wy-side-nav-search > a img.logo {
+    max-width: 50%;
+}
+
+/* Toolbar-icon "drop cap": floats at the start of the paragraph/bullet
+   that explains what a given button does, so the reader can match the
+   prose to the actual icon they'll see in the app (see conf.py's
+   `|icon-<name>|` substitutions). */
+img.action-icon {
+    float: left;
+    width: 1.8em;
+    height: 1.8em;
+    margin: 0.1em 0.5em 0.25em 0;
+}
+
+/* Clearfix: a bullet whose text is shorter than the floated icon would
+   otherwise let the icon visually bleed into the next list item. */
+.rst-content li::after {
+    content: "";
+    display: table;
+    clear: both;
+}

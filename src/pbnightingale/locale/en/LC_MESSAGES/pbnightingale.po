@@ -1,0 +1,1439 @@
+# English translations for PBNightingale.
+# Copyright (C) 2026 Marcel Spock
+# This file is distributed under the same license as the PBNightingale
+# project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PBNightingale\n"
+"Report-Msgid-Bugs-To: mrspock@cardolan.net\n"
+"POT-Creation-Date: 2001-01-01 00:00+0000\n"
+"PO-Revision-Date: 2026-09-12 19:04+0200\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: en\n"
+"Language-Team: en <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+msgid "language_name"
+msgstr "English"
+
+msgid "About PBNightingale"
+msgstr "About PBNightingale"
+
+msgid "A graphical GPG key management utility."
+msgstr "A graphical GPG key management utility."
+
+msgid "Author:"
+msgstr "Author:"
+
+msgid "License:"
+msgstr "License:"
+
+#, python-brace-format
+msgid ""
+"Images are resized to fit within {max}×{max}px before being added. Even "
+"so, a photo permanently adds to the key's size — once added, it cannot be"
+" deleted, only revoked."
+msgstr ""
+"Images are resized to fit within {max}×{max}px before being added. Even "
+"so, a photo permanently adds to the key's size — once added, it cannot be"
+" deleted, only revoked."
+
+msgid "Choose Image"
+msgstr "Choose Image"
+
+msgid "Images (*.png *.jpg *.jpeg *.bmp *.gif)"
+msgstr "Images (*.png *.jpg *.jpeg *.bmp *.gif)"
+
+msgid "Could not load image."
+msgstr "Could not load image."
+
+#, python-brace-format
+msgid ""
+"This image will be resized to {width}×{height}px. Even so, it permanently"
+" adds to the key's size — once added, a photo cannot be deleted, only "
+"revoked."
+msgstr ""
+"This image will be resized to {width}×{height}px. Even so, it permanently"
+" adds to the key's size — once added, a photo cannot be deleted, only "
+"revoked."
+
+msgid "Adding photo…"
+msgstr "Adding photo…"
+
+#, python-brace-format
+msgid "Could not add photo: {error}"
+msgstr "Could not add photo: {error}"
+
+msgid "Add Photo"
+msgstr "Add Photo"
+
+msgid "No image selected"
+msgstr "No image selected"
+
+msgid "Choose Image…"
+msgstr "Choose Image…"
+
+msgid "Add"
+msgstr "Add"
+
+msgid "Adding subkey…"
+msgstr "Adding subkey…"
+
+#, python-brace-format
+msgid "Could not add subkey: {error}"
+msgstr "Could not add subkey: {error}"
+
+msgid "Add Subkey"
+msgstr "Add Subkey"
+
+msgid "Sign"
+msgstr "Sign"
+
+msgid "Encrypt"
+msgstr "Encrypt"
+
+msgid "Authenticate"
+msgstr "Authenticate"
+
+msgid "Purpose:"
+msgstr "Purpose:"
+
+msgid "RSA"
+msgstr "RSA"
+
+msgid "Ed25519 (modern, smaller keys)"
+msgstr "Ed25519 (modern, smaller keys)"
+
+msgid "Algorithm:"
+msgstr "Algorithm:"
+
+msgid "Key size (bits):"
+msgstr "Key size (bits):"
+
+msgid "Adding user ID…"
+msgstr "Adding user ID…"
+
+#, python-brace-format
+msgid "Could not add user ID: {error}"
+msgstr "Could not add user ID: {error}"
+
+msgid "Add User ID"
+msgstr "Add User ID"
+
+msgid "Name:"
+msgstr "Name:"
+
+msgid "Email:"
+msgstr "Email:"
+
+msgid "Comment (optional):"
+msgstr "Comment (optional):"
+
+#, python-brace-format
+msgid ""
+"This exports the full private key for {keyid}, not just the public key. "
+"Anyone who gets this file and its passphrase can fully impersonate this "
+"key — store it somewhere safe."
+msgstr ""
+"This exports the full private key for {keyid}, not just the public key. "
+"Anyone who gets this file and its passphrase can fully impersonate this "
+"key — store it somewhere safe."
+
+msgid "Back Up Private Key"
+msgstr "Back Up Private Key"
+
+msgid "ASCII-armored keys (*.asc)"
+msgstr "ASCII-armored keys (*.asc)"
+
+msgid "Backing up private key…"
+msgstr "Backing up private key…"
+
+#, python-brace-format
+msgid "Could not back up private key: {error}"
+msgstr "Could not back up private key: {error}"
+
+#, python-brace-format
+msgid "Could not write file: {error}"
+msgstr "Could not write file: {error}"
+
+msgid "Back Up…"
+msgstr "Back Up…"
+
+msgid "Incorrect current passphrase."
+msgstr "Incorrect current passphrase."
+
+msgid "Changing passphrase…"
+msgstr "Changing passphrase…"
+
+#, python-brace-format
+msgid "Could not change passphrase: {error}"
+msgstr "Could not change passphrase: {error}"
+
+msgid "Change Passphrase"
+msgstr "Change Passphrase"
+
+msgid "Current passphrase:"
+msgstr "Current passphrase:"
+
+msgid "New passphrase:"
+msgstr "New passphrase:"
+
+msgid "Confirm new passphrase:"
+msgstr "Confirm new passphrase:"
+
+msgid "Passphrases do not match."
+msgstr "Passphrases do not match."
+
+msgid "Change"
+msgstr "Change"
+
+#, python-brace-format
+msgid ""
+"This permanently deletes {keyid} from your keyring, including any private"
+" key material. Unlike revoking, the key will no longer exist at all "
+"afterwards."
+msgstr ""
+"This permanently deletes {keyid} from your keyring, including any private"
+" key material. Unlike revoking, the key will no longer exist at all "
+"afterwards."
+
+msgid "Deleting key…"
+msgstr "Deleting key…"
+
+#, python-brace-format
+msgid "Could not delete key: {error}"
+msgstr "Could not delete key: {error}"
+
+msgid "Delete Key"
+msgstr "Delete Key"
+
+msgid "Delete"
+msgstr "Delete"
+
+msgid "No unknown key to download."
+msgstr "No unknown key to download."
+
+#, python-brace-format
+msgid "{found} of {count} key(s) downloaded:"
+msgstr "{found} of {count} key(s) downloaded:"
+
+msgid "Download Unknown Keys — Report"
+msgstr "Download Unknown Keys — Report"
+
+msgid "Downloaded"
+msgstr "Downloaded"
+
+msgid "Not found on the keyserver"
+msgstr "Not found on the keyserver"
+
+msgid "Choose Key File"
+msgstr "Choose Key File"
+
+msgid "OpenPGP keys (*.asc *.gpg *.pgp *.key);;All files (*)"
+msgstr "OpenPGP keys (*.asc *.gpg *.pgp *.key);;All files (*)"
+
+msgid "Choose a file to import."
+msgstr "Choose a file to import."
+
+msgid "Enter a fingerprint, key ID, or email address."
+msgstr "Enter a fingerprint, key ID, or email address."
+
+msgid "Checking…"
+msgstr "Checking…"
+
+#, python-brace-format
+msgid "{n} key(s) found."
+msgstr "{n} key(s) found."
+
+msgid "(no user ID)"
+msgstr "(no user ID)"
+
+msgid "Already in keyring"
+msgstr "Already in keyring"
+
+msgid "Importing…"
+msgstr "Importing…"
+
+#, python-brace-format
+msgid "Could not import key: {error}"
+msgstr "Could not import key: {error}"
+
+msgid "Import Key"
+msgstr "Import Key"
+
+msgid "No file selected"
+msgstr "No file selected"
+
+msgid "Browse…"
+msgstr "Browse…"
+
+msgid "From file"
+msgstr "From file"
+
+msgid "Fingerprint, key ID, or email address"
+msgstr "Fingerprint, key ID, or email address"
+
+msgid "Key:"
+msgstr "Key:"
+
+msgid "Keyserver:"
+msgstr "Keyserver:"
+
+msgid "From keyserver"
+msgstr "From keyserver"
+
+msgid "Check…"
+msgstr "Check…"
+
+msgid "Identities"
+msgstr "Identities"
+
+msgid "Key ID"
+msgstr "Key ID"
+
+msgid "Fingerprint"
+msgstr "Fingerprint"
+
+msgid "Status"
+msgstr "Status"
+
+msgid "Import"
+msgstr "Import"
+
+#, python-brace-format
+msgid "{uid} (revoked)"
+msgstr "{uid} (revoked)"
+
+msgid "Unknown locally"
+msgstr "Unknown locally"
+
+msgid "Unknown"
+msgstr "Unknown"
+
+msgid "Never"
+msgstr "Never"
+
+msgid "Certify"
+msgstr "Certify"
+
+msgid "None"
+msgstr "None"
+
+msgid "Ultimate"
+msgstr "Ultimate"
+
+msgid "Full"
+msgstr "Full"
+
+msgid "Marginal"
+msgstr "Marginal"
+
+msgid "Undefined"
+msgstr "Undefined"
+
+msgid "Expired"
+msgstr "Expired"
+
+msgid "Revoked"
+msgstr "Revoked"
+
+msgid "Disabled"
+msgstr "Disabled"
+
+msgid "Invalid"
+msgstr "Invalid"
+
+#, python-brace-format
+msgid "My keys ({n})"
+msgstr "My keys ({n})"
+
+#, python-brace-format
+msgid "Other keys ({n})"
+msgstr "Other keys ({n})"
+
+msgid "Loading…"
+msgstr "Loading…"
+
+msgid "Personal (secret key available)"
+msgstr "Personal (secret key available)"
+
+msgid "Public only"
+msgstr "Public only"
+
+msgid ""
+"Only one of the identities, photos and subkeys lists can have a selection"
+" at a time — whichever one currently has focus."
+msgstr ""
+"Only one of the identities, photos and subkeys lists can have a selection"
+" at a time — whichever one currently has focus."
+
+msgid "Name"
+msgstr "Name"
+
+msgid "Email"
+msgstr "Email"
+
+msgid "Expires"
+msgstr "Expires"
+
+msgid "Keys in your keyring"
+msgstr "Keys in your keyring"
+
+msgid ""
+"Lists every key in your keyring, grouped into \"My keys\" (a secret key "
+"is available) and \"Other keys\" (public only). The unlabeled column "
+"between Name and Email shows whether a personal key's passphrase is "
+"currently remembered: unlocked if so, locked otherwise. Double-click that"
+" icon to forget a remembered passphrase."
+msgstr ""
+"Lists every key in your keyring, grouped into \"My keys\" (a secret key "
+"is available) and \"Other keys\" (public only). The unlabeled column "
+"between Name and Email shows whether a personal key's passphrase is "
+"currently remembered: unlocked if so, locked otherwise. Double-click that"
+" icon to forget a remembered passphrase."
+
+msgid "Select a key to see its details."
+msgstr "Select a key to see its details."
+
+msgid "Details"
+msgstr "Details"
+
+msgid "Signatures"
+msgstr "Signatures"
+
+msgid "Type:"
+msgstr "Type:"
+
+msgid "Copy"
+msgstr "Copy"
+
+msgid "Copy the fingerprint to the clipboard"
+msgstr "Copy the fingerprint to the clipboard"
+
+msgid ""
+"Copies the fingerprint shown above (grouped in 4-character blocks) to the"
+" clipboard."
+msgstr ""
+"Copies the fingerprint shown above (grouped in 4-character blocks) to the"
+" clipboard."
+
+msgid "Fingerprint:"
+msgstr "Fingerprint:"
+
+msgid "Capabilities:"
+msgstr "Capabilities:"
+
+msgid "Created:"
+msgstr "Created:"
+
+msgid "Expires:"
+msgstr "Expires:"
+
+msgid "Validity:"
+msgstr "Validity:"
+
+msgid "Owner trust:"
+msgstr "Owner trust:"
+
+msgid "User IDs"
+msgstr "User IDs"
+
+msgid ""
+"The identities (names and email addresses) attached to the selected key. "
+"A checkmark (✓) marks the current primary identity."
+msgstr ""
+"The identities (names and email addresses) attached to the selected key. "
+"A checkmark (✓) marks the current primary identity."
+
+msgid "Photos"
+msgstr "Photos"
+
+msgid ""
+"The photos attached to the selected key. Double-click a photo, or press "
+"Enter on it, to view it at its full size."
+msgstr ""
+"The photos attached to the selected key. Double-click a photo, or press "
+"Enter on it, to view it at its full size."
+
+msgid "Subkeys"
+msgstr "Subkeys"
+
+msgid "Capabilities"
+msgstr "Capabilities"
+
+msgid "Algorithm"
+msgstr "Algorithm"
+
+msgid "Created"
+msgstr "Created"
+
+msgid ""
+"The subkeys attached to the selected key — separate signing, encryption "
+"or authentication keys bound to it."
+msgstr ""
+"The subkeys attached to the selected key — separate signing, encryption "
+"or authentication keys bound to it."
+
+msgid ""
+"Every key that has certified (signed) the selected key's user IDs. A "
+"signer already in your keyring is shown the same way as in the list on "
+"the left; one gpg cannot resolve locally is shown as \"Unknown locally\" "
+"with only its identifier."
+msgstr ""
+"Every key that has certified (signed) the selected key's user IDs. A "
+"signer already in your keyring is shown the same way as in the list on "
+"the left; one gpg cannot resolve locally is shown as \"Unknown locally\" "
+"with only its identifier."
+
+msgid "Download Unknown Keys"
+msgstr "Download Unknown Keys"
+
+msgid ""
+"Fetches every signing key not already in your keyring from the keyserver,"
+" then reports which ones were found."
+msgstr ""
+"Fetches every signing key not already in your keyring from the keyserver,"
+" then reports which ones were found."
+
+msgid "Incorrect primary key passphrase."
+msgstr "Incorrect primary key passphrase."
+
+msgid "I understand this action is permanent and cannot be undone."
+msgstr "I understand this action is permanent and cannot be undone."
+
+msgid "Primary key passphrase:"
+msgstr "Primary key passphrase:"
+
+msgid "Ready"
+msgstr "Ready"
+
+msgid "Loading keys…"
+msgstr "Loading keys…"
+
+#, python-brace-format
+msgid "{n} key(s) loaded"
+msgstr "{n} key(s) loaded"
+
+#, python-brace-format
+msgid "Could not load keys: {error}"
+msgstr "Could not load keys: {error}"
+
+#, python-brace-format
+msgid "Key imported: {uid} ({keyid})"
+msgstr "Key imported: {uid} ({keyid})"
+
+#, python-brace-format
+msgid "Key already in keyring: {uid} ({keyid})"
+msgstr "Key already in keyring: {uid} ({keyid})"
+
+#, python-brace-format
+msgid "{new} new key(s) imported, {existing} already present"
+msgstr "{new} new key(s) imported, {existing} already present"
+
+msgid "Refreshing trust…"
+msgstr "Refreshing trust…"
+
+#, python-brace-format
+msgid "Could not refresh trust: {error}"
+msgstr "Could not refresh trust: {error}"
+
+msgid "Publish Key"
+msgstr "Publish Key"
+
+#, python-brace-format
+msgid ""
+"Publish {keyid} to {keyserver}?\n"
+"\n"
+"Once a key is on a public keyserver, it generally cannot be fully removed"
+" again, only revoked."
+msgstr ""
+"Publish {keyid} to {keyserver}?\n"
+"\n"
+"Once a key is on a public keyserver, it generally cannot be fully removed"
+" again, only revoked."
+
+msgid "Publishing…"
+msgstr "Publishing…"
+
+#, python-brace-format
+msgid "Key published to {keyserver}"
+msgstr "Key published to {keyserver}"
+
+#, python-brace-format
+msgid "Could not publish key: {error}"
+msgstr "Could not publish key: {error}"
+
+msgid "Refreshing keys from keyserver…"
+msgstr "Refreshing keys from keyserver…"
+
+msgid "Refresh Keys"
+msgstr "Refresh Keys"
+
+#, python-brace-format
+msgid "Could not refresh keys: {error}"
+msgstr "Could not refresh keys: {error}"
+
+#, python-brace-format
+msgid "Could not load signatures: {error}"
+msgstr "Could not load signatures: {error}"
+
+msgid "Downloading unknown keys from keyserver…"
+msgstr "Downloading unknown keys from keyserver…"
+
+#, python-brace-format
+msgid "Could not download keys: {error}"
+msgstr "Could not download keys: {error}"
+
+msgid "Export Key"
+msgstr "Export Key"
+
+#, python-brace-format
+msgid "Could not export key: {error}"
+msgstr "Could not export key: {error}"
+
+#, python-brace-format
+msgid "Key exported to {path}"
+msgstr "Key exported to {path}"
+
+msgid "Settings…"
+msgstr "Settings…"
+
+msgid "Open settings"
+msgstr "Open settings"
+
+msgid "Configure the interface language"
+msgstr "Configure the interface language"
+
+msgid ""
+"Configure the interface language, the default algorithm for new keys, the"
+" toolbar icon size, and how long a passphrase you enter is remembered "
+"before it's forgotten again."
+msgstr ""
+"Configure the interface language, the default algorithm for new keys, the"
+" toolbar icon size, and how long a passphrase you enter is remembered "
+"before it's forgotten again."
+
+msgid "Quit"
+msgstr "Quit"
+
+msgid "Quit PBNightingale"
+msgstr "Quit PBNightingale"
+
+msgid "Exit the application"
+msgstr "Exit the application"
+
+msgid ""
+"Closes PBNightingale. There is nothing to save first — every change is "
+"applied directly to your GPG keyring as you make it, so no operation "
+"already done is undone by quitting."
+msgstr ""
+"Closes PBNightingale. There is nothing to save first — every change is "
+"applied directly to your GPG keyring as you make it, so no operation "
+"already done is undone by quitting."
+
+msgid "About this application"
+msgstr "About this application"
+
+msgid "Show version and license information"
+msgstr "Show version and license information"
+
+msgid ""
+"Shows the application's version, author and license (GPLv3 for the code; "
+"the bundled icons are separately licensed under CC BY-NC-SA 4.0)."
+msgstr ""
+"Shows the application's version, author and license (GPLv3 for the code; "
+"the bundled icons are separately licensed under CC BY-NC-SA 4.0)."
+
+msgid "Reset toolbars"
+msgstr "Reset toolbars"
+
+msgid "Restore the default toolbar positions and visibility"
+msgstr "Restore the default toolbar positions and visibility"
+
+msgid ""
+"Restores every toolbar to its position, order and visibility from the "
+"very first run — handy after moving or hiding one by accident."
+msgstr ""
+"Restores every toolbar to its position, order and visibility from the "
+"very first run — handy after moving or hiding one by accident."
+
+msgid "Refresh"
+msgstr "Refresh"
+
+msgid "Reload the key list from the keyring"
+msgstr "Reload the key list from the keyring"
+
+msgid ""
+"Reloads the key list from your GPG keyring, picking up any change made "
+"outside PBNightingale (e.g. via the gpg command line)."
+msgstr ""
+"Reloads the key list from your GPG keyring, picking up any change made "
+"outside PBNightingale (e.g. via the gpg command line)."
+
+msgid "New key…"
+msgstr "New key…"
+
+msgid "Create a new personal key pair"
+msgstr "Create a new personal key pair"
+
+msgid ""
+"Opens the wizard to generate a brand-new personal key pair (RSA or "
+"Ed25519), including its own passphrase."
+msgstr ""
+"Opens the wizard to generate a brand-new personal key pair (RSA or "
+"Ed25519), including its own passphrase."
+
+msgid "Add subkey…"
+msgstr "Add subkey…"
+
+msgid "Add a signing, encryption or authentication subkey"
+msgstr "Add a signing, encryption or authentication subkey"
+
+msgid ""
+"Adds a new subkey to the selected personal key, for signing, encryption "
+"or authentication — useful for giving each purpose its own key without "
+"touching the primary one."
+msgstr ""
+"Adds a new subkey to the selected personal key, for signing, encryption "
+"or authentication — useful for giving each purpose its own key without "
+"touching the primary one."
+
+msgid "Set key expiration…"
+msgstr "Set key expiration…"
+
+msgid "Set this key's expiration date"
+msgstr "Set this key's expiration date"
+
+msgid "Sets or removes the selected key's own expiration date."
+msgstr "Sets or removes the selected key's own expiration date."
+
+msgid "Revoke key…"
+msgstr "Revoke key…"
+
+msgid "Revoke this key (requires confirmation)"
+msgstr "Revoke this key (requires confirmation)"
+
+msgid ""
+"Permanently revokes the selected personal key itself, marking it "
+"untrustworthy from now on. This cannot be undone — the key still exists, "
+"but should no longer be used or trusted."
+msgstr ""
+"Permanently revokes the selected personal key itself, marking it "
+"untrustworthy from now on. This cannot be undone — the key still exists, "
+"but should no longer be used or trusted."
+
+msgid "Set subkey expiration…"
+msgstr "Set subkey expiration…"
+
+msgid "Set the selected subkey's expiration date"
+msgstr "Set the selected subkey's expiration date"
+
+msgid ""
+"Sets or removes the selected subkey's expiration date, independently of "
+"the primary key's own expiration."
+msgstr ""
+"Sets or removes the selected subkey's expiration date, independently of "
+"the primary key's own expiration."
+
+msgid "Add user ID…"
+msgstr "Add user ID…"
+
+msgid "Add a new identity (name and email)"
+msgstr "Add a new identity (name and email)"
+
+msgid ""
+"Adds another identity (name and email address) to the selected personal "
+"key — e.g. a second address you also want this key to vouch for."
+msgstr ""
+"Adds another identity (name and email address) to the selected personal "
+"key — e.g. a second address you also want this key to vouch for."
+
+msgid "Set as primary…"
+msgstr "Set as primary…"
+
+msgid "Set the selected user ID as the primary identity"
+msgstr "Set the selected user ID as the primary identity"
+
+msgid ""
+"Marks the selected identity as the key's primary one — the identity other"
+" tools show by default for this key."
+msgstr ""
+"Marks the selected identity as the key's primary one — the identity other"
+" tools show by default for this key."
+
+msgid "Revoke user ID…"
+msgstr "Revoke user ID…"
+
+msgid "Revoke the selected user ID (requires confirmation)"
+msgstr "Revoke the selected user ID (requires confirmation)"
+
+msgid ""
+"Permanently revokes the selected identity. At least one non-revoked "
+"identity must remain on the key."
+msgstr ""
+"Permanently revokes the selected identity. At least one non-revoked "
+"identity must remain on the key."
+
+msgid "Add photo…"
+msgstr "Add photo…"
+
+msgid "Add a photo user ID"
+msgstr "Add a photo user ID"
+
+msgid ""
+"Attaches a photo to the selected personal key, as an extra (visual) "
+"identity."
+msgstr ""
+"Attaches a photo to the selected personal key, as an extra (visual) "
+"identity."
+
+msgid "Revoke photo…"
+msgstr "Revoke photo…"
+
+msgid "Revoke the selected photo (requires confirmation)"
+msgstr "Revoke the selected photo (requires confirmation)"
+
+msgid "Permanently revokes the selected photo."
+msgstr "Permanently revokes the selected photo."
+
+msgid "Import…"
+msgstr "Import…"
+
+msgid "Import a key from a file or a keyserver"
+msgstr "Import a key from a file or a keyserver"
+
+msgid ""
+"Imports a key from a local file, or fetches one from a keyserver by "
+"fingerprint, key ID or email address."
+msgstr ""
+"Imports a key from a local file, or fetches one from a keyserver by "
+"fingerprint, key ID or email address."
+
+msgid "Export…"
+msgstr "Export…"
+
+msgid "Export the selected key to a file"
+msgstr "Export the selected key to a file"
+
+msgid ""
+"Saves the selected key's public part to a file, to share with someone "
+"else. Does not include any private key material."
+msgstr ""
+"Saves the selected key's public part to a file, to share with someone "
+"else. Does not include any private key material."
+
+msgid "Back up private key…"
+msgstr "Back up private key…"
+
+msgid "Export the selected key's private key material to a file"
+msgstr "Export the selected key's private key material to a file"
+
+msgid ""
+"Saves the selected key's full private key material to a file — a real "
+"backup, unlike Export. Requires the key's passphrase; anyone with this "
+"file and its passphrase can fully impersonate the key."
+msgstr ""
+"Saves the selected key's full private key material to a file — a real "
+"backup, unlike Export. Requires the key's passphrase; anyone with this "
+"file and its passphrase can fully impersonate the key."
+
+msgid "Change passphrase…"
+msgstr "Change passphrase…"
+
+msgid "Change the passphrase protecting this key's private key material"
+msgstr "Change the passphrase protecting this key's private key material"
+
+msgid ""
+"Changes the passphrase protecting the selected key's private key "
+"material. Requires the current passphrase."
+msgstr ""
+"Changes the passphrase protecting the selected key's private key "
+"material. Requires the current passphrase."
+
+msgid "Delete…"
+msgstr "Delete…"
+
+msgid "Delete the selected key"
+msgstr "Delete the selected key"
+
+msgid ""
+"Permanently removes the selected key from your keyring, including any "
+"private key material. Requires strong confirmation, since this cannot be "
+"undone — unlike revoking, the key won't exist at all afterwards."
+msgstr ""
+"Permanently removes the selected key from your keyring, including any "
+"private key material. Requires strong confirmation, since this cannot be "
+"undone — unlike revoking, the key won't exist at all afterwards."
+
+msgid "Copy ID"
+msgstr "Copy ID"
+
+msgid "Copy the selected key's fingerprint to the clipboard"
+msgstr "Copy the selected key's fingerprint to the clipboard"
+
+msgid "Copies the selected key's full fingerprint to the clipboard."
+msgstr "Copies the selected key's full fingerprint to the clipboard."
+
+msgid "Copy the selected subkey's fingerprint to the clipboard"
+msgstr "Copy the selected subkey's fingerprint to the clipboard"
+
+msgid "Copies the selected subkey's full fingerprint to the clipboard."
+msgstr "Copies the selected subkey's full fingerprint to the clipboard."
+
+msgid "Copy email"
+msgstr "Copy email"
+
+msgid "Copy the selected identity's email address to the clipboard"
+msgstr "Copy the selected identity's email address to the clipboard"
+
+msgid ""
+"Copies the selected identity's email address to the clipboard, if it has "
+"one."
+msgstr ""
+"Copies the selected identity's email address to the clipboard, if it has "
+"one."
+
+msgid "Show"
+msgstr "Show"
+
+msgid "View the selected photo full-size"
+msgstr "View the selected photo full-size"
+
+msgid ""
+"Opens the selected photo in a viewer, at full size — same as double-"
+"clicking it."
+msgstr ""
+"Opens the selected photo in a viewer, at full size — same as double-"
+"clicking it."
+
+msgid "Sign key…"
+msgstr "Sign key…"
+
+msgid "Sign another key to build the web of trust"
+msgstr "Sign another key to build the web of trust"
+
+msgid ""
+"Signs the selected key with one of your own keys, vouching that its "
+"identity binding is genuine — the basis of the web of trust."
+msgstr ""
+"Signs the selected key with one of your own keys, vouching that its "
+"identity binding is genuine — the basis of the web of trust."
+
+msgid "Set owner trust…"
+msgstr "Set owner trust…"
+
+msgid "Set how much you trust this key's owner to certify others"
+msgstr "Set how much you trust this key's owner to certify others"
+
+msgid ""
+"Sets how much you personally trust the selected key's owner to correctly "
+"vouch for other people's keys. This is a private, local judgment — it "
+"isn't published anywhere."
+msgstr ""
+"Sets how much you personally trust the selected key's owner to correctly "
+"vouch for other people's keys. This is a private, local judgment — it "
+"isn't published anywhere."
+
+msgid "Revoke subkey…"
+msgstr "Revoke subkey…"
+
+msgid "Revoke a subkey (requires confirmation)"
+msgstr "Revoke a subkey (requires confirmation)"
+
+msgid ""
+"Permanently revokes the selected subkey. Unlike revoking the whole key, "
+"the primary key and its other subkeys remain usable."
+msgstr ""
+"Permanently revokes the selected subkey. Unlike revoking the whole key, "
+"the primary key and its other subkeys remain usable."
+
+msgid "Refresh trust"
+msgstr "Refresh trust"
+
+msgid "Recompute the web of trust"
+msgstr "Recompute the web of trust"
+
+msgid ""
+"Recomputes every key's validity from its current signatures — useful "
+"after signing a key, or importing new signatures, since validity isn't "
+"recalculated automatically."
+msgstr ""
+"Recomputes every key's validity from its current signatures — useful "
+"after signing a key, or importing new signatures, since validity isn't "
+"recalculated automatically."
+
+msgid "Search…"
+msgstr "Search…"
+
+msgid "Search a keyserver by fingerprint, key ID or email"
+msgstr "Search a keyserver by fingerprint, key ID or email"
+
+msgid ""
+"Searches a keyserver by name, email address, fingerprint or key ID, and "
+"lets you import one of the matching keys."
+msgstr ""
+"Searches a keyserver by name, email address, fingerprint or key ID, and "
+"lets you import one of the matching keys."
+
+msgid "Publish…"
+msgstr "Publish…"
+
+msgid "Publish the selected key to a keyserver"
+msgstr "Publish the selected key to a keyserver"
+
+msgid ""
+"Publishes the selected key to a keyserver, making it publicly retrievable"
+" by anyone. A published key generally cannot be fully removed again "
+"afterwards, only revoked."
+msgstr ""
+"Publishes the selected key to a keyserver, making it publicly retrievable"
+" by anyone. A published key generally cannot be fully removed again "
+"afterwards, only revoked."
+
+msgid "Refresh keys from their keyserver"
+msgstr "Refresh keys from their keyserver"
+
+msgid ""
+"Re-downloads the selected key, or every key in your keyring, from its "
+"keyserver, picking up new signatures, identities or revocations."
+msgstr ""
+"Re-downloads the selected key, or every key in your keyring, from its "
+"keyserver, picking up new signatures, identities or revocations."
+
+msgid "Keys"
+msgstr "Keys"
+
+msgid "Trust"
+msgstr "Trust"
+
+msgid "Keyservers"
+msgstr "Keyservers"
+
+msgid "Help"
+msgstr "Help"
+
+msgid "File"
+msgstr "File"
+
+msgid "Edit"
+msgstr "Edit"
+
+msgid "View"
+msgstr "View"
+
+msgid "Toolbars"
+msgstr "Toolbars"
+
+msgid "Generating key…"
+msgstr "Generating key…"
+
+msgid "Key created successfully."
+msgstr "Key created successfully."
+
+#, python-brace-format
+msgid "Could not create the key: {error}"
+msgstr "Could not create the key: {error}"
+
+msgid "Create a New Personal Key"
+msgstr "Create a New Personal Key"
+
+msgid "a dedicated signing subkey"
+msgstr "a dedicated signing subkey"
+
+msgid "a dedicated encryption subkey"
+msgstr "a dedicated encryption subkey"
+
+msgid "no additional subkeys"
+msgstr "no additional subkeys"
+
+#, python-brace-format
+msgid "{first} and {second}"
+msgstr "{first} and {second}"
+
+#, python-brace-format
+msgid "About to create an Ed25519 key for {uid}, with {subkeys}."
+msgstr "About to create an Ed25519 key for {uid}, with {subkeys}."
+
+#, python-brace-format
+msgid "About to create a {size}-bit RSA key for {uid}, with {subkeys}."
+msgstr "About to create a {size}-bit RSA key for {uid}, with {subkeys}."
+
+msgid "Identity"
+msgstr "Identity"
+
+msgid ""
+"This identifies you on the key. It is shown to anyone you exchange keys "
+"with."
+msgstr ""
+"This identifies you on the key. It is shown to anyone you exchange keys "
+"with."
+
+msgid "Key parameters"
+msgstr "Key parameters"
+
+msgid ""
+"A dedicated signing and/or encryption subkey is recommended: it can be "
+"replaced or revoked without affecting your identity or existing "
+"signatures."
+msgstr ""
+"A dedicated signing and/or encryption subkey is recommended: it can be "
+"replaced or revoked without affecting your identity or existing "
+"signatures."
+
+msgid "Create a dedicated signing subkey"
+msgstr "Create a dedicated signing subkey"
+
+msgid "Create a dedicated encryption subkey"
+msgstr "Create a dedicated encryption subkey"
+
+msgid "Passphrase"
+msgstr "Passphrase"
+
+msgid ""
+"Protects your private key. Leave both fields empty for no passphrase (not"
+" recommended)."
+msgstr ""
+"Protects your private key. Leave both fields empty for no passphrase (not"
+" recommended)."
+
+msgid "Passphrase:"
+msgstr "Passphrase:"
+
+msgid "Confirm:"
+msgstr "Confirm:"
+
+msgid "Create the key"
+msgstr "Create the key"
+
+msgid "Show password"
+msgstr "Show password"
+
+msgid "Hide password"
+msgstr "Hide password"
+
+msgid "Bad"
+msgstr "Bad"
+
+msgid "Poor"
+msgstr "Poor"
+
+msgid "Weak"
+msgstr "Weak"
+
+msgid "Good"
+msgstr "Good"
+
+msgid "Excellent"
+msgstr "Excellent"
+
+#, python-brace-format
+msgid "Quality: {quality}"
+msgstr "Quality: {quality}"
+
+#, python-brace-format
+msgid "{bits} bits"
+msgstr "{bits} bits"
+
+msgid "Photo (revoked)"
+msgstr "Photo (revoked)"
+
+msgid "Photo"
+msgstr "Photo"
+
+msgid ""
+"Re-download keys from their keyserver, picking up any new signatures, "
+"identities or revocations."
+msgstr ""
+"Re-download keys from their keyserver, picking up any new signatures, "
+"identities or revocations."
+
+msgid "Refresh the selected key only"
+msgstr "Refresh the selected key only"
+
+msgid "Refresh every key in the keyring"
+msgstr "Refresh every key in the keyring"
+
+#, python-brace-format
+msgid "Checked {count} key(s) — nothing new."
+msgstr "Checked {count} key(s) — nothing new."
+
+#, python-brace-format
+msgid "{updated} of {count} key(s) picked up changes:"
+msgstr "{updated} of {count} key(s) picked up changes:"
+
+msgid "Refresh Keys — Report"
+msgstr "Refresh Keys — Report"
+
+#, python-brace-format
+msgid ""
+"You are about to revoke key {keyid}. This cannot be undone: the key will "
+"stop being usable, and every signature it made will no longer be trusted."
+msgstr ""
+"You are about to revoke key {keyid}. This cannot be undone: the key will "
+"stop being usable, and every signature it made will no longer be trusted."
+
+msgid "Incorrect passphrase."
+msgstr "Incorrect passphrase."
+
+msgid "Revoking key…"
+msgstr "Revoking key…"
+
+#, python-brace-format
+msgid "Could not revoke key: {error}"
+msgstr "Could not revoke key: {error}"
+
+msgid "Revoke Key"
+msgstr "Revoke Key"
+
+msgid "Revoke"
+msgstr "Revoke"
+
+msgid ""
+"You are about to revoke this photo. This cannot be undone: it will stop "
+"being usable everywhere this key is trusted."
+msgstr ""
+"You are about to revoke this photo. This cannot be undone: it will stop "
+"being usable everywhere this key is trusted."
+
+msgid "Revoking photo…"
+msgstr "Revoking photo…"
+
+#, python-brace-format
+msgid "Could not revoke photo: {error}"
+msgstr "Could not revoke photo: {error}"
+
+msgid "Revoke Photo"
+msgstr "Revoke Photo"
+
+#, python-brace-format
+msgid ""
+"You are about to revoke subkey {keyid}. This cannot be undone: the subkey"
+" will stop being usable everywhere this key is trusted."
+msgstr ""
+"You are about to revoke subkey {keyid}. This cannot be undone: the subkey"
+" will stop being usable everywhere this key is trusted."
+
+msgid "Revoking subkey…"
+msgstr "Revoking subkey…"
+
+#, python-brace-format
+msgid "Could not revoke subkey: {error}"
+msgstr "Could not revoke subkey: {error}"
+
+msgid "Revoke Subkey"
+msgstr "Revoke Subkey"
+
+#, python-brace-format
+msgid ""
+"You are about to revoke user ID {uid}. This cannot be undone: it will "
+"stop being usable everywhere this key is trusted."
+msgstr ""
+"You are about to revoke user ID {uid}. This cannot be undone: it will "
+"stop being usable everywhere this key is trusted."
+
+msgid "Revoking user ID…"
+msgstr "Revoking user ID…"
+
+#, python-brace-format
+msgid "Could not revoke user ID: {error}"
+msgstr "Could not revoke user ID: {error}"
+
+msgid "Revoke User ID"
+msgstr "Revoke User ID"
+
+msgid ""
+"keys.openpgp.org does not support searching by name or email, and never "
+"returns user IDs in search results (privacy by design). Search by exact "
+"key ID or fingerprint instead, or use Import… for a known email address."
+msgstr ""
+"keys.openpgp.org does not support searching by name or email, and never "
+"returns user IDs in search results (privacy by design). Search by exact "
+"key ID or fingerprint instead, or use Import… for a known email address."
+
+msgid "Enter a search query."
+msgstr "Enter a search query."
+
+msgid "Searching…"
+msgstr "Searching…"
+
+#, python-brace-format
+msgid "{uids} — {algo}, {length} bits — created {date}"
+msgstr "{uids} — {algo}, {length} bits — created {date}"
+
+#, python-brace-format
+msgid "{n} result(s) found."
+msgstr "{n} result(s) found."
+
+#, python-brace-format
+msgid "Could not search: {error}"
+msgstr "Could not search: {error}"
+
+msgid "Search Keyserver"
+msgstr "Search Keyserver"
+
+msgid "Name, email, fingerprint, or key ID"
+msgstr "Name, email, fingerprint, or key ID"
+
+msgid "Query:"
+msgstr "Query:"
+
+msgid "Search"
+msgstr "Search"
+
+msgid "Set Key Expiration"
+msgstr "Set Key Expiration"
+
+msgid "Set the expiration date for this key."
+msgstr "Set the expiration date for this key."
+
+msgid "Set Subkey Expiration"
+msgstr "Set Subkey Expiration"
+
+#, python-brace-format
+msgid "Set the expiration date for subkey {keyid}."
+msgstr "Set the expiration date for subkey {keyid}."
+
+msgid "Setting expiration…"
+msgstr "Setting expiration…"
+
+#, python-brace-format
+msgid "Could not set expiration: {error}"
+msgstr "Could not set expiration: {error}"
+
+msgid "Set Expiration"
+msgstr "Set Expiration"
+
+msgid "Never expires"
+msgstr "Never expires"
+
+msgid "Expiration date:"
+msgstr "Expiration date:"
+
+msgid "Set"
+msgstr "Set"
+
+#, python-brace-format
+msgid ""
+"How much do you trust {uid} to correctly verify other people's keys "
+"before signing them?"
+msgstr ""
+"How much do you trust {uid} to correctly verify other people's keys "
+"before signing them?"
+
+msgid "Setting owner trust…"
+msgstr "Setting owner trust…"
+
+#, python-brace-format
+msgid "Could not set owner trust: {error}"
+msgstr "Could not set owner trust: {error}"
+
+msgid "Set Owner Trust"
+msgstr "Set Owner Trust"
+
+#, python-brace-format
+msgid "Set {uid} as the primary user ID for this key."
+msgstr "Set {uid} as the primary user ID for this key."
+
+msgid "Setting primary user ID…"
+msgstr "Setting primary user ID…"
+
+#, python-brace-format
+msgid "Could not set primary user ID: {error}"
+msgstr "Could not set primary user ID: {error}"
+
+msgid "Set as Primary User ID"
+msgstr "Set as Primary User ID"
+
+msgid "System default"
+msgstr "System default"
+
+msgid "Settings"
+msgstr "Settings"
+
+msgid "Select the interface language"
+msgstr "Select the interface language"
+
+msgid "Language:"
+msgstr "Language:"
+
+msgid "Default algorithm proposed by the new-key wizard"
+msgstr "Default algorithm proposed by the new-key wizard"
+
+msgid "Preferred key algorithm:"
+msgstr "Preferred key algorithm:"
+
+msgid "Size of the toolbar icons"
+msgstr "Size of the toolbar icons"
+
+msgid "Toolbar icon size:"
+msgstr "Toolbar icon size:"
+
+msgid " minutes"
+msgstr " minutes"
+
+msgid ""
+"How long a passphrase you enter stays remembered in memory (0 to never "
+"remember it)"
+msgstr ""
+"How long a passphrase you enter stays remembered in memory (0 to never "
+"remember it)"
+
+msgid "Remember passphrases for:"
+msgstr "Remember passphrases for:"
+
+msgid "A restart is required for the language change to take effect."
+msgstr "A restart is required for the language change to take effect."
+
+#, python-brace-format
+msgid "Sign {uid} to vouch for it in the web of trust."
+msgstr "Sign {uid} to vouch for it in the web of trust."
+
+msgid "You have no personal key available to sign with."
+msgstr "You have no personal key available to sign with."
+
+msgid "Incorrect passphrase for the selected signing key."
+msgstr "Incorrect passphrase for the selected signing key."
+
+msgid "Signing key…"
+msgstr "Signing key…"
+
+#, python-brace-format
+msgid "Could not sign key: {error}"
+msgstr "Could not sign key: {error}"
+
+msgid "Sign Key"
+msgstr "Sign Key"
+
+msgid "Sign as:"
+msgstr "Sign as:"
+
+msgid "No particular claim"
+msgstr "No particular claim"
+
+msgid "I have not verified this key at all"
+msgstr "I have not verified this key at all"
+
+msgid "I have done casual verification"
+msgstr "I have done casual verification"
+
+msgid "I have done extensive verification"
+msgstr "I have done extensive verification"
+
+msgid "Verification:"
+msgstr "Verification:"
+
+msgid "Local signature only (not exportable)"
+msgstr "Local signature only (not exportable)"
+
+msgid ""
+"A local signature stays in your own keyring — it never gets published or "
+"exported, and only affects how you personally see this key's validity."
+msgstr ""
+"A local signature stays in your own keyring — it never gets published or "
+"exported, and only affects how you personally see this key's validity."

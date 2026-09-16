@@ -1,0 +1,200 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, PBMou
+# This file is distributed under the same license as the PBNightingale
+# package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PBNightingale 0.1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-16 15:17+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: fr\n"
+"Language-Team: fr <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../manual/importing_keys.rst:2
+msgid "Importing and publishing keys"
+msgstr "Importer et publier des clefs"
+
+#: ../../manual/importing_keys.rst:4
+msgid ""
+"Before you can send someone an encrypted message, or verify a signature "
+"of theirs, you need their **public key** in your keyring (see "
+":doc:`concepts`). This page covers getting keys in, and making your own "
+"findable by others."
+msgstr ""
+"Avant de pouvoir envoyer un message chiffré à quelqu'un, ou vérifier une "
+"de ses signatures, vous avez besoin de sa **clef publique** dans votre "
+"trousseau (voir :doc:`concepts`). Cette page traite de l'importation de "
+"clefs, et de la façon de rendre la vôtre trouvable par les autres."
+
+#: ../../manual/importing_keys.rst:10
+msgid "Importing a key"
+msgstr "Importer une clef"
+
+#: ../../manual/importing_keys.rst:12
+msgid "|icon-key-import| **Import…** (Keys toolbar/menu) opens a two-tab dialog:"
+msgstr ""
+"**Importer…** (barre d'outils/menu Clefs) ouvre une boîte de dialogue à "
+"deux onglets :"
+
+#: ../../manual/importing_keys.rst:14
+msgid ""
+"**From file** — for a key someone handed you directly (an exported "
+"``.asc``/``.gpg`` file), or a whole exported keyring containing several "
+"keys at once."
+msgstr ""
+"**Depuis un fichier** : pour une clef que quelqu'un vous a remise "
+"directement (un fichier exporté ``.asc``/``.gpg``), ou tout un trousseau "
+"exporté contenant plusieurs clefs à la fois."
+
+#: ../../manual/importing_keys.rst:17
+msgid ""
+"**From keyserver** — fetch by exact **fingerprint** or **key ID**, or by "
+"**email address** (tried via Web Key Directory first — a lookup straight "
+"from the owner's own email domain, when their provider supports it — "
+"falling back to the keyserver)."
+msgstr ""
+"**Depuis un serveur de clefs** : récupération par **empreinte** ou "
+"**identifiant de clef** exact, ou par **adresse email** (essayée d'abord "
+"via le Web Key Directory, une récupération directement depuis le domaine "
+"email du propriétaire quand son fournisseur le prend en charge, puis "
+"repli sur le serveur de clefs)."
+
+#: ../../manual/importing_keys.rst:22
+msgid "Either way, importing is a **two-step, review-first** process:"
+msgstr ""
+"Dans les deux cas, l'importation est un processus en **deux étapes, avec "
+"vérification préalable** :"
+
+#: ../../manual/importing_keys.rst:24
+msgid ""
+"Click **Check…**. PBNightingale fetches (or reads the file) and shows "
+"every candidate key it found — identities, key ID, fingerprint, and "
+"whether it is already in your keyring — without changing your keyring "
+"yet. A key already present is pre-checked (bringing in something you "
+"already trust enough to have is low-stakes); a genuinely new key is left "
+"unchecked, requiring you to opt in deliberately."
+msgstr ""
+"Cliquez sur **Vérifier…**. PBNightingale récupère (ou lit le fichier) et "
+"affiche chaque clef candidate trouvée (identités, identifiant de clef, "
+"empreinte, et si elle est déjà dans votre trousseau) sans encore modifier"
+" votre trousseau. Une clef déjà présente est précochée (ramener quelque "
+"chose en qui vous avez déjà assez confiance pour l'avoir est peu risqué) "
+"; une clef réellement nouvelle est laissée décochée, exigeant une "
+"décision délibérée de votre part."
+
+#: ../../manual/importing_keys.rst:30
+msgid ""
+"Review the list, adjust the checkboxes, and click **Import** to commit "
+"only the checked rows. Unchecking a candidate that was already present "
+"never removes your existing copy — it just skips re-merging it from this "
+"source."
+msgstr ""
+"Examinez la liste, ajustez les cases à cocher, puis cliquez sur "
+"**Importer** pour valider uniquement les lignes cochées. Décocher une "
+"candidate déjà présente ne supprime jamais votre copie existante : cela "
+"signifie simplement de ne pas la refusionner depuis cette source."
+
+#: ../../manual/importing_keys.rst:35
+msgid ""
+"Prefer fetching by **fingerprint** over a name or email search whenever "
+"you have it (read aloud to you, printed on a business card, compared at "
+"an in-person meeting) — see :doc:`trust_and_signing` for why: finding a "
+"key is not the same as knowing it genuinely belongs to who it claims."
+msgstr ""
+"Préférez récupérer par **empreinte** plutôt que par une recherche sur le "
+"nom ou l'email chaque fois que vous l'avez (lue à voix haute, imprimée "
+"sur une carte de visite, comparée lors d'une rencontre en personne) ; "
+"voir :doc:`trust_and_signing` pour comprendre pourquoi : trouver une clef"
+" n'est pas la même chose que savoir qu'elle appartient vraiment à qui "
+"elle prétend."
+
+#: ../../manual/importing_keys.rst:41
+msgid "Searching a keyserver"
+msgstr "Rechercher sur un serveur de clefs"
+
+#: ../../manual/importing_keys.rst:43
+msgid ""
+"|icon-server-search| **Search…** (Keyservers toolbar/menu) is for when "
+"you do not have an exact fingerprint or key ID — searching by name or "
+"email against a keyserver that supports it, and picking the right result "
+"from a list of matches. Not every keyserver indexes names or emails this "
+"way (this app's default, ``keys.openpgp.org``, deliberately does not, for"
+" privacy reasons — searching there only works by exact fingerprint or key"
+" ID, and even then without showing identities); point **Search…** at a "
+"different keyserver if you need this."
+msgstr ""
+"**Rechercher…** (barre d'outils/menu Serveurs de clefs) est utile quand "
+"vous n'avez pas d'empreinte ou d'identifiant de clef exact : recherche "
+"par nom ou email sur un serveur de clefs qui le permet, puis sélection du"
+" bon résultat dans une liste de correspondances. Tous les serveurs de "
+"clefs n'indexent pas les noms ou emails de cette façon (le serveur par "
+"défaut de cette application, ``keys.openpgp.org``, ne le fait "
+"délibérément pas, pour des raisons de confidentialité : la recherche n'y "
+"fonctionne que par empreinte ou identifiant de clef exact, et même alors "
+"sans afficher les identités) ; pointez **Rechercher…** vers un autre "
+"serveur de clefs si vous en avez besoin."
+
+#: ../../manual/importing_keys.rst:54
+msgid "Publishing your own key"
+msgstr "Publier votre propre clef"
+
+#: ../../manual/importing_keys.rst:56
+msgid ""
+"|icon-server-publish| **Publish…** (Keyservers toolbar/menu, needs a "
+"selected key) uploads the selected key to a keyserver, making it easy for"
+" people who have never met you to find it. This is worth doing once your "
+"key is in a state you are comfortable with (an email address you intend "
+"to keep using, for instance), since publishing is effectively one-way — a"
+" public key already picked up by a keyserver cannot be fully retracted, "
+"only revoked (see :doc:`managing_keys`)."
+msgstr ""
+"**Publier…** (barre d'outils/menu Serveurs de clefs, nécessite une clef "
+"sélectionnée) envoie la clef sélectionnée sur un serveur de clefs, la "
+"rendant facile à trouver pour des personnes qui ne vous ont jamais "
+"rencontré. Cela vaut la peine une fois votre clef dans un état qui vous "
+"convient (une adresse email que vous comptez continuer à utiliser, par "
+"exemple), car la publication est pratiquement à sens unique : une clef "
+"publique déjà récupérée par un serveur de clefs ne peut pas être "
+"pleinement retirée, seulement révoquée (voir :doc:`managing_keys`)."
+
+#: ../../manual/importing_keys.rst:65
+msgid "Refreshing from keyservers"
+msgstr "Rafraîchir depuis les serveurs de clefs"
+
+#: ../../manual/importing_keys.rst:67
+msgid ""
+"|icon-server-refresh| **Refresh** (Keyservers toolbar/menu) re-fetches "
+"keys from their keyserver, picking up anything that has changed since you"
+" last imported them — new signatures from people who have since signed a "
+"key you hold, a since-added or since-revoked UID, or a revocation. A "
+"dialog first asks whether to refresh just the currently selected key or "
+"every key in your keyring; a progress indicator is shown while it runs "
+"(refreshing the whole keyring can take a while), and a report afterward "
+"lists exactly which keys actually picked up a change. Run this "
+"occasionally, and especially before relying on a key's current validity "
+"for something important — see :doc:`trust_and_signing`, \"Seeing who "
+"signed a key\"."
+msgstr ""
+"**Rafraîchir** (barre d'outils/menu Serveurs de clefs) récupère à "
+"nouveau des clefs depuis leur serveur de clefs, récupérant tout ce qui a "
+"changé depuis votre dernière importation : de nouvelles signatures de "
+"personnes ayant depuis signé une clef que vous détenez, un identifiant "
+"ajouté ou révoqué depuis, ou une révocation. Une boîte de dialogue "
+"demande d'abord s'il faut rafraîchir seulement la clef actuellement "
+"sélectionnée ou tout le trousseau ; un indicateur de progression "
+"s'affiche pendant l'opération (rafraîchir tout le trousseau peut prendre "
+"un moment), et un rapport final liste précisément les clefs ayant "
+"effectivement changé. Faites-le de temps en temps, et surtout avant de "
+"vous fier à la validité actuelle d'une clef pour quelque chose "
+"d'important ; voir :doc:`trust_and_signing`, « Voir qui a signé une "
+"clef »."

@@ -1,0 +1,125 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, PBMou
+# This file is distributed under the same license as the PBNightingale
+# package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PBNightingale 0.1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-16 09:56+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: fr\n"
+"Language-Team: fr <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../manual/first_key.rst:2
+msgid "Creating your first key"
+msgstr "Créer votre première clef"
+
+#: ../../manual/first_key.rst:4
+msgid ""
+"This page assumes you have read :doc:`concepts` and know what a key pair,"
+" a passphrase and a subkey are. It walks through **Keys → New key…** "
+"(toolbar icon, or the **Keys** menu), which opens a four-page wizard."
+msgstr "Cette page suppose que vous avez lu :doc:`concepts` et que vous savez ce que sont une paire de clefs, une phrase secrète et une sous-clef. Elle décrit **Clefs → Nouvelle clef…** (icône de la barre d'outils, ou menu **Clefs**), qui ouvre un assistant en quatre pages."
+
+#: ../../manual/first_key.rst:9
+msgid "1. Identity"
+msgstr "1. Identité"
+
+#: ../../manual/first_key.rst:11
+msgid ""
+"Enter your **name**, **email address**, and optionally a short "
+"**comment**. These become your key's first :ref:`user ID <uids>` — the "
+"public label attached to your key (``Name (Comment) "
+"<email@example.com>``). You can add more email addresses later; see "
+":doc:`managing_keys`."
+msgstr "Saisissez votre **nom**, votre **adresse email**, et éventuellement un court **commentaire**. Ces informations deviennent le premier :ref:`identifiant utilisateur <uids>` de votre clef, l'étiquette publique attachée à votre clef (``Nom (Commentaire) <email@exemple.com>``). Vous pourrez ajouter d'autres adresses email plus tard ; voir :doc:`managing_keys`."
+
+#: ../../manual/first_key.rst:17
+msgid "2. Parameters"
+msgstr "2. Paramètres"
+
+#: ../../manual/first_key.rst:19
+msgid "Choose the **algorithm**:"
+msgstr "Choisissez l'**algorithme** :"
+
+#: ../../manual/first_key.rst:21
+msgid ""
+"**RSA** (2048/3072/4096 bits) — the traditional, universally supported "
+"choice."
+msgstr "**RSA** (2048/3072/4096 bits) : le choix traditionnel, pris en charge universellement."
+
+#: ../../manual/first_key.rst:23
+msgid ""
+"**ED25519** (Curve25519) — a modern elliptic-curve algorithm: smaller "
+"keys and faster operations for equivalent security, supported by any "
+"reasonably recent GPG. Because ED25519 is a signature-only curve, a key "
+"generated on it cannot itself perform encryption — the wizard silently "
+"forces a dedicated Curve25519 **encryption subkey** on for you in this "
+"case (see below), rather than letting you produce a key that could sign "
+"but never decrypt anything."
+msgstr "**ED25519** (Curve25519) : un algorithme moderne à courbe elliptique, avec des clefs plus petites et des opérations plus rapides pour une sécurité équivalente, pris en charge par toute version raisonnablement récente de GPG. ED25519 étant une courbe réservée à la signature, une clef générée avec cet algorithme ne peut pas elle-même chiffrer : l'assistant impose alors silencieusement une **sous-clef de chiffrement** Curve25519 dédiée (voir ci-dessous), plutôt que de vous laisser produire une clef capable de signer mais jamais de déchiffrer quoi que ce soit."
+
+#: ../../manual/first_key.rst:31
+msgid ""
+"The default matches whatever is set in **Settings…** as your preferred "
+"algorithm (see :doc:`preferences`)."
+msgstr "La valeur par défaut correspond à ce qui est défini dans **Paramètres…** comme algorithme préféré (voir :doc:`preferences`)."
+
+#: ../../manual/first_key.rst:34
+msgid ""
+"Also on this page: which **subkeys** to generate alongside your primary "
+"key. Both a **signing subkey** and an **encryption subkey** are proposed "
+"and checked by default — leave them checked. Unchecking one folds that "
+"capability into the primary key itself instead, which still works but "
+"gives up the damage-control benefit explained in :doc:`concepts` "
+"(\"Subkeys: not everything on one key\"): if that capability is ever "
+"compromised, you would have to revoke your primary key itself rather than"
+" just a subkey."
+msgstr "Toujours sur cette page : quelles **sous-clefs** générer en plus de la clef primaire. Une **sous-clef de signature** et une **sous-clef de chiffrement** sont proposées et cochées par défaut ; laissez-les cochées. Décocher l'une d'elles reporte cette capacité sur la clef primaire elle-même, ce qui fonctionne toujours mais renonce à l'avantage de limitation des dégâts expliqué dans :doc:`concepts` (« Les sous-clefs : tout ne repose pas sur une seule clef ») : si cette capacité venait à être compromise, il faudrait révoquer la clef primaire elle-même plutôt qu'une simple sous-clef."
+
+#: ../../manual/first_key.rst:44
+msgid "3. Passphrase"
+msgstr "3. Phrase secrète"
+
+#: ../../manual/first_key.rst:46
+msgid ""
+"Choose the passphrase that will protect your new private key on disk (see"
+" :doc:`concepts`, \"Your passphrase\"). A colored strength meter updates "
+"as you type, showing an estimated entropy in bits and a quality tier from"
+" *Bad* to *Excellent* — aim for at least *Good*. This passphrase is asked"
+" for every time the key is used to decrypt or sign something, so make it "
+"something you can reliably type or recall, not just something that scores"
+" well once and is then forgotten."
+msgstr "Choisissez la phrase secrète qui protégera votre nouvelle clef privée sur le disque (voir :doc:`concepts`, « Votre phrase secrète »). Un indicateur de robustesse coloré se met à jour au fur et à mesure de la saisie, affichant une entropie estimée en bits et un niveau de qualité allant de *Mauvaise* à *Excellente* : visez au moins *Bonne*. Cette phrase secrète est demandée à chaque utilisation de la clef pour déchiffrer ou signer quelque chose : choisissez donc quelque chose que vous pouvez taper ou retenir de manière fiable, pas seulement quelque chose qui obtient un bon score une fois avant d'être oublié."
+
+#: ../../manual/first_key.rst:55
+msgid "4. Generate"
+msgstr "4. Génération"
+
+#: ../../manual/first_key.rst:57
+msgid ""
+"Review the summary and click **Finish**. Key generation runs in the "
+"background with a progress indicator — it can take a few seconds, "
+"depending on the algorithm and your machine, since it involves genuine "
+"randomness gathering. If something goes wrong (for instance, the two "
+"passphrase fields not matching earlier), an error is shown and **Back** "
+"lets you correct the earlier pages without starting over."
+msgstr "Vérifiez le résumé puis cliquez sur **Terminer**. La génération de la clef s'exécute en arrière-plan avec un indicateur de progression : cela peut prendre quelques secondes selon l'algorithme et votre machine, car cela implique une véritable collecte d'aléa. En cas de problème (par exemple si les deux champs de phrase secrète ne correspondaient pas), une erreur s'affiche et **Précédent** permet de corriger les pages précédentes sans tout recommencer."
+
+#: ../../manual/first_key.rst:64
+msgid ""
+"Once generation succeeds, your new key appears in the main key list, "
+"where you can now add more identities, subkeys, a photo, sign other "
+"people's keys, publish it to a keyserver, and everything else covered in "
+"the rest of this manual."
+msgstr "Une fois la génération réussie, votre nouvelle clef apparaît dans la liste principale des clefs, où vous pouvez désormais ajouter d'autres identités, des sous-clefs, une photo, signer les clefs d'autres personnes, la publier sur un serveur de clefs, et tout le reste couvert dans le reste de ce manuel."

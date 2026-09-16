@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Testing
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Sphinx
+docs/_build/
+docs/changelog.rst
+docs/_static/pbnightingale.png
+docs/_static/icons/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Make stamp files
+.translate.stamp
+
+# i18n — generated artifacts, rebuilt on demand by make translate
+*.pot
+*.mo
+tools/_lang_name_stub.py
+
+# Claude Code
+.claude/settings.local.json
+
+# pixi (defensive: environments should live in ~/PIXI/ via the global
+# `pixi config set --global detached-environments`, but this covers
+# machines/accounts where that global config isn't set, so .pixi/
+# never ends up committed)
+.pixi/

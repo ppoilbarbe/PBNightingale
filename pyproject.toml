@@ -1,0 +1,132 @@
+[build-system]
+requires = ["hatchling", "babel>=2.9"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pbnightingale"
+version = "0.1.0"
+description = "A graphical GPG key management utility"
+readme = "README.md"
+license = "GPL-3.0-only"
+license-files = ["LICENSE", "LICENSE-ICONS", "LICENSE-DOCS"]
+authors = [{ name = "Marcel Spock", email = "mrspock@cardolan.net" }]
+keywords = ["gpg", "pgp", "openpgp", "keys", "encryption", "gui", "qt"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.14",
+    "Environment :: X11 Applications :: Qt",
+    "Intended Audience :: End Users/Desktop",
+    "Topic :: Security :: Cryptography",
+    "Topic :: Utilities",
+]
+requires-python = ">=3.14"
+dependencies = ["PySide6>=6.11.0", "python-gnupg>=0.5", "zxcvbn>=4.4"]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.16",
+    "pre-commit>=3.7",
+    "pytest>=8",
+    "pytest-qt>=4",
+    "pytest-cov>=5",
+    "sphinx>=7",
+    "sphinx-rtd-theme>=2",
+    "sphinx-autobuild>=2024",
+    "sphinx-intl>=2.2",
+]
+
+[project.scripts]
+pbnightingale = "pbnightingale.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pbnightingale"]
+
+[tool.hatch.build.hooks.custom]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts   = [
+    "--cov=pbnightingale",
+    "--cov-report=term-missing",
+    "--cov-report=xml",
+    "--cov-fail-under=90",
+]
+
+[tool.coverage.run]
+source = ["src"]
+
+[tool.ruff]
+line-length    = 88
+target-version = "py314"
+src            = ["src"]
+# _() is installed into builtins by gettext at runtime (i18n.setup()); tell
+# pyflakes it's a real builtin instead of exempting whole files from F821 —
+# a per-file-ignore would also hide genuine undefined-name bugs in every
+# ui/*.py file, since virtually all of them call _().
+builtins       = ["_"]
+
+[tool.ruff.lint]
+# No `select`: keep ruff's own default rule set (a curated subset the tool
+# ships with — wider than just pyflakes/pycodestyle, e.g. it includes
+# pylint's import-alias check PLR0402) and only extend it — avoids
+# re-stating/drifting from ruff's own defaults across upgrades.
+extend-select = [
+    "I",   # isort             — import ordering
+    "PGH", # pygrep-hooks      — grep-based checks (no bare `type: ignore`, deprecated calls…)
+    "UP",  # pyupgrade         — modernise syntax to target Python version
+    "BLE", # flake8-blind-except — forbid bare `except Exception` without re-raise
+    "S",   # flake8-bandit     — security: subprocess, temp files, hardcoded secrets…
+           # (this app shells out to `gpg` and handles key material — see gpg_backend.py)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# assert is the pytest idiom (S101); tests set standard executable modes like
+# 0o755 on fixture files to simulate a real installed binary (S103); GPG
+# passphrase fixtures are literal strings passed to an isolated, disposable
+# test GNUPGHOME (S106) — none of these are a real security concern in tests
+"tests/*" = ["S101", "S103", "S106"]
+
+[tool.ruff.format]
+# Black-compatible defaults (double quotes, trailing commas, magic trailing comma)
+quote-style               = "double"
+indent-style              = "space"
+skip-magic-trailing-comma = false
+line-ending               = "lf"
+
+[tool.pixi.workspace]
+channels  = ["conda-forge"]
+platforms = ["linux-64", "osx-64", "osx-arm64", "win-64"]
+
+[tool.pixi.dependencies]
+python                 = "3.14.*"
+pyside6                = "*"
+python-gnupg           = "*"
+zxcvbn                 = "*"
+fonts-conda-ecosystem  = "*"
+pytest                 = "*"
+pytest-qt              = "*"
+pytest-cov             = "*"
+ruff                   = "*"
+pre-commit             = "*"
+babel                  = "*"
+pyinstaller            = "*"
+sphinx                 = "*"
+sphinx-rtd-theme       = "*"
+sphinx-autobuild       = "*"
+sphinx-intl            = "*"
+
+[tool.pixi.pypi-dependencies]
+pbnightingale = { path = ".", editable = true }
+
+# The `gpg` binary itself: conda-forge ships it for Linux/macOS. There is no
+# win-64 build (see CODING.md — GnuPG), so Windows relies on a system-wide
+# GnuPG install (e.g. Gpg4win) instead, same as most GPG-aware apps on that OS.
+[tool.pixi.target.linux-64.dependencies]
+gnupg = "*"
+
+[tool.pixi.target.osx-64.dependencies]
+gnupg = "*"
+
+[tool.pixi.target.osx-arm64.dependencies]
+gnupg = "*"

@@ -1,0 +1,1474 @@
+# French translations for PBNightingale.
+# Copyright (C) 2026 Marcel Spock
+# This file is distributed under the same license as the PBNightingale
+# project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PBNightingale\n"
+"Report-Msgid-Bugs-To: mrspock@cardolan.net\n"
+"POT-Creation-Date: 2001-01-01 00:00+0000\n"
+"PO-Revision-Date: 2026-09-12 19:04+0200\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: fr\n"
+"Language-Team: fr <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+msgid "language_name"
+msgstr "Français"
+
+msgid "About PBNightingale"
+msgstr "À propos de PBNightingale"
+
+msgid "A graphical GPG key management utility."
+msgstr "Un utilitaire graphique de gestion de clefs GPG."
+
+msgid "Author:"
+msgstr "Auteur :"
+
+msgid "License:"
+msgstr "Licence :"
+
+#, python-brace-format
+msgid ""
+"Images are resized to fit within {max}×{max}px before being added. Even "
+"so, a photo permanently adds to the key's size — once added, it cannot be"
+" deleted, only revoked."
+msgstr ""
+"Les images sont retaillées pour tenir dans {max}×{max}px avant d'être "
+"ajoutées. Même ainsi, une photo augmente définitivement la taille de la "
+"clef : une fois ajoutée, elle ne peut pas être supprimée, seulement "
+"révoquée."
+
+msgid "Choose Image"
+msgstr "Choisir une image"
+
+msgid "Images (*.png *.jpg *.jpeg *.bmp *.gif)"
+msgstr "Images (*.png *.jpg *.jpeg *.bmp *.gif)"
+
+msgid "Could not load image."
+msgstr "Impossible de charger l'image."
+
+#, python-brace-format
+msgid ""
+"This image will be resized to {width}×{height}px. Even so, it permanently"
+" adds to the key's size — once added, a photo cannot be deleted, only "
+"revoked."
+msgstr ""
+"Cette image sera retaillée en {width}×{height}px. Même ainsi, elle "
+"augmente définitivement la taille de la clef : une fois ajoutée, une "
+"photo ne peut pas être supprimée, seulement révoquée."
+
+msgid "Adding photo…"
+msgstr "Ajout de la photo…"
+
+#, python-brace-format
+msgid "Could not add photo: {error}"
+msgstr "Impossible d'ajouter la photo : {error}"
+
+msgid "Add Photo"
+msgstr "Ajouter une photo"
+
+msgid "No image selected"
+msgstr "Aucune image sélectionnée"
+
+msgid "Choose Image…"
+msgstr "Choisir une image…"
+
+msgid "Add"
+msgstr "Ajouter"
+
+msgid "Adding subkey…"
+msgstr "Ajout de la sous-clef…"
+
+#, python-brace-format
+msgid "Could not add subkey: {error}"
+msgstr "Impossible d'ajouter la sous-clef : {error}"
+
+msgid "Add Subkey"
+msgstr "Ajouter une sous-clef"
+
+msgid "Sign"
+msgstr "Signer"
+
+msgid "Encrypt"
+msgstr "Chiffrer"
+
+msgid "Authenticate"
+msgstr "Authentifier"
+
+msgid "Purpose:"
+msgstr "Usage :"
+
+msgid "RSA"
+msgstr "RSA"
+
+msgid "Ed25519 (modern, smaller keys)"
+msgstr "Ed25519 (moderne, clefs plus petites)"
+
+msgid "Algorithm:"
+msgstr "Algorithme :"
+
+msgid "Key size (bits):"
+msgstr "Taille de la clef (bits) :"
+
+msgid "Adding user ID…"
+msgstr "Ajout de l'identité…"
+
+#, python-brace-format
+msgid "Could not add user ID: {error}"
+msgstr "Impossible d'ajouter l'identité : {error}"
+
+msgid "Add User ID"
+msgstr "Ajouter une identité"
+
+msgid "Name:"
+msgstr "Nom :"
+
+msgid "Email:"
+msgstr "Courriel :"
+
+msgid "Comment (optional):"
+msgstr "Commentaire (facultatif) :"
+
+#, python-brace-format
+msgid ""
+"This exports the full private key for {keyid}, not just the public key. "
+"Anyone who gets this file and its passphrase can fully impersonate this "
+"key — store it somewhere safe."
+msgstr ""
+"Ceci exporte l'intégralité de la clef privée pour {keyid}, pas seulement "
+"la clef publique. Quiconque obtient ce fichier et sa phrase de passe peut"
+" totalement usurper cette clef : conservez-le en lieu sûr."
+
+msgid "Back Up Private Key"
+msgstr "Sauvegarder la clef privée"
+
+msgid "ASCII-armored keys (*.asc)"
+msgstr "Clefs ASCII-armor (*.asc)"
+
+msgid "Backing up private key…"
+msgstr "Sauvegarde de la clef privée en cours…"
+
+#, python-brace-format
+msgid "Could not back up private key: {error}"
+msgstr "Impossible de sauvegarder la clef privée : {error}"
+
+#, python-brace-format
+msgid "Could not write file: {error}"
+msgstr "Impossible d'écrire le fichier : {error}"
+
+msgid "Back Up…"
+msgstr "Sauvegarder…"
+
+msgid "Incorrect current passphrase."
+msgstr "Phrase de passe actuelle incorrecte."
+
+msgid "Changing passphrase…"
+msgstr "Changement de la phrase de passe…"
+
+#, python-brace-format
+msgid "Could not change passphrase: {error}"
+msgstr "Impossible de changer la phrase de passe : {error}"
+
+msgid "Change Passphrase"
+msgstr "Changer la phrase de passe"
+
+msgid "Current passphrase:"
+msgstr "Phrase de passe actuelle :"
+
+msgid "New passphrase:"
+msgstr "Nouvelle phrase de passe :"
+
+msgid "Confirm new passphrase:"
+msgstr "Confirmer la nouvelle phrase de passe :"
+
+msgid "Passphrases do not match."
+msgstr "Les phrases de passe ne correspondent pas."
+
+msgid "Change"
+msgstr "Changer"
+
+#, python-brace-format
+msgid ""
+"This permanently deletes {keyid} from your keyring, including any private"
+" key material. Unlike revoking, the key will no longer exist at all "
+"afterwards."
+msgstr ""
+"Ceci supprime définitivement {keyid} de votre trousseau, y compris tout "
+"élément de clef privée. Contrairement à la révocation, la clef n'existera"
+" plus du tout par la suite."
+
+msgid "Deleting key…"
+msgstr "Suppression de la clef en cours…"
+
+#, python-brace-format
+msgid "Could not delete key: {error}"
+msgstr "Impossible de supprimer la clef : {error}"
+
+msgid "Delete Key"
+msgstr "Supprimer la clef"
+
+msgid "Delete"
+msgstr "Supprimer"
+
+msgid "No unknown key to download."
+msgstr "Aucune clef inconnue à télécharger."
+
+#, python-brace-format
+msgid "{found} of {count} key(s) downloaded:"
+msgstr "{found} clef(s) sur {count} ont été téléchargée(s) :"
+
+msgid "Download Unknown Keys — Report"
+msgstr "Rapport de téléchargement des clefs inconnues"
+
+msgid "Downloaded"
+msgstr "Téléchargées"
+
+msgid "Not found on the keyserver"
+msgstr "Introuvables sur le serveur de clefs"
+
+msgid "Choose Key File"
+msgstr "Choisir un fichier de clef"
+
+msgid "OpenPGP keys (*.asc *.gpg *.pgp *.key);;All files (*)"
+msgstr "Clefs OpenPGP (*.asc *.gpg *.pgp *.key);;Tous les fichiers (*)"
+
+msgid "Choose a file to import."
+msgstr "Choisissez un fichier à importer."
+
+msgid "Enter a fingerprint, key ID, or email address."
+msgstr "Saisissez une empreinte, un identifiant ou une adresse mail."
+
+msgid "Checking…"
+msgstr "Vérification en cours…"
+
+#, python-brace-format
+msgid "{n} key(s) found."
+msgstr "{n} clef(s) trouvée(s)."
+
+msgid "(no user ID)"
+msgstr "aucun identifiant"
+
+msgid "Already in keyring"
+msgstr "Déjà dans le trousseau"
+
+msgid "Importing…"
+msgstr "Importation en cours…"
+
+#, python-brace-format
+msgid "Could not import key: {error}"
+msgstr "Impossible d'importer la clef : {error}"
+
+msgid "Import Key"
+msgstr "Importer une clef"
+
+msgid "No file selected"
+msgstr "Aucun fichier sélectionné"
+
+msgid "Browse…"
+msgstr "Parcourir…"
+
+msgid "From file"
+msgstr "Depuis un fichier"
+
+msgid "Fingerprint, key ID, or email address"
+msgstr "Empreinte, identifiant ou adresse mail"
+
+msgid "Key:"
+msgstr "Clef :"
+
+msgid "Keyserver:"
+msgstr "Serveur de clefs :"
+
+msgid "From keyserver"
+msgstr "Depuis un serveur de clefs"
+
+msgid "Check…"
+msgstr "Vérifier…"
+
+msgid "Identities"
+msgstr "Identités"
+
+msgid "Key ID"
+msgstr "Identifiant"
+
+msgid "Fingerprint"
+msgstr "Empreinte"
+
+msgid "Status"
+msgstr "État"
+
+msgid "Import"
+msgstr "Importer"
+
+#, python-brace-format
+msgid "{uid} (revoked)"
+msgstr "{uid} (révoquée)"
+
+msgid "Unknown locally"
+msgstr "Inconnue localement"
+
+msgid "Unknown"
+msgstr "Inconnu"
+
+msgid "Never"
+msgstr "Jamais"
+
+msgid "Certify"
+msgstr "Certifier"
+
+msgid "None"
+msgstr "Aucune"
+
+msgid "Ultimate"
+msgstr "Ultime"
+
+msgid "Full"
+msgstr "Complète"
+
+msgid "Marginal"
+msgstr "Marginale"
+
+msgid "Undefined"
+msgstr "Indéfinie"
+
+msgid "Expired"
+msgstr "Expirée"
+
+msgid "Revoked"
+msgstr "Révoquée"
+
+msgid "Disabled"
+msgstr "Désactivée"
+
+msgid "Invalid"
+msgstr "Invalide"
+
+#, python-brace-format
+msgid "My keys ({n})"
+msgstr "Mes clefs ({n})"
+
+#, python-brace-format
+msgid "Other keys ({n})"
+msgstr "Autres clefs ({n})"
+
+msgid "Loading…"
+msgstr "Chargement…"
+
+msgid "Personal (secret key available)"
+msgstr "Personnelle (clef secrète disponible)"
+
+msgid "Public only"
+msgstr "Publique uniquement"
+
+msgid ""
+"Only one of the identities, photos and subkeys lists can have a selection"
+" at a time — whichever one currently has focus."
+msgstr ""
+"Une seule des listes (identifiants, photos, sous-clefs) a une sélection à"
+" la fois : celle qui a actuellement le focus."
+
+msgid "Name"
+msgstr "Nom"
+
+msgid "Email"
+msgstr "Courriel"
+
+msgid "Expires"
+msgstr "Expiration"
+
+msgid "Keys in your keyring"
+msgstr "Clefs de votre trousseau"
+
+msgid ""
+"Lists every key in your keyring, grouped into \"My keys\" (a secret key "
+"is available) and \"Other keys\" (public only). The unlabeled column "
+"between Name and Email shows whether a personal key's passphrase is "
+"currently remembered: unlocked if so, locked otherwise. Double-click that"
+" icon to forget a remembered passphrase."
+msgstr ""
+"Liste toutes les clefs de votre trousseau, regroupées en « Mes clefs » "
+"(une clef secrète est disponible) et « Autres clefs » (publiques "
+"uniquement). La colonne sans en-tête entre Nom et Courriel indique si la "
+"phrase de passe d'une clef personnelle est actuellement mémorisée : "
+"déverrouillée si oui, verrouillée sinon. Double-cliquez sur cette icône "
+"pour oublier une phrase de passe mémorisée."
+
+msgid "Select a key to see its details."
+msgstr "Sélectionnez une clef pour voir ses détails."
+
+msgid "Details"
+msgstr "Détails"
+
+msgid "Signatures"
+msgstr "Signatures"
+
+msgid "Type:"
+msgstr "Type :"
+
+msgid "Copy"
+msgstr "Copier"
+
+msgid "Copy the fingerprint to the clipboard"
+msgstr "Copier l'empreinte dans le presse-papiers"
+
+msgid ""
+"Copies the fingerprint shown above (grouped in 4-character blocks) to the"
+" clipboard."
+msgstr ""
+"Copie l'empreinte affichée ci-dessus (regroupée par blocs de 4 "
+"caractères) dans le presse-papiers."
+
+msgid "Fingerprint:"
+msgstr "Empreinte :"
+
+msgid "Capabilities:"
+msgstr "Capacités :"
+
+msgid "Created:"
+msgstr "Créée le :"
+
+msgid "Expires:"
+msgstr "Expire :"
+
+msgid "Validity:"
+msgstr "Validité :"
+
+msgid "Owner trust:"
+msgstr "Confiance envers le propriétaire :"
+
+msgid "User IDs"
+msgstr "Identifiants utilisateur"
+
+msgid ""
+"The identities (names and email addresses) attached to the selected key. "
+"A checkmark (✓) marks the current primary identity."
+msgstr ""
+"Les identités (noms et adresses de courriel) associées à la clef "
+"sélectionnée. Une coche (✓) signale l'identité principale actuelle."
+
+msgid "Photos"
+msgstr "Photos"
+
+msgid ""
+"The photos attached to the selected key. Double-click a photo, or press "
+"Enter on it, to view it at its full size."
+msgstr ""
+"Les photos associées à la clef sélectionnée. Double-cliquez sur une "
+"photo, ou appuyez sur Entrée dessus, pour l'afficher en taille réelle."
+
+msgid "Subkeys"
+msgstr "Sous-clefs"
+
+msgid "Capabilities"
+msgstr "Capacités"
+
+msgid "Algorithm"
+msgstr "Algorithme"
+
+msgid "Created"
+msgstr "Création"
+
+msgid ""
+"The subkeys attached to the selected key — separate signing, encryption "
+"or authentication keys bound to it."
+msgstr ""
+"Les sous-clefs associées à la clef sélectionnée : des clefs distinctes de"
+" signature, de chiffrement ou d'authentification qui lui sont liées."
+
+msgid ""
+"Every key that has certified (signed) the selected key's user IDs. A "
+"signer already in your keyring is shown the same way as in the list on "
+"the left; one gpg cannot resolve locally is shown as \"Unknown locally\" "
+"with only its identifier."
+msgstr ""
+"Toutes les clefs ayant certifié (signé) les identifiants de la clef "
+"sélectionnée. Un signataire déjà présent dans votre trousseau est affiché"
+" comme dans la liste de gauche ; un signataire que gpg ne peut pas "
+"résoudre localement est affiché comme « Inconnue localement » avec "
+"seulement son identifiant."
+
+msgid "Download Unknown Keys"
+msgstr "Télécharger les clefs inconnues"
+
+msgid ""
+"Fetches every signing key not already in your keyring from the keyserver,"
+" then reports which ones were found."
+msgstr ""
+"Télécharge depuis le serveur de clefs chaque clef signataire absente de "
+"votre trousseau, puis indique lesquelles ont été trouvées."
+
+msgid "Incorrect primary key passphrase."
+msgstr "Phrase de passe de la clef principale incorrecte."
+
+msgid "I understand this action is permanent and cannot be undone."
+msgstr "Je comprends que cette action est définitive et irréversible."
+
+msgid "Primary key passphrase:"
+msgstr "Phrase de passe de la clef principale :"
+
+msgid "Ready"
+msgstr "Prêt"
+
+msgid "Loading keys…"
+msgstr "Chargement des clefs…"
+
+#, python-brace-format
+msgid "{n} key(s) loaded"
+msgstr "{n} clef(s) chargée(s)"
+
+#, python-brace-format
+msgid "Could not load keys: {error}"
+msgstr "Impossible de charger les clefs : {error}"
+
+#, python-brace-format
+msgid "Key imported: {uid} ({keyid})"
+msgstr "Clef importée : {uid} ({keyid})"
+
+#, python-brace-format
+msgid "Key already in keyring: {uid} ({keyid})"
+msgstr "Clef déjà présente dans le trousseau : {uid} ({keyid})"
+
+#, python-brace-format
+msgid "{new} new key(s) imported, {existing} already present"
+msgstr "{new} nouvelle(s) clef(s) importée(s), {existing} déjà présente(s)"
+
+msgid "Refreshing trust…"
+msgstr "Actualisation de la confiance…"
+
+#, python-brace-format
+msgid "Could not refresh trust: {error}"
+msgstr "Impossible d'actualiser la confiance : {error}"
+
+msgid "Publish Key"
+msgstr "Publier la clef"
+
+#, python-brace-format
+msgid ""
+"Publish {keyid} to {keyserver}?\n"
+"\n"
+"Once a key is on a public keyserver, it generally cannot be fully removed"
+" again, only revoked."
+msgstr ""
+"Publier {keyid} sur {keyserver} ?\n"
+"\n"
+"Une fois une clef publiée sur un serveur de clefs public, elle ne peut "
+"généralement plus être totalement retirée, seulement révoquée."
+
+msgid "Publishing…"
+msgstr "Publication en cours…"
+
+#, python-brace-format
+msgid "Key published to {keyserver}"
+msgstr "Clef publiée sur {keyserver}"
+
+#, python-brace-format
+msgid "Could not publish key: {error}"
+msgstr "Impossible de publier la clef : {error}"
+
+msgid "Refreshing keys from keyserver…"
+msgstr "Actualisation des clefs depuis le serveur de clefs…"
+
+msgid "Refresh Keys"
+msgstr "Actualiser les clefs"
+
+#, python-brace-format
+msgid "Could not refresh keys: {error}"
+msgstr "Impossible d'actualiser les clefs : {error}"
+
+#, python-brace-format
+msgid "Could not load signatures: {error}"
+msgstr "Impossible de charger les signatures : {error}"
+
+msgid "Downloading unknown keys from keyserver…"
+msgstr "Téléchargement des clefs inconnues depuis le serveur…"
+
+#, python-brace-format
+msgid "Could not download keys: {error}"
+msgstr "Impossible de télécharger les clefs : {error}"
+
+msgid "Export Key"
+msgstr "Exporter la clef"
+
+#, python-brace-format
+msgid "Could not export key: {error}"
+msgstr "Impossible d'exporter la clef : {error}"
+
+#, python-brace-format
+msgid "Key exported to {path}"
+msgstr "Clef exportée vers {path}"
+
+msgid "Settings…"
+msgstr "Paramètres…"
+
+msgid "Open settings"
+msgstr "Ouvrir les paramètres"
+
+msgid "Configure the interface language"
+msgstr "Configurer la langue de l'interface"
+
+msgid ""
+"Configure the interface language, the default algorithm for new keys, the"
+" toolbar icon size, and how long a passphrase you enter is remembered "
+"before it's forgotten again."
+msgstr ""
+"Configure la langue de l'interface, l'algorithme par défaut des nouvelles"
+" clefs, la taille des icônes de la barre d'outils, et la durée pendant "
+"laquelle une phrase de passe saisie est mémorisée avant d'être de nouveau"
+" oubliée."
+
+msgid "Quit"
+msgstr "Quitter"
+
+msgid "Quit PBNightingale"
+msgstr "Quitter PBNightingale"
+
+msgid "Exit the application"
+msgstr "Quitter l'application"
+
+msgid ""
+"Closes PBNightingale. There is nothing to save first — every change is "
+"applied directly to your GPG keyring as you make it, so no operation "
+"already done is undone by quitting."
+msgstr ""
+"Ferme PBNightingale. Il n'y a rien à enregistrer au préalable : chaque "
+"modification est appliquée directement à votre trousseau GPG au moment où"
+" vous la faites, donc quitter n'annule aucune opération déjà effectuée."
+
+msgid "About this application"
+msgstr "À propos de cette application"
+
+msgid "Show version and license information"
+msgstr "Afficher les informations de version et de licence"
+
+msgid ""
+"Shows the application's version, author and license (GPLv3 for the code; "
+"the bundled icons are separately licensed under CC BY-NC-SA 4.0)."
+msgstr ""
+"Affiche la version, l'auteur et la licence de l'application (GPLv3 pour "
+"le code ; les icônes fournies sont placées sous une licence distincte, CC"
+" BY-NC-SA 4.0)."
+
+msgid "Reset toolbars"
+msgstr "Réinitialiser les barres d'outils"
+
+msgid "Restore the default toolbar positions and visibility"
+msgstr "Restaurer la position et la visibilité par défaut des barres d'outils"
+
+msgid ""
+"Restores every toolbar to its position, order and visibility from the "
+"very first run — handy after moving or hiding one by accident."
+msgstr ""
+"Remet chaque barre d'outils à sa position, son ordre et sa visibilité du "
+"tout premier lancement : pratique après en avoir déplacé ou masqué une "
+"par erreur."
+
+msgid "Refresh"
+msgstr "Actualiser"
+
+msgid "Reload the key list from the keyring"
+msgstr "Recharger la liste des clefs depuis le trousseau"
+
+msgid ""
+"Reloads the key list from your GPG keyring, picking up any change made "
+"outside PBNightingale (e.g. via the gpg command line)."
+msgstr ""
+"Recharge la liste des clefs depuis votre trousseau GPG, en tenant compte "
+"de tout changement effectué en dehors de PBNightingale (par exemple via "
+"la ligne de commande gpg)."
+
+msgid "New key…"
+msgstr "Nouvelle clef…"
+
+msgid "Create a new personal key pair"
+msgstr "Créer une nouvelle paire de clefs personnelle"
+
+msgid ""
+"Opens the wizard to generate a brand-new personal key pair (RSA or "
+"Ed25519), including its own passphrase."
+msgstr ""
+"Ouvre l'assistant de génération d'une toute nouvelle paire de clefs "
+"personnelle (RSA ou Ed25519), avec sa propre phrase de passe."
+
+msgid "Add subkey…"
+msgstr "Ajouter une sous-clef…"
+
+msgid "Add a signing, encryption or authentication subkey"
+msgstr "Ajouter une sous-clef de signature, de chiffrement ou d'authentification"
+
+msgid ""
+"Adds a new subkey to the selected personal key, for signing, encryption "
+"or authentication — useful for giving each purpose its own key without "
+"touching the primary one."
+msgstr ""
+"Ajoute une nouvelle sous-clef à la clef personnelle sélectionnée, pour la"
+" signature, le chiffrement ou l'authentification : utile pour donner à "
+"chaque usage sa propre clef sans toucher à la clef principale."
+
+msgid "Set key expiration…"
+msgstr "Définir l'expiration de la clef…"
+
+msgid "Set this key's expiration date"
+msgstr "Définir la date d'expiration de cette clef"
+
+msgid "Sets or removes the selected key's own expiration date."
+msgstr "Définit ou supprime la date d'expiration propre à la clef sélectionnée."
+
+msgid "Revoke key…"
+msgstr "Révoquer la clef…"
+
+msgid "Revoke this key (requires confirmation)"
+msgstr "Révoquer cette clef (confirmation requise)"
+
+msgid ""
+"Permanently revokes the selected personal key itself, marking it "
+"untrustworthy from now on. This cannot be undone — the key still exists, "
+"but should no longer be used or trusted."
+msgstr ""
+"Révoque définitivement la clef personnelle sélectionnée elle-même, la "
+"marquant comme non fiable à partir de maintenant. Cette action est "
+"irréversible : la clef existe toujours, mais ne devrait plus être "
+"utilisée ni faire l'objet de confiance."
+
+msgid "Set subkey expiration…"
+msgstr "Définir l'expiration de la sous-clef…"
+
+msgid "Set the selected subkey's expiration date"
+msgstr "Définir la date d'expiration de la sous-clef sélectionnée"
+
+msgid ""
+"Sets or removes the selected subkey's expiration date, independently of "
+"the primary key's own expiration."
+msgstr ""
+"Définit ou supprime la date d'expiration de la sous-clef sélectionnée, "
+"indépendamment de celle de la clef principale."
+
+msgid "Add user ID…"
+msgstr "Ajouter une identité…"
+
+msgid "Add a new identity (name and email)"
+msgstr "Ajouter une nouvelle identité (nom et adresse e-mail)"
+
+msgid ""
+"Adds another identity (name and email address) to the selected personal "
+"key — e.g. a second address you also want this key to vouch for."
+msgstr ""
+"Ajoute une identité supplémentaire (nom et adresse de courriel) à la clef"
+" personnelle sélectionnée : par exemple une seconde adresse que vous "
+"souhaitez aussi associer à cette clef."
+
+msgid "Set as primary…"
+msgstr "Définir comme principale…"
+
+msgid "Set the selected user ID as the primary identity"
+msgstr "Définir l'identité sélectionnée comme identité principale"
+
+msgid ""
+"Marks the selected identity as the key's primary one — the identity other"
+" tools show by default for this key."
+msgstr ""
+"Marque l'identité sélectionnée comme identité principale de la clef : "
+"celle que les autres outils affichent par défaut pour cette clef."
+
+msgid "Revoke user ID…"
+msgstr "Révoquer une identité…"
+
+msgid "Revoke the selected user ID (requires confirmation)"
+msgstr "Révoquer l'identité sélectionnée (confirmation requise)"
+
+msgid ""
+"Permanently revokes the selected identity. At least one non-revoked "
+"identity must remain on the key."
+msgstr ""
+"Révoque définitivement l'identité sélectionnée. Au moins une identité non"
+" révoquée doit rester sur la clef."
+
+msgid "Add photo…"
+msgstr "Ajouter une photo…"
+
+msgid "Add a photo user ID"
+msgstr "Ajouter une identité photo"
+
+msgid ""
+"Attaches a photo to the selected personal key, as an extra (visual) "
+"identity."
+msgstr ""
+"Attache une photo à la clef personnelle sélectionnée, comme identité "
+"supplémentaire (visuelle)."
+
+msgid "Revoke photo…"
+msgstr "Révoquer une photo…"
+
+msgid "Revoke the selected photo (requires confirmation)"
+msgstr "Révoquer la photo sélectionnée (confirmation requise)"
+
+msgid "Permanently revokes the selected photo."
+msgstr "Révoque définitivement la photo sélectionnée."
+
+msgid "Import…"
+msgstr "Importer…"
+
+msgid "Import a key from a file or a keyserver"
+msgstr "Importer une clef depuis un fichier ou un serveur de clefs"
+
+msgid ""
+"Imports a key from a local file, or fetches one from a keyserver by "
+"fingerprint, key ID or email address."
+msgstr ""
+"Importe une clef depuis un fichier local, ou en récupère une depuis un "
+"serveur de clefs par empreinte, identifiant ou adresse de courriel."
+
+msgid "Export…"
+msgstr "Exporter…"
+
+msgid "Export the selected key to a file"
+msgstr "Exporter la clef sélectionnée vers un fichier"
+
+msgid ""
+"Saves the selected key's public part to a file, to share with someone "
+"else. Does not include any private key material."
+msgstr ""
+"Enregistre la partie publique de la clef sélectionnée dans un fichier, à "
+"partager avec quelqu'un d'autre. N'inclut aucun élément de clef privée."
+
+msgid "Back up private key…"
+msgstr "Sauvegarde de la clef privée…"
+
+msgid "Export the selected key's private key material to a file"
+msgstr "Exporter la clef privée de la clef sélectionnée vers un fichier"
+
+msgid ""
+"Saves the selected key's full private key material to a file — a real "
+"backup, unlike Export. Requires the key's passphrase; anyone with this "
+"file and its passphrase can fully impersonate the key."
+msgstr ""
+"Enregistre l'intégralité de la clef privée sélectionnée dans un fichier :"
+" une vraie sauvegarde, contrairement à Exporter. Nécessite la phrase de "
+"passe de la clef ; quiconque possède ce fichier et sa phrase de passe "
+"peut totalement usurper la clef."
+
+msgid "Change passphrase…"
+msgstr "Changer la phrase de passe…"
+
+msgid "Change the passphrase protecting this key's private key material"
+msgstr "Changer la phrase de passe qui protège la clef privée de cette clef"
+
+msgid ""
+"Changes the passphrase protecting the selected key's private key "
+"material. Requires the current passphrase."
+msgstr ""
+"Change la phrase de passe qui protège la clef privée de la clef "
+"sélectionnée. Nécessite la phrase de passe actuelle."
+
+msgid "Delete…"
+msgstr "Supprimer…"
+
+msgid "Delete the selected key"
+msgstr "Supprimer la clef sélectionnée"
+
+msgid ""
+"Permanently removes the selected key from your keyring, including any "
+"private key material. Requires strong confirmation, since this cannot be "
+"undone — unlike revoking, the key won't exist at all afterwards."
+msgstr ""
+"Supprime définitivement la clef sélectionnée de votre trousseau, y "
+"compris tout élément de clef privée. Nécessite une confirmation forte, "
+"car cette action est irréversible : contrairement à la révocation, la "
+"clef n'existera plus du tout."
+
+msgid "Copy ID"
+msgstr "Copier l'identifiant"
+
+msgid "Copy the selected key's fingerprint to the clipboard"
+msgstr "Copier l'empreinte de la clef sélectionnée dans le presse-papiers"
+
+msgid "Copies the selected key's full fingerprint to the clipboard."
+msgstr "Copie l'empreinte complète de la clef sélectionnée dans le presse-papiers."
+
+msgid "Copy the selected subkey's fingerprint to the clipboard"
+msgstr "Copier l'empreinte de la sous-clef sélectionnée dans le presse-papiers"
+
+msgid "Copies the selected subkey's full fingerprint to the clipboard."
+msgstr ""
+"Copie l'empreinte complète de la sous-clef sélectionnée dans le presse-"
+"papiers."
+
+msgid "Copy email"
+msgstr "Copier le courriel"
+
+msgid "Copy the selected identity's email address to the clipboard"
+msgstr ""
+"Copier l'adresse de courriel de l'identité sélectionnée dans le presse-"
+"papiers"
+
+msgid ""
+"Copies the selected identity's email address to the clipboard, if it has "
+"one."
+msgstr ""
+"Copie l'adresse de courriel de l'identité sélectionnée dans le presse-"
+"papiers, si elle en a une."
+
+msgid "Show"
+msgstr "Afficher"
+
+msgid "View the selected photo full-size"
+msgstr "Afficher la photo sélectionnée en taille réelle"
+
+msgid ""
+"Opens the selected photo in a viewer, at full size — same as double-"
+"clicking it."
+msgstr ""
+"Ouvre la photo sélectionnée dans une visionneuse, en taille réelle, comme"
+" un double clic dessus."
+
+msgid "Sign key…"
+msgstr "Signer une clef…"
+
+msgid "Sign another key to build the web of trust"
+msgstr "Signer une autre clef pour construire le réseau de confiance"
+
+msgid ""
+"Signs the selected key with one of your own keys, vouching that its "
+"identity binding is genuine — the basis of the web of trust."
+msgstr ""
+"Signe la clef sélectionnée avec l'une de vos propres clefs, attestant que"
+" son association à cette identité est authentique : le fondement du "
+"réseau de confiance."
+
+msgid "Set owner trust…"
+msgstr "Définir la confiance envers le propriétaire…"
+
+msgid "Set how much you trust this key's owner to certify others"
+msgstr ""
+"Définir le niveau de confiance envers le propriétaire de cette clef pour "
+"certifier d'autres clefs"
+
+msgid ""
+"Sets how much you personally trust the selected key's owner to correctly "
+"vouch for other people's keys. This is a private, local judgment — it "
+"isn't published anywhere."
+msgstr ""
+"Définit le degré de confiance que vous accordez personnellement au "
+"propriétaire de la clef sélectionnée pour certifier correctement les "
+"clefs d'autres personnes. C'est un jugement privé et local : il n'est "
+"publié nulle part."
+
+msgid "Revoke subkey…"
+msgstr "Révoquer une sous-clef…"
+
+msgid "Revoke a subkey (requires confirmation)"
+msgstr "Révoquer une sous-clef (confirmation requise)"
+
+msgid ""
+"Permanently revokes the selected subkey. Unlike revoking the whole key, "
+"the primary key and its other subkeys remain usable."
+msgstr ""
+"Révoque définitivement la sous-clef sélectionnée. Contrairement à la "
+"révocation de la clef entière, la clef principale et ses autres sous-"
+"clefs restent utilisables."
+
+msgid "Refresh trust"
+msgstr "Actualiser la confiance"
+
+msgid "Recompute the web of trust"
+msgstr "Recalculer le réseau de confiance"
+
+msgid ""
+"Recomputes every key's validity from its current signatures — useful "
+"after signing a key, or importing new signatures, since validity isn't "
+"recalculated automatically."
+msgstr ""
+"Recalcule la validité de chaque clef à partir de ses signatures actuelles"
+" : utile après avoir signé une clef, ou importé de nouvelles signatures, "
+"car la validité n'est pas recalculée automatiquement."
+
+msgid "Search…"
+msgstr "Rechercher…"
+
+msgid "Search a keyserver by fingerprint, key ID or email"
+msgstr ""
+"Rechercher sur un serveur de clefs par empreinte, identifiant ou adresse "
+"mail"
+
+msgid ""
+"Searches a keyserver by name, email address, fingerprint or key ID, and "
+"lets you import one of the matching keys."
+msgstr ""
+"Recherche sur un serveur de clefs par nom, adresse de courriel, empreinte"
+" ou identifiant, et permet d'importer l'une des clefs trouvées."
+
+msgid "Publish…"
+msgstr "Publier…"
+
+msgid "Publish the selected key to a keyserver"
+msgstr "Publier la clef sélectionnée sur un serveur de clefs"
+
+msgid ""
+"Publishes the selected key to a keyserver, making it publicly retrievable"
+" by anyone. A published key generally cannot be fully removed again "
+"afterwards, only revoked."
+msgstr ""
+"Publie la clef sélectionnée sur un serveur de clefs, la rendant "
+"récupérable publiquement par n'importe qui. Une clef publiée ne peut "
+"généralement plus être totalement retirée par la suite, seulement "
+"révoquée."
+
+msgid "Refresh keys from their keyserver"
+msgstr "Actualiser les clefs depuis leur serveur de clefs"
+
+msgid ""
+"Re-downloads the selected key, or every key in your keyring, from its "
+"keyserver, picking up new signatures, identities or revocations."
+msgstr ""
+"Retélécharge la clef sélectionnée, ou toutes les clefs de votre "
+"trousseau, depuis leur serveur de clefs, récupérant les nouvelles "
+"signatures, identités ou révocations."
+
+msgid "Keys"
+msgstr "Clefs"
+
+msgid "Trust"
+msgstr "Confiance"
+
+msgid "Keyservers"
+msgstr "Serveurs de clefs"
+
+msgid "Help"
+msgstr "Aide"
+
+msgid "File"
+msgstr "Fichier"
+
+msgid "Edit"
+msgstr "Édition"
+
+msgid "View"
+msgstr "Affichage"
+
+msgid "Toolbars"
+msgstr "Barres d'outils"
+
+msgid "Generating key…"
+msgstr "Génération de la clef…"
+
+msgid "Key created successfully."
+msgstr "Clef créée avec succès."
+
+#, python-brace-format
+msgid "Could not create the key: {error}"
+msgstr "Impossible de créer la clef : {error}"
+
+msgid "Create a New Personal Key"
+msgstr "Créer une nouvelle clef personnelle"
+
+msgid "a dedicated signing subkey"
+msgstr "une sous-clef de signature dédiée"
+
+msgid "a dedicated encryption subkey"
+msgstr "une sous-clef de chiffrement dédiée"
+
+msgid "no additional subkeys"
+msgstr "aucune sous-clef supplémentaire"
+
+#, python-brace-format
+msgid "{first} and {second}"
+msgstr "{first} et {second}"
+
+#, python-brace-format
+msgid "About to create an Ed25519 key for {uid}, with {subkeys}."
+msgstr "Sur le point de créer une clef Ed25519 pour {uid}, avec {subkeys}."
+
+#, python-brace-format
+msgid "About to create a {size}-bit RSA key for {uid}, with {subkeys}."
+msgstr ""
+"Sur le point de créer une clef RSA de {size} bits pour {uid}, avec "
+"{subkeys}."
+
+msgid "Identity"
+msgstr "Identité"
+
+msgid ""
+"This identifies you on the key. It is shown to anyone you exchange keys "
+"with."
+msgstr ""
+"Ceci vous identifie sur la clef. C'est visible par toute personne avec "
+"qui vous échangez des clefs."
+
+msgid "Key parameters"
+msgstr "Paramètres de la clef"
+
+msgid ""
+"A dedicated signing and/or encryption subkey is recommended: it can be "
+"replaced or revoked without affecting your identity or existing "
+"signatures."
+msgstr ""
+"Une sous-clef de signature et/ou de chiffrement dédiée est recommandée : "
+"elle peut être remplacée ou révoquée sans affecter votre identité ni vos "
+"signatures existantes."
+
+msgid "Create a dedicated signing subkey"
+msgstr "Créer une sous-clef de signature dédiée"
+
+msgid "Create a dedicated encryption subkey"
+msgstr "Créer une sous-clef de chiffrement dédiée"
+
+msgid "Passphrase"
+msgstr "Phrase de passe"
+
+msgid ""
+"Protects your private key. Leave both fields empty for no passphrase (not"
+" recommended)."
+msgstr ""
+"Protège votre clef privée. Laissez les deux champs vides pour ne pas "
+"définir de phrase de passe (non recommandé)."
+
+msgid "Passphrase:"
+msgstr "Phrase de passe :"
+
+msgid "Confirm:"
+msgstr "Confirmation :"
+
+msgid "Create the key"
+msgstr "Créer la clef"
+
+msgid "Show password"
+msgstr "Afficher la phrase de passe"
+
+msgid "Hide password"
+msgstr "Masquer la phrase de passe"
+
+msgid "Bad"
+msgstr "Mauvaise"
+
+msgid "Poor"
+msgstr "Très faible"
+
+msgid "Weak"
+msgstr "Faible"
+
+msgid "Good"
+msgstr "Bonne"
+
+msgid "Excellent"
+msgstr "Excellente"
+
+#, python-brace-format
+msgid "Quality: {quality}"
+msgstr "Qualité : {quality}"
+
+#, python-brace-format
+msgid "{bits} bits"
+msgstr "{bits} bits"
+
+msgid "Photo (revoked)"
+msgstr "Photo (révoquée)"
+
+msgid "Photo"
+msgstr "Photo"
+
+msgid ""
+"Re-download keys from their keyserver, picking up any new signatures, "
+"identities or revocations."
+msgstr ""
+"Retélécharge les clefs depuis leur serveur de clefs, récupérant toute "
+"nouvelle signature, identité ou révocation."
+
+msgid "Refresh the selected key only"
+msgstr "Actualiser uniquement la clef sélectionnée"
+
+msgid "Refresh every key in the keyring"
+msgstr "Actualiser toutes les clefs du trousseau"
+
+#, python-brace-format
+msgid "Checked {count} key(s) — nothing new."
+msgstr "{count} clef(s) vérifiée(s), rien de nouveau."
+
+#, python-brace-format
+msgid "{updated} of {count} key(s) picked up changes:"
+msgstr "{updated} clef(s) sur {count} ont reçu des modifications :"
+
+msgid "Refresh Keys — Report"
+msgstr "Rapport d'actualisation des clefs"
+
+#, python-brace-format
+msgid ""
+"You are about to revoke key {keyid}. This cannot be undone: the key will "
+"stop being usable, and every signature it made will no longer be trusted."
+msgstr ""
+"Vous êtes sur le point de révoquer la clef {keyid}. Cette action est "
+"irréversible : la clef cessera d'être utilisable et toute signature "
+"qu'elle a produite ne sera plus considérée comme fiable."
+
+msgid "Incorrect passphrase."
+msgstr "Phrase de passe incorrecte."
+
+msgid "Revoking key…"
+msgstr "Révocation de la clef en cours…"
+
+#, python-brace-format
+msgid "Could not revoke key: {error}"
+msgstr "Impossible de révoquer la clef : {error}"
+
+msgid "Revoke Key"
+msgstr "Révoquer la clef"
+
+msgid "Revoke"
+msgstr "Révoquer"
+
+msgid ""
+"You are about to revoke this photo. This cannot be undone: it will stop "
+"being usable everywhere this key is trusted."
+msgstr ""
+"Vous êtes sur le point de révoquer cette photo. Cette action est "
+"irréversible : elle cessera d'être utilisable partout où cette clef est "
+"reconnue de confiance."
+
+msgid "Revoking photo…"
+msgstr "Révocation de la photo…"
+
+#, python-brace-format
+msgid "Could not revoke photo: {error}"
+msgstr "Impossible de révoquer la photo : {error}"
+
+msgid "Revoke Photo"
+msgstr "Révoquer une photo"
+
+#, python-brace-format
+msgid ""
+"You are about to revoke subkey {keyid}. This cannot be undone: the subkey"
+" will stop being usable everywhere this key is trusted."
+msgstr ""
+"Vous êtes sur le point de révoquer la sous-clef {keyid}. Cette action est"
+" irréversible : la sous-clef cessera d'être utilisable partout où cette "
+"clef est reconnue de confiance."
+
+msgid "Revoking subkey…"
+msgstr "Révocation de la sous-clef…"
+
+#, python-brace-format
+msgid "Could not revoke subkey: {error}"
+msgstr "Impossible de révoquer la sous-clef : {error}"
+
+msgid "Revoke Subkey"
+msgstr "Révoquer la sous-clef"
+
+#, python-brace-format
+msgid ""
+"You are about to revoke user ID {uid}. This cannot be undone: it will "
+"stop being usable everywhere this key is trusted."
+msgstr ""
+"Vous êtes sur le point de révoquer l'identité {uid}. Cette action est "
+"irréversible : elle cessera d'être utilisable partout où cette clef est "
+"reconnue de confiance."
+
+msgid "Revoking user ID…"
+msgstr "Révocation de l'identité…"
+
+#, python-brace-format
+msgid "Could not revoke user ID: {error}"
+msgstr "Impossible de révoquer l'identité : {error}"
+
+msgid "Revoke User ID"
+msgstr "Révoquer une identité"
+
+msgid ""
+"keys.openpgp.org does not support searching by name or email, and never "
+"returns user IDs in search results (privacy by design). Search by exact "
+"key ID or fingerprint instead, or use Import… for a known email address."
+msgstr ""
+"keys.openpgp.org ne permet pas de rechercher par nom ou par courriel, et "
+"ne renvoie jamais les identifiants d'utilisateur dans les résultats de "
+"recherche (respect de la vie privée par conception). Recherchez plutôt "
+"par identifiant de clef ou empreinte exacte, ou utilisez Importer… pour "
+"un courriel connu."
+
+msgid "Enter a search query."
+msgstr "Saisissez une recherche."
+
+msgid "Searching…"
+msgstr "Recherche en cours…"
+
+#, python-brace-format
+msgid "{uids} — {algo}, {length} bits — created {date}"
+msgstr "{uids} ({algo}, {length} bits, créée le {date})"
+
+#, python-brace-format
+msgid "{n} result(s) found."
+msgstr "{n} résultat(s) trouvé(s)."
+
+#, python-brace-format
+msgid "Could not search: {error}"
+msgstr "Impossible d'effectuer la recherche : {error}"
+
+msgid "Search Keyserver"
+msgstr "Rechercher sur un serveur de clefs"
+
+msgid "Name, email, fingerprint, or key ID"
+msgstr "Nom, adresse mail, empreinte ou identifiant"
+
+msgid "Query:"
+msgstr "Recherche :"
+
+msgid "Search"
+msgstr "Rechercher"
+
+msgid "Set Key Expiration"
+msgstr "Définir l'expiration de la clef"
+
+msgid "Set the expiration date for this key."
+msgstr "Définir la date d'expiration de cette clef."
+
+msgid "Set Subkey Expiration"
+msgstr "Définir l'expiration de la sous-clef"
+
+#, python-brace-format
+msgid "Set the expiration date for subkey {keyid}."
+msgstr "Définir la date d'expiration de la sous-clef {keyid}."
+
+msgid "Setting expiration…"
+msgstr "Définition de l'expiration…"
+
+#, python-brace-format
+msgid "Could not set expiration: {error}"
+msgstr "Impossible de définir l'expiration : {error}"
+
+msgid "Set Expiration"
+msgstr "Définir l'expiration"
+
+msgid "Never expires"
+msgstr "N'expire jamais"
+
+msgid "Expiration date:"
+msgstr "Date d'expiration :"
+
+msgid "Set"
+msgstr "Définir"
+
+#, python-brace-format
+msgid ""
+"How much do you trust {uid} to correctly verify other people's keys "
+"before signing them?"
+msgstr ""
+"Dans quelle mesure faites-vous confiance à {uid} pour vérifier "
+"correctement les clefs d'autres personnes avant de les signer ?"
+
+msgid "Setting owner trust…"
+msgstr "Définition de la confiance envers le propriétaire…"
+
+#, python-brace-format
+msgid "Could not set owner trust: {error}"
+msgstr "Impossible de définir la confiance envers le propriétaire : {error}"
+
+msgid "Set Owner Trust"
+msgstr "Définir la confiance envers le propriétaire"
+
+#, python-brace-format
+msgid "Set {uid} as the primary user ID for this key."
+msgstr "Définir {uid} comme identité principale de cette clef."
+
+msgid "Setting primary user ID…"
+msgstr "Définition de l'identité principale…"
+
+#, python-brace-format
+msgid "Could not set primary user ID: {error}"
+msgstr "Impossible de définir l'identité principale : {error}"
+
+msgid "Set as Primary User ID"
+msgstr "Définir comme identité principale"
+
+msgid "System default"
+msgstr "Système par défaut"
+
+msgid "Settings"
+msgstr "Paramètres"
+
+msgid "Select the interface language"
+msgstr "Sélectionner la langue de l'interface"
+
+msgid "Language:"
+msgstr "Langue :"
+
+msgid "Default algorithm proposed by the new-key wizard"
+msgstr "Algorithme par défaut proposé par l'assistant de création de clef"
+
+msgid "Preferred key algorithm:"
+msgstr "Algorithme de clef préféré :"
+
+msgid "Size of the toolbar icons"
+msgstr "Taille des icônes de la barre d'outils"
+
+msgid "Toolbar icon size:"
+msgstr "Taille des icônes de la barre d'outils :"
+
+msgid " minutes"
+msgstr " minutes"
+
+msgid ""
+"How long a passphrase you enter stays remembered in memory (0 to never "
+"remember it)"
+msgstr ""
+"Durée pendant laquelle une phrase de passe saisie reste mémorisée (0 pour"
+" ne jamais la mémoriser)"
+
+msgid "Remember passphrases for:"
+msgstr "Mémoriser les phrases de passe pendant :"
+
+msgid "A restart is required for the language change to take effect."
+msgstr ""
+"Un redémarrage est nécessaire pour que le changement de langue prenne "
+"effet."
+
+#, python-brace-format
+msgid "Sign {uid} to vouch for it in the web of trust."
+msgstr "Signer {uid} pour s'en porter garant dans la toile de confiance."
+
+msgid "You have no personal key available to sign with."
+msgstr "Vous n'avez aucune clef personnelle disponible pour signer."
+
+msgid "Incorrect passphrase for the selected signing key."
+msgstr "Phrase de passe incorrecte pour la clef de signature sélectionnée."
+
+msgid "Signing key…"
+msgstr "Signature de la clef…"
+
+#, python-brace-format
+msgid "Could not sign key: {error}"
+msgstr "Impossible de signer la clef : {error}"
+
+msgid "Sign Key"
+msgstr "Signer la clef"
+
+msgid "Sign as:"
+msgstr "Signer en tant que :"
+
+msgid "No particular claim"
+msgstr "Aucune affirmation particulière"
+
+msgid "I have not verified this key at all"
+msgstr "Je n'ai pas du tout vérifié cette clef"
+
+msgid "I have done casual verification"
+msgstr "J'ai fait une vérification sommaire"
+
+msgid "I have done extensive verification"
+msgstr "J'ai fait une vérification approfondie"
+
+msgid "Verification:"
+msgstr "Vérification :"
+
+msgid "Local signature only (not exportable)"
+msgstr "Signature locale uniquement (non exportable)"
+
+msgid ""
+"A local signature stays in your own keyring — it never gets published or "
+"exported, and only affects how you personally see this key's validity."
+msgstr ""
+"Une signature locale reste dans votre propre trousseau : elle n'est "
+"jamais publiée ni exportée, et ne change que la façon dont vous percevez "
+"personnellement la validité de cette clef."

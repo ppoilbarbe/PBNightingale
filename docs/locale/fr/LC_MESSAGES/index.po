@@ -1,0 +1,64 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, PBMou
+# This file is distributed under the same license as the PBNightingale
+# package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PBNightingale 0.1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-16 10:59+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: fr\n"
+"Language-Team: fr <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../index.rst:13
+msgid "User Manual"
+msgstr "Manuel utilisateur"
+
+#: ../../index.rst:19
+msgid "Reference"
+msgstr "Référence"
+
+#: ../../index.rst:25
+msgid "Project"
+msgstr "Projet"
+
+#: ../../index.rst:2
+msgid "PBNightingale"
+msgstr "PBNightingale"
+
+#: ../../index.rst:4
+msgid ""
+"**PBNightingale** is a graphical GPG/OpenPGP key management utility for "
+"Linux, macOS and Windows. It lets you create and manage encryption keys, "
+"sign other people's keys to build a web of trust, and publish keys to "
+"keyservers — all without touching a command line."
+msgstr "**PBNightingale** est un utilitaire graphique de gestion de clefs GPG/OpenPGP pour Linux, macOS et Windows. Il permet de créer et gérer des clefs de chiffrement, de signer les clefs d'autres personnes pour construire une toile de confiance, et de publier des clefs sur des serveurs de clefs, le tout sans jamais toucher à une ligne de commande."
+
+#: ../../index.rst:9
+msgid ""
+"New to GPG? Start with :doc:`manual/concepts` — it explains what a key "
+"pair is and why you would want one, before anything about the application"
+" itself."
+msgstr "Nouveau avec GPG ? Commencez par :doc:`manual/concepts` : cette page explique ce qu'est une paire de clefs et pourquoi vous en voudriez une, avant même de parler de l'application elle-même."
+
+#: ../../index.rst:32
+msgid "License"
+msgstr "Licence"
+
+#: ../../index.rst:34
+msgid ""
+"PBNightingale's code is GPL-3.0-only. This documentation itself is "
+"licensed separately, under `Creative Commons Attribution-NonCommercial-"
+"ShareAlike 4.0 <https://creativecommons.org/licenses/by-nc-sa/4.0/>`_ (CC"
+" BY-NC-SA 4.0)."
+msgstr "Le code de PBNightingale est sous licence GPL-3.0-only. Cette documentation est quant à elle publiée séparément sous licence `Creative Commons Attribution-NonCommercial-ShareAlike 4.0 <https://creativecommons.org/licenses/by-nc-sa/4.0/deed.fr>`_ (CC BY-NC-SA 4.0)."
