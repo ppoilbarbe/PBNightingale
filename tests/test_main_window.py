@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import QToolBar
 
 from pbnightingale.core.gpg_backend import (
@@ -140,6 +141,7 @@ def test_toolbar_icons_are_svg_resources(qtbot):
 
 _ACTION_NAMES = [
     "actionAbout",
+    "actionHelpManual",
     "actionKeyBackup",
     "actionKeyChangePassphrase",
     "actionKeyCopyId",
@@ -180,6 +182,47 @@ def test_every_action_has_whats_this_text(qtbot):
     for name in _ACTION_NAMES:
         action = getattr(window._ui, name)
         assert action.whatsThis() != "", name
+
+
+_EXPECTED_SHORTCUTS = {
+    "actionSettings": "Ctrl+,",
+    "actionQuit": "Ctrl+Q",
+    "actionHelpManual": "F1",
+    "actionKeyRefresh": "F5",
+    "actionKeyNew": "Ctrl+N",
+    "actionKeyImport": "Ctrl+O",
+    "actionKeyExport": "Ctrl+E",
+    "actionKeyBackup": "Ctrl+Shift+E",
+    "actionKeyDelete": "Del",
+    "actionTrustRefresh": "Shift+F5",
+    "actionServerRefresh": "Ctrl+F5",
+}
+
+
+def test_actions_have_the_expected_shortcuts(qtbot):
+    window = MainWindow()
+    qtbot.addWidget(window)
+
+    for name, shortcut in _EXPECTED_SHORTCUTS.items():
+        action = getattr(window._ui, name)
+        assert action.shortcut() == QKeySequence(shortcut), name
+
+
+def test_action_shortcuts_are_globally_unique(qtbot):
+    window = MainWindow()
+    qtbot.addWidget(window)
+
+    seen: dict[str, str] = {}
+    for action in window.findChildren(QAction):
+        shortcut = action.shortcut()
+        if shortcut.isEmpty():
+            continue
+        key = shortcut.toString()
+        name = action.objectName() or action.text()
+        assert key not in seen, (
+            f"{name!r} reuses {key!r} already bound to {seen[key]!r}"
+        )
+        seen[key] = name
 
 
 def test_menu_bar_has_expected_top_level_menus(qtbot):
@@ -371,6 +414,34 @@ def test_on_about_opens_about_dialog(qtbot, monkeypatch):
     window._ui.actionAbout.trigger()
 
     assert called == [True]
+
+
+def test_on_help_manual_opens_the_online_manual(qtbot, monkeypatch):
+    from pbnightingale.ui import main_window as main_window_module
+
+    window = MainWindow()
+    qtbot.addWidget(window)
+
+    monkeypatch.setattr(main_window_module.i18n, "current_language", lambda: "fr")
+    opened = []
+    monkeypatch.setattr(
+        main_window_module.QDesktopServices, "openUrl", lambda url: opened.append(url)
+    )
+
+    window._ui.actionHelpManual.trigger()
+
+    assert len(opened) == 1
+    assert opened[0].toString() == "https://pbnightingale.readthedocs.io/fr/latest"
+
+
+def test_help_manual_action_is_first_in_the_help_menu(qtbot):
+    window = MainWindow()
+    qtbot.addWidget(window)
+
+    help_menu = window.menuBar().actions()[-1].menu()
+    actions = [a for a in help_menu.actions() if not a.isSeparator()]
+    assert actions[0] is window._ui.actionHelpManual
+    assert not window._ui.actionHelpManual.icon().isNull()
 
 
 def test_whats_this_action_uses_the_contextual_help_icon(qtbot):

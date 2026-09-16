@@ -5,7 +5,8 @@ from __future__ import annotations
 from email.utils import parseaddr
 from pathlib import Path
 
-from PySide6.QtCore import QSize, Qt, QThreadPool
+from PySide6.QtCore import QSize, Qt, QThreadPool, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -15,7 +16,7 @@ from PySide6.QtWidgets import (
     QStyle,
 )
 
-from pbnightingale import preferences
+from pbnightingale import i18n, preferences
 from pbnightingale.core import gpg_backend
 from pbnightingale.core.gpg_backend import (
     DEFAULT_KEYSERVER,
@@ -114,6 +115,7 @@ class MainWindow(GeometryMixin, QMainWindow):
     def _connect_signals(self) -> None:
         self._ui.actionQuit.triggered.connect(self.close)
         self._ui.actionSettings.triggered.connect(self._on_settings)
+        self._ui.actionHelpManual.triggered.connect(self._on_help_manual)
         self._ui.actionAbout.triggered.connect(self._on_about)
         self._ui.actionKeyRefresh.triggered.connect(self.refresh_keys)
         self._ui.actionKeyNew.triggered.connect(self._on_key_new)
@@ -721,6 +723,12 @@ class MainWindow(GeometryMixin, QMainWindow):
         dialog = SettingsDialog(self)
         if dialog.exec() == SettingsDialog.DialogCode.Accepted:
             self._apply_toolbar_icon_size()
+
+    def _on_help_manual(self) -> None:
+        lang = i18n.current_language()
+        QDesktopServices.openUrl(
+            QUrl(f"https://pbnightingale.readthedocs.io/{lang}/latest")
+        )
 
     def _on_about(self) -> None:
         from pbnightingale.ui.about_dialog import AboutDialog

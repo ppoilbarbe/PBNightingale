@@ -87,6 +87,19 @@ def set_language_override(code: str) -> None:
     _settings().setValue(_SETTINGS_KEY, code)
 
 
+def current_language() -> str:
+    """Return the effective interface language code (override or system).
+
+    Falls back to ``"en"`` when the resolved code has no catalogue of its
+    own (no `.mo` under `locale/`) — e.g. a system language this app hasn't
+    been translated into.
+    """
+    override = get_language_override()
+    lang = override if override else _system_language()
+    codes = {code for code, _ in available_languages()}
+    return lang if lang in codes else "en"
+
+
 def setup(app: QApplication) -> None:
     """Install translations for *app*.
 

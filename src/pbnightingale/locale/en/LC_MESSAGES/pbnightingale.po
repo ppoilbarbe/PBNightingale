@@ -637,6 +637,22 @@ msgstr ""
 "applied directly to your GPG keyring as you make it, so no operation "
 "already done is undone by quitting."
 
+msgid "User Manual"
+msgstr "User Manual"
+
+msgid "Open the online user manual"
+msgstr "Open the online user manual"
+
+msgid "Open the user manual in your web browser"
+msgstr "Open the user manual in your web browser"
+
+msgid ""
+"Opens the online user manual in your default web browser, in your current"
+" interface language."
+msgstr ""
+"Opens the online user manual in your default web browser, in your current"
+" interface language."
+
 msgid "About this application"
 msgstr "About this application"
 

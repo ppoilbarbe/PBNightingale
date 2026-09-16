@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-16
+
+This program is an evolution (heavily improved) of an older Python
+program, itself an evolution of an ancient (~2014) Perl program.
+
 ### Added
 
 - Personal key generation (RSA or ED25519) with a passphrase strength meter
@@ -21,3 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub Actions CI: tests, pre-commit hooks, documentation build, per-OS
   PyInstaller builds, and GitHub Releases cut from this changelog on
   semver tags
+- Help menu entry opening the online user manual in the interface's
+  current language
+- Keyboard shortcuts for standard actions (new, import, export, back up,
+  delete, settings, help, quit) and a refresh family (F5 for keys,
+  Shift+F5 for trust, Ctrl+F5 for keyservers)

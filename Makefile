@@ -41,7 +41,8 @@ TRANSLATE_STAMP := .translate.stamp
 .DEFAULT_GOAL := help
 .PHONY: help venv venv-update install run test coverage hooks lint format ci \
         clean translate force-translate new-lang compile-translations \
-        update-icons dist srcdist docs docs-live docs-translate docs-stats
+        update-icons dist srcdist docs docs-live docs-translate docs-stats \
+        bump-major bump-minor bump-patch bump-set
 
 help: ## This help
 	@printf "$(B)$(C)PBNightingale — Development Tasks$(R)\n\n"
@@ -162,8 +163,8 @@ docs-stats: ## Report docs/locale/*.po translation completeness
 
 # ── Local CI ──────────────────────────────────────────────────────────────────
 
-# No GitHub remote yet: this target stands in for `.github/workflows/ci.yml`,
-# run entirely on this machine (see CLAUDE.md, "no publishing to GitHub yet").
+# Mirrors the test/hooks jobs of .github/workflows/ci.yml locally — run
+# this before pushing, so most CI failures are caught ahead of time.
 ci: lint hooks test ## Run the full local CI pipeline (lint → hooks → test)
 	@printf "$(G)Local CI passed.$(R)\n"
 
@@ -176,6 +177,20 @@ clean: ## Remove all build/cache artifacts
 	rm -f $(POT_FILE) $(TRANSLATE_STAMP)
 
 # ── Packaging ─────────────────────────────────────────────────────────────────
+
+bump-major: ## Bump MAJOR version (x.0.0), reset minor and patch
+	$(CONDA_RUN) python tools/bump_version.py major
+
+bump-minor: ## Bump MINOR version (x.y.0), reset patch
+	$(CONDA_RUN) python tools/bump_version.py minor
+
+bump-patch: ## Bump PATCH version (x.y.z)
+	$(CONDA_RUN) python tools/bump_version.py patch
+
+bump-set: ## Force a specific version (usage: make bump-set ARGS=x.y.z)
+	@test -n "$(ARGS)" || { \
+	    printf "$(Y)Usage:$(R) make bump-set ARGS=<x.y.z>\n"; exit 1; }
+	$(CONDA_RUN) python tools/bump_version.py set $(ARGS)
 
 # PyInstaller builds natively: run this target on the target OS.
 # Version comes from the exact git tag when HEAD is tagged and the tree is

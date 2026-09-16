@@ -641,6 +641,22 @@ msgstr ""
 "modification est appliquée directement à votre trousseau GPG au moment où"
 " vous la faites, donc quitter n'annule aucune opération déjà effectuée."
 
+msgid "User Manual"
+msgstr "Manuel utilisateur"
+
+msgid "Open the online user manual"
+msgstr "Ouvrir le manuel utilisateur en ligne"
+
+msgid "Open the user manual in your web browser"
+msgstr "Ouvrir le manuel utilisateur dans votre navigateur web"
+
+msgid ""
+"Opens the online user manual in your default web browser, in your current"
+" interface language."
+msgstr ""
+"Ouvre le manuel utilisateur en ligne dans votre navigateur web par "
+"défaut, dans la langue actuelle de l'interface."
+
 msgid "About this application"
 msgstr "À propos de cette application"
 

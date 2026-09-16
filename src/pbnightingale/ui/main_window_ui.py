@@ -39,6 +39,10 @@ class Ui_MainWindow:
         self.actionSettings = QAction(
             QIcon(_resource("preferences-system.svg")), _("Settings…"), window
         )
+        # QKeySequence.StandardKey.Preferences has no default binding on
+        # Linux/Windows (only macOS Cmd+,) — set the same key literally so
+        # every platform gets one; "Ctrl" maps to Cmd on macOS automatically.
+        self.actionSettings.setShortcut(QKeySequence("Ctrl+,"))
         self.actionSettings.setToolTip(_("Open settings"))
         self.actionSettings.setStatusTip(_("Configure the interface language"))
         self.actionSettings.setWhatsThis(
@@ -60,6 +64,21 @@ class Ui_MainWindow:
                 "every change is applied directly to your GPG keyring as "
                 "you make it, so no operation already done is undone by "
                 "quitting."
+            )
+        )
+
+        self.actionHelpManual = QAction(
+            QIcon(_resource("help-user-manual.svg")), _("User Manual"), window
+        )
+        self.actionHelpManual.setShortcut(QKeySequence("F1"))
+        self.actionHelpManual.setToolTip(_("Open the online user manual"))
+        self.actionHelpManual.setStatusTip(
+            _("Open the user manual in your web browser")
+        )
+        self.actionHelpManual.setWhatsThis(
+            _(
+                "Opens the online user manual in your default web browser, "
+                "in your current interface language."
             )
         )
 
@@ -113,6 +132,7 @@ class Ui_MainWindow:
         self.actionKeyNew = QAction(
             QIcon(_resource("key-new.svg")), _("New key…"), window
         )
+        self.actionKeyNew.setShortcut(QKeySequence.StandardKey.New)
         self.actionKeyNew.setStatusTip(_("Create a new personal key pair"))
         self.actionKeyNew.setWhatsThis(
             _(
@@ -232,6 +252,7 @@ class Ui_MainWindow:
         self.actionKeyImport = QAction(
             QIcon(_resource("key-import.svg")), _("Import…"), window
         )
+        self.actionKeyImport.setShortcut(QKeySequence.StandardKey.Open)
         self.actionKeyImport.setStatusTip(_("Import a key from a file or a keyserver"))
         self.actionKeyImport.setWhatsThis(
             _(
@@ -243,6 +264,9 @@ class Ui_MainWindow:
         self.actionKeyExport = QAction(
             QIcon(_resource("key-export.svg")), _("Export…"), window
         )
+        # No Qt standard key for "export" — Ctrl+E/Ctrl+Shift+E mirror the
+        # public/private pairing the same way Save/Save As do.
+        self.actionKeyExport.setShortcut(QKeySequence("Ctrl+E"))
         self.actionKeyExport.setStatusTip(_("Export the selected key to a file"))
         self.actionKeyExport.setWhatsThis(
             _(
@@ -255,6 +279,7 @@ class Ui_MainWindow:
         self.actionKeyBackup = QAction(
             QIcon(_resource("key-backup.svg")), _("Back up private key…"), window
         )
+        self.actionKeyBackup.setShortcut(QKeySequence("Ctrl+Shift+E"))
         self.actionKeyBackup.setStatusTip(
             _("Export the selected key's private key material to a file")
         )
@@ -283,6 +308,7 @@ class Ui_MainWindow:
         self.actionKeyDelete = QAction(
             QIcon(_resource("key-delete.svg")), _("Delete…"), window
         )
+        self.actionKeyDelete.setShortcut(QKeySequence.StandardKey.Delete)
         self.actionKeyDelete.setStatusTip(_("Delete the selected key"))
         self.actionKeyDelete.setWhatsThis(
             _(
@@ -380,6 +406,9 @@ class Ui_MainWindow:
         self.actionTrustRefresh = QAction(
             QIcon(_resource("trust-refresh.svg")), _("Refresh trust"), window
         )
+        # Same family as actionKeyRefresh's F5: Shift adds the trust pass,
+        # Ctrl (below, on actionServerRefresh) adds the keyserver pass.
+        self.actionTrustRefresh.setShortcut(QKeySequence("Shift+F5"))
         self.actionTrustRefresh.setStatusTip(_("Recompute the web of trust"))
         self.actionTrustRefresh.setWhatsThis(
             _(
@@ -422,6 +451,7 @@ class Ui_MainWindow:
         self.actionServerRefresh = QAction(
             QIcon(_resource("server-refresh.svg")), _("Refresh"), window
         )
+        self.actionServerRefresh.setShortcut(QKeySequence("Ctrl+F5"))
         self.actionServerRefresh.setStatusTip(_("Refresh keys from their keyserver"))
         self.actionServerRefresh.setWhatsThis(
             _(
@@ -561,6 +591,8 @@ class Ui_MainWindow:
         menu_view.addAction(self.actionResetToolbars)
 
         menu_help = menubar.addMenu(_("Help"))
+        menu_help.addAction(self.actionHelpManual)
+        menu_help.addSeparator()
         menu_help.addAction(self.actionWhatsThis)
         menu_help.addSeparator()
         menu_help.addAction(self.actionAbout)

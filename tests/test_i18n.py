@@ -9,6 +9,7 @@ from pbnightingale import i18n
 from pbnightingale.i18n import (
     _GettextTranslator,
     available_languages,
+    current_language,
     get_language_override,
     set_language_override,
 )
@@ -54,6 +55,24 @@ class TestLanguageOverride:
         set_language_override("fr")
         set_language_override("en")
         assert get_language_override() == "en"
+
+
+class TestCurrentLanguage:
+    def test_uses_override_when_set(self):
+        set_language_override("fr")
+        assert current_language() == "fr"
+
+    def test_falls_back_to_system_language_when_no_override(self):
+        with patch.object(i18n, "_system_language", return_value="en"):
+            assert current_language() == "en"
+
+    def test_unsupported_system_language_falls_back_to_en(self):
+        with patch.object(i18n, "_system_language", return_value="xx"):
+            assert current_language() == "en"
+
+    def test_unsupported_override_falls_back_to_en(self):
+        set_language_override("xx")
+        assert current_language() == "en"
 
 
 class TestGettextTranslator:
