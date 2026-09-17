@@ -1,8 +1,11 @@
-"""Set Expiration dialog — sets the expiration date of either the primary
-key itself, or one of its subkeys (mutually exclusive; the primary key's
-own expiration and each subkey's are set independently, see
+"""Set Expiration dialog.
+
+Sets the expiration date of either the primary key itself, or one of its
+subkeys (mutually exclusive; the primary key's own expiration and each
+subkey's are set independently, see
 ``core.gpg_backend.GPGBackend.set_key_expiration()``/
-``set_subkey_expiration()``)."""
+``set_subkey_expiration()``).
+"""
 
 from __future__ import annotations
 
@@ -19,9 +22,23 @@ from pbnightingale.ui.set_expiration_dialog_ui import Ui_SetExpirationDialog
 
 
 class SetExpirationDialog(GeometryMixin, KeyOperationDialog, QDialog):
+    """Dialog for setting a key's or a subkey's expiration date."""
+
     def __init__(
         self, fingerprint: str, subkey: Subkey | None = None, parent=None
     ) -> None:
+        """Build the dialog for *fingerprint*, or one of its subkeys.
+
+        Parameters
+        ----------
+        fingerprint
+            The primary key being edited.
+        subkey
+            The subkey whose expiration is being set, or ``None`` to set
+            the primary key's own expiration instead.
+        parent
+            The owning widget, if any.
+        """
         super().__init__(parent)
         self._fingerprint = fingerprint
         self._subkey = subkey
@@ -55,9 +72,23 @@ class SetExpirationDialog(GeometryMixin, KeyOperationDialog, QDialog):
         self._ui.buttonBox.rejected.connect(self.reject)
 
     def _on_no_expiration_toggled(self, checked: bool) -> None:
+        """Enable or disable the date picker to match the checkbox.
+
+        Parameters
+        ----------
+        checked
+            Whether "No expiration" is checked.
+        """
         self._ui.dateExpiration.setEnabled(not checked)
 
     def _set_form_enabled(self, enabled: bool) -> None:
+        """Enable or disable every form field and the OK button.
+
+        Parameters
+        ----------
+        enabled
+            Whether the fields should be interactive.
+        """
         self._ui.chkNoExpiration.setEnabled(enabled)
         self._ui.dateExpiration.setEnabled(
             enabled and not self._ui.chkNoExpiration.isChecked()
@@ -68,11 +99,20 @@ class SetExpirationDialog(GeometryMixin, KeyOperationDialog, QDialog):
         )
 
     def _expire_argument(self) -> str:
+        """Return the form's ``--quick-set-expire`` argument.
+
+        Returns
+        -------
+        :
+            ``"0"`` for no expiration, else the chosen date as
+            ``"YYYY-MM-DD"``.
+        """
         if self._ui.chkNoExpiration.isChecked():
             return "0"
         return self._ui.dateExpiration.date().toString("yyyy-MM-dd")
 
     def _on_set(self) -> None:
+        """Apply the chosen expiration via the backend."""
         passphrase = self._ui.txtPassphrase.text()
         expire = self._expire_argument()
 

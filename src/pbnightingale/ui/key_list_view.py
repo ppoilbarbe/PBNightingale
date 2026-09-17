@@ -53,19 +53,23 @@ _PRIMARY_UID_MARK = "✓ "  # ✓ — see CODING.md, "Editable user IDs"
 
 
 def _format_uid_label(uid: Uid) -> str:
+    """Return *uid*'s display text: revoked/primary markers plus its value."""
     label = _("{uid} (revoked)").format(uid=uid.value) if uid.revoked else uid.value
     return _PRIMARY_UID_MARK + label if uid.primary else label
 
 
 def _photo_icon(photo: PhotoUid) -> QIcon:
+    """Decode *photo*'s raw JPEG bytes into a displayable icon."""
     image = QImage.fromData(photo.image)
     return QIcon(QPixmap.fromImage(image))
 
 
 def _signature_item(signature: KeySignature) -> QTreeWidgetItem:
-    """Build a Signatures-tab row: a known signer is shown the same way as
-    the main key list on the left (name/email/key ID/expiry); an unknown
-    one only carries its identifier, per KeySignature's docstring.
+    """Build one Signatures-tab row for *signature*.
+
+    A known signer is shown the same way as the main key list on the
+    left (name/email/key ID/expiry); an unknown one only carries its
+    identifier, per ``KeySignature``'s docstring.
     """
     if signature.key is not None:
         key = signature.key
@@ -82,15 +86,18 @@ def _signature_item(signature: KeySignature) -> QTreeWidgetItem:
 
 
 def _lock_icon(passphrase_known: bool) -> QIcon:
+    """Return the open or closed padlock icon for *passphrase_known*."""
     name = "unlocked-black.svg" if passphrase_known else "locked-black.svg"
     return QIcon(_resource(name))
 
 
 def _current_item_pos(widget: QListWidget | QTreeWidget) -> QPoint:
-    """Where to pop up a context menu triggered from the keyboard ('c'),
-    rather than a mouse click that already carries its own position: the
-    center of the current item, or the widget's own center if there isn't
-    one."""
+    """Return where to pop up a context menu triggered by the ``C`` key.
+
+    Unlike a mouse click, ``C`` carries no position of its own: this is
+    the center of the current item, or the widget's own center if there
+    isn't one.
+    """
     item = widget.currentItem()
     if item is not None:
         rect = widget.visualItemRect(item)
@@ -120,11 +127,17 @@ _ALGO_NAMES = {
 
 
 def _format_algo(algo: str) -> str:
+    """Return *algo* (a gpg RFC 4880 algorithm ID) as a display name.
+
+    Renders as ``"Name (id)"`` for a known one (see ``_ALGO_NAMES``), or
+    just the raw ID otherwise.
+    """
     name = _ALGO_NAMES.get(algo)
     return f"{name} ({algo})" if name else algo
 
 
 def _format_date(timestamp: int) -> str:
+    """Format a gpg Unix *timestamp* as ``YYYY-MM-DD``, or "Unknown" for 0."""
     if not timestamp:
         return _("Unknown")
     # Naive/local on purpose: this is a display-only conversion of a GPG
@@ -133,12 +146,14 @@ def _format_date(timestamp: int) -> str:
 
 
 def _format_expires(timestamp: int | None) -> str:
+    """Format an expiration *timestamp*, or "Never" for ``None``."""
     if timestamp is None:
         return _("Never")
     return _format_date(timestamp)
 
 
 def _format_capabilities(entry: Key | Subkey) -> str:
+    """Return *entry*'s usable capabilities as a comma-separated list."""
     labels = []
     if entry.can_certify:
         labels.append(_("Certify"))
@@ -152,6 +167,7 @@ def _format_capabilities(entry: Key | Subkey) -> str:
 
 
 def _trust_label(code: str) -> str:
+    """Translate a gpg trust/validity one-letter *code* to a display label."""
     labels = {
         "u": _("Ultimate"),
         "f": _("Full"),
@@ -169,14 +185,18 @@ def _trust_label(code: str) -> str:
 
 
 class KeyListView(QWidget):
-    """Lists keyring keys (grouped by whether a secret key is held) with a
-    detail panel for the current selection."""
+    """Lists keyring keys (grouped by ``has_secret``) with a detail panel for the current selection."""
 
     selectionChanged = Signal()
     signaturesRequested = Signal(str)
     downloadUnknownSignaturesRequested = Signal(list)
 
     def __init__(self, parent: QWidget | None = None) -> None:
+        """Build the (initially empty) list and detail panel.
+
+        Wires up every internal signal: selection, context menus, section
+        exclusivity, and the lock-icon refresh timer.
+        """
         super().__init__(parent)
         self._ui = Ui_KeyListView()
         self._ui.setupUi(self)
@@ -247,30 +267,62 @@ class KeyListView(QWidget):
         return self._ui.detailSplitter
 
     def save_column_widths(self) -> QByteArray:
-        """The main key list's current column widths (and order), for
-        geometry persistence — see ``restore_column_widths()``."""
+        """Return the main key list's current column widths (and order).
+
+        For geometry persistence — see ``restore_column_widths()``.
+        """
         return self._ui.treeKeys.header().saveState()
 
     def restore_column_widths(self, state: QByteArray) -> None:
-        """Apply previously-saved column widths to the main key list, and
-        stop ``set_keys()`` from auto-sizing columns to content on the next
-        refresh — that would otherwise immediately undo this."""
+        """Apply previously-saved column widths to the main key list.
+
+        Also stops ``set_keys()`` from auto-sizing columns to content on
+        the next refresh — that would otherwise immediately undo this.
+        """
         self._ui.treeKeys.header().restoreState(state)
         self._columns_restored = True
 
     def selected_key(self) -> Key | None:
+        """Report the currently selected key.
+
+        Returns
+        -------
+        :
+            The selected key, or ``None`` if none is selected.
+        """
         items = self._ui.treeKeys.selectedItems()
         return items[0].data(0, _KEY_ROLE) if items else None
 
     def selected_subkey(self) -> Subkey | None:
+        """Report the currently selected subkey.
+
+        Returns
+        -------
+        :
+            The selected subkey, or ``None`` if none is selected.
+        """
         items = self._ui.treeSubkeys.selectedItems()
         return items[0].data(0, _SUBKEY_ROLE) if items else None
 
     def selected_uid(self) -> Uid | None:
+        """Report the currently selected user ID.
+
+        Returns
+        -------
+        :
+            The selected UID, or ``None`` if none is selected.
+        """
         items = self._ui.lstUids.selectedItems()
         return items[0].data(_UID_ROLE) if items else None
 
     def selected_photo(self) -> PhotoUid | None:
+        """Report the currently selected photo.
+
+        Returns
+        -------
+        :
+            The selected photo, or ``None`` if none is selected.
+        """
         items = self._ui.lstPhotos.selectedItems()
         return items[0].data(_PHOTO_ROLE) if items else None
 
@@ -281,11 +333,22 @@ class KeyListView(QWidget):
         uid_value: str | None = None,
         photo_index: int | None = None,
     ) -> None:
-        """Re-select a key (and optionally one of its subkeys, UIDs or
-        photos) by identifier — e.g. to restore the selection after
-        ``set_keys()`` reloaded the list following an operation on that
-        key. A no-op if *fingerprint* isn't found (e.g. the key was
-        deleted).
+        """Re-select a key by identifier.
+
+        Used e.g. to restore the selection after ``set_keys()`` reloaded
+        the list following an operation on that key. A no-op if
+        *fingerprint* isn't found (e.g. the key was deleted).
+
+        Parameters
+        ----------
+        fingerprint
+            The key to re-select.
+        subkey_keyid
+            If given, also re-select this subkey of that key.
+        uid_value
+            If given, also re-select this user ID of that key.
+        photo_index
+            If given, also re-select this photo of that key.
         """
         for i in range(self._ui.treeKeys.topLevelItemCount()):
             group = self._ui.treeKeys.topLevelItem(i)
@@ -303,6 +366,7 @@ class KeyListView(QWidget):
                     return
 
     def _select_subkey(self, subkey_keyid: str) -> None:
+        """Re-select the subkey identified by *subkey_keyid*, if found."""
         tree = self._ui.treeSubkeys
         for i in range(tree.topLevelItemCount()):
             item = tree.topLevelItem(i)
@@ -312,6 +376,7 @@ class KeyListView(QWidget):
                 return
 
     def _select_uid(self, uid_value: str) -> None:
+        """Re-select the user ID whose value is *uid_value*, if found."""
         lst = self._ui.lstUids
         for i in range(lst.count()):
             item = lst.item(i)
@@ -321,6 +386,7 @@ class KeyListView(QWidget):
                 return
 
     def _select_photo(self, photo_index: int) -> None:
+        """Re-select the photo at *photo_index* (1-based), if found."""
         lst = self._ui.lstPhotos
         for i in range(lst.count()):
             item = lst.item(i)
@@ -330,11 +396,31 @@ class KeyListView(QWidget):
                 return
 
     def _on_copy_fingerprint(self) -> None:
+        """Copy the currently displayed fingerprint to the clipboard."""
         QApplication.clipboard().setText(self._ui.lblFingerprint.text())
 
     # ── Section exclusivity (UIDs / photos / subkeys) ───────────────────
 
     def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        """Clear the other two sections' selection when one gains focus.
+
+        Applies to the UIDs/photos/subkeys widgets — see the "Section
+        exclusivity" note in ``__init__``.
+
+        Parameters
+        ----------
+        watched
+            The widget that raised *event*.
+        event
+            The event being filtered; only ``FocusIn`` triggers anything
+            here.
+
+        Returns
+        -------
+        :
+            Whatever the base class implementation returns — this filter
+            never consumes the event itself.
+        """
         if event.type() == QEvent.Type.FocusIn:
             others = {
                 self._ui.lstUids: (self._ui.lstPhotos, self._ui.treeSubkeys),
@@ -349,15 +435,48 @@ class KeyListView(QWidget):
     # ── Context menus (right-click or the 'c' key) ──────────────────────
 
     def set_key_actions(self, actions: Sequence[QAction]) -> None:
+        """Register the actions shown in the key list's context menu.
+
+        Parameters
+        ----------
+        actions
+            The same QAction instances used by the corresponding
+            toolbar/menu, so a context-menu entry never falls out of sync
+            with them.
+        """
         self._key_actions = list(actions)
 
     def set_uid_actions(self, actions: Sequence[QAction]) -> None:
+        """Register the actions shown in the user ID list's context menu.
+
+        Parameters
+        ----------
+        actions
+            The same QAction instances used by the corresponding
+            toolbar/menu.
+        """
         self._uid_actions = list(actions)
 
     def set_photo_actions(self, actions: Sequence[QAction]) -> None:
+        """Register the actions shown in the photo list's context menu.
+
+        Parameters
+        ----------
+        actions
+            The same QAction instances used by the corresponding
+            toolbar/menu.
+        """
         self._photo_actions = list(actions)
 
     def set_subkey_actions(self, actions: Sequence[QAction]) -> None:
+        """Register the actions shown in the subkey list's context menu.
+
+        Parameters
+        ----------
+        actions
+            The same QAction instances used by the corresponding
+            toolbar/menu.
+        """
         self._subkey_actions = list(actions)
 
     def _show_context_menu(
@@ -366,6 +485,18 @@ class KeyListView(QWidget):
         pos: QPoint,
         actions: Sequence[QAction],
     ) -> None:
+        """Select the item under *pos* in *widget* and pop up *actions*.
+
+        Parameters
+        ----------
+        widget
+            The list/tree the context menu was requested on.
+        pos
+            The position, in *widget*'s own coordinates, the menu was
+            requested at (a right-click, or the ``C`` keyboard shortcut).
+        actions
+            The actions to show; a no-op when empty.
+        """
         item = widget.itemAt(pos)
         if item is None:
             return
@@ -378,47 +509,72 @@ class KeyListView(QWidget):
         self._exec_menu(menu, widget.mapToGlobal(pos))
 
     def _exec_menu(self, menu: QMenu, global_pos: QPoint) -> None:
-        # A thin, overridable wrapper around the actual modal call: tests
-        # monkeypatch this instead of QMenu.exec() itself, which (unlike
-        # overriding exec() on a Python-defined QDialog subclass elsewhere
-        # in this codebase) doesn't reliably intercept the real call —
-        # verified the hard way, as a real popup with no one to dismiss it
-        # hangs a headless/offscreen test run forever.
+        """Show *menu* modally at *global_pos*.
+
+        A thin, overridable wrapper around the actual modal call: tests
+        monkeypatch this instead of ``QMenu.exec()`` itself, which (unlike
+        overriding ``exec()`` on a Python-defined ``QDialog`` subclass
+        elsewhere in this codebase) doesn't reliably intercept the real
+        call — verified the hard way, as a real popup with no one to
+        dismiss it hangs a headless/offscreen test run forever.
+
+        Parameters
+        ----------
+        menu
+            The menu to show.
+        global_pos
+            Where to show it, in global screen coordinates.
+        """
         menu.exec(global_pos)
 
     def _show_key_context_menu(self, pos: QPoint) -> None:
+        """Pop up the key context menu at *pos*, if a real key row (not a group header) is under it."""
         item = self._ui.treeKeys.itemAt(pos)
         if item is None or item.data(0, _KEY_ROLE) is None:
             return
         self._show_context_menu(self._ui.treeKeys, pos, self._key_actions)
 
     def _show_uid_context_menu(self, pos: QPoint) -> None:
+        """Pop up the user ID context menu at *pos*."""
         self._show_context_menu(self._ui.lstUids, pos, self._uid_actions)
 
     def _show_photo_context_menu(self, pos: QPoint) -> None:
+        """Pop up the photo context menu at *pos*."""
         self._show_context_menu(self._ui.lstPhotos, pos, self._photo_actions)
 
     def _show_subkey_context_menu(self, pos: QPoint) -> None:
+        """Pop up the subkey context menu at *pos*."""
         self._show_context_menu(self._ui.treeSubkeys, pos, self._subkey_actions)
 
     # ── Photo viewer ─────────────────────────────────────────────────────
 
     def _on_photo_activated(self, item: QListWidgetItem) -> None:
-        # itemActivated already covers both a double-click and pressing
-        # Enter/Return on the current item — no separate key handling needed.
+        """Open the photo viewer for *item*.
+
+        ``itemActivated`` already covers both a double-click and pressing
+        Enter/Return on the current item — no separate key handling needed.
+
+        Parameters
+        ----------
+        item
+            The activated photo list item.
+        """
         photo = item.data(_PHOTO_ROLE)
         if photo is not None:
             self._open_photo_viewer(photo)
 
     def show_selected_photo(self) -> None:
-        """Open the photo viewer for the currently selected photo — the
-        "Show" menu/toolbar/context-menu action, same effect as activating
-        the currently selected photo (double-click or Enter)."""
+        """Open the photo viewer for the currently selected photo.
+
+        The "Show" menu/toolbar/context-menu action; same effect as
+        activating the currently selected photo (double-click or Enter).
+        """
         photo = self.selected_photo()
         if photo is not None:
             self._open_photo_viewer(photo)
 
     def _open_photo_viewer(self, photo: PhotoUid) -> None:
+        """Open a modal ``PhotoViewerDialog`` showing *photo*."""
         from pbnightingale.ui.photo_viewer_dialog import PhotoViewerDialog
 
         PhotoViewerDialog(photo, self).exec()
@@ -426,6 +582,15 @@ class KeyListView(QWidget):
     # ── Passphrase lock/unlock column ───────────────────────────────────
 
     def _on_key_item_double_clicked(self, item: QTreeWidgetItem, column: int) -> None:
+        """Forget *item*'s cached passphrase on a double-click of its unlocked lock icon; a no-op everywhere else.
+
+        Parameters
+        ----------
+        item
+            The double-clicked row.
+        column
+            The clicked column index; only ``_LOCK_COLUMN`` does anything.
+        """
         if column != _LOCK_COLUMN:
             return
         key = item.data(0, _KEY_ROLE)
@@ -437,6 +602,11 @@ class KeyListView(QWidget):
         item.setIcon(_LOCK_COLUMN, _lock_icon(passphrase_known=False))
 
     def _refresh_lock_icons(self) -> None:
+        """Re-check the passphrase cache and redraw every key's lock icon.
+
+        Run periodically by ``_lock_icon_timer`` so an icon still flips
+        back to "locked" once its cache entry expires on its own.
+        """
         tree = self._ui.treeKeys
         for i in range(tree.topLevelItemCount()):
             group = tree.topLevelItem(i)
@@ -450,12 +620,26 @@ class KeyListView(QWidget):
                     )
 
     def my_keys(self) -> list[Key]:
-        """Return the personal keys (``has_secret``) from the last
-        ``set_keys()`` call — e.g. to populate "sign as" choices without a
-        redundant synchronous keyring listing."""
+        """Return the personal keys (``has_secret``) from the last ``set_keys()`` call.
+
+        E.g. to populate "sign as" choices without a redundant
+        synchronous keyring listing.
+        """
         return list(self._my_keys)
 
     def set_keys(self, keys: list[Key]) -> None:
+        """Rebuild the whole key list from a fresh keyring listing.
+
+        Splits it into "My keys" (``has_secret``) and "Other keys"
+        groups, and re-runs selection-dependent state (detail panel,
+        lock icons).
+
+        Parameters
+        ----------
+        keys
+            The full keyring listing, as returned by
+            ``GPGBackend.list_keys()``.
+        """
         self._ui.treeKeys.clear()
         mine = [k for k in keys if k.has_secret]
         others = [k for k in keys if not k.has_secret]
@@ -480,6 +664,18 @@ class KeyListView(QWidget):
         self._on_selection_changed()
 
     def _add_group(self, label: str, keys: list[Key]) -> None:
+        """Add a bold, non-selectable group header row, then its children.
+
+        The header is titled *label*, followed by one child row per
+        entry in *keys*.
+
+        Parameters
+        ----------
+        label
+            The group header's text, e.g. ``"My keys (3)"``.
+        keys
+            The keys to list under it.
+        """
         group = QTreeWidgetItem([label])
         bold = group.font(0)
         bold.setBold(True)
@@ -503,6 +699,12 @@ class KeyListView(QWidget):
             group.addChild(item)
 
     def _on_selection_changed(self) -> None:
+        """React to a change of the selected key.
+
+        Shows its detail panel (or the empty placeholder), refreshes the
+        Signatures tab if it's active, and re-emits ``selectionChanged``
+        for ``MainWindow``.
+        """
         key = self.selected_key()
         if key is None:
             self._ui.stackDetail.setCurrentWidget(self._ui.lblNoSelection)
@@ -517,9 +719,15 @@ class KeyListView(QWidget):
     # ── Signatures tab ───────────────────────────────────────────────────
 
     def _on_detail_tab_changed(self, _index: int) -> None:
+        """Request the current key's signatures if the Signatures tab was just switched to."""
         self._maybe_request_signatures()
 
     def _maybe_request_signatures(self) -> None:
+        """Emit ``signaturesRequested`` for the selected key.
+
+        A no-op unless the Signatures tab is the active one, and a key
+        is selected.
+        """
         if self._ui.tabDetail.currentIndex() != _SIGNATURES_TAB_INDEX:
             return
         key = self.selected_key()
@@ -535,23 +743,34 @@ class KeyListView(QWidget):
         self.signaturesRequested.emit(key.fingerprint)
 
     def _reset_signatures(self) -> None:
+        """Clear the Signatures tab back to its empty state."""
         self._ui.treeSignatures.clear()
         self._current_signatures = []
         self._ui.btnDownloadUnknownSignatures.setEnabled(False)
 
     def clear_signatures(self) -> None:
-        """Reset the Signatures tab — e.g. after an asynchronous
-        ``list_key_signatures()`` fetch failed, so it doesn't keep
-        showing "Loading…" forever."""
+        """Reset the Signatures tab.
+
+        E.g. after an asynchronous ``list_key_signatures()`` fetch
+        failed, so it doesn't keep showing "Loading…" forever.
+        """
         self._reset_signatures()
 
     def set_key_signatures(
         self, fingerprint: str, signatures: list[KeySignature]
     ) -> None:
-        """Populate the Signatures tab with *signatures* for *fingerprint*
-        — called back once an asynchronous ``list_key_signatures()`` fetch
+        """Populate the Signatures tab.
+
+        Called back once an asynchronous ``list_key_signatures()`` fetch
         completes. Ignored if the selection has since moved to a
         different key.
+
+        Parameters
+        ----------
+        fingerprint
+            The key *signatures* was fetched for.
+        signatures
+            The certifications found on that key's user IDs.
         """
         key = self.selected_key()
         if key is None or key.fingerprint != fingerprint:
@@ -568,6 +787,7 @@ class KeyListView(QWidget):
         )
 
     def _on_download_unknown_signatures_clicked(self) -> None:
+        """Emit ``downloadUnknownSignaturesRequested`` for every signer currently shown as unknown locally, if any."""
         identifiers = [
             signature.fingerprint or signature.keyid
             for signature in self._current_signatures
@@ -577,6 +797,7 @@ class KeyListView(QWidget):
             self.downloadUnknownSignaturesRequested.emit(identifiers)
 
     def _show_key(self, key: Key) -> None:
+        """Populate every detail-panel field (labels, UIDs, photos, subkeys) from *key*."""
         ui = self._ui
         ui.lblType.setText(
             _("Personal (secret key available)") if key.has_secret else _("Public only")

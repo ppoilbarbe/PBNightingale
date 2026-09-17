@@ -32,10 +32,15 @@ _MAX_ZXCVBN_LENGTH = 256
 class PasswordQuality(Enum):
     """Password quality tier — mirrors KeePassXC's ``PasswordHealth::Quality``."""
 
+    #: Entropy <= 0.
     BAD = "bad"
+    #: Entropy < 40 bits.
     POOR = "poor"
+    #: Entropy < 75 bits.
     WEAK = "weak"
+    #: Entropy < 100 bits.
     GOOD = "good"
+    #: Entropy >= 100 bits.
     EXCELLENT = "excellent"
 
 
@@ -43,12 +48,19 @@ class PasswordQuality(Enum):
 class PasswordStrength:
     """A password's estimated strength: raw entropy plus its quality tier."""
 
+    #: Estimated entropy, in bits, from zxcvbn (extrapolated past
+    #: ``_MAX_ZXCVBN_LENGTH`` characters — see ``_entropy_bits()``).
     entropy_bits: float
+    #: Quality tier derived from ``entropy_bits`` — see ``_quality_for()``.
     quality: PasswordQuality
 
 
 def _quality_for(entropy_bits: float) -> PasswordQuality:
-    # Same thresholds as PasswordHealth::quality() in KeePassXC (0/40/75/100).
+    """Map an entropy value to its quality tier.
+
+    Same thresholds as ``PasswordHealth::quality()`` in KeePassXC
+    (0/40/75/100).
+    """
     if entropy_bits <= 0:
         return PasswordQuality.BAD
     if entropy_bits < 40:
@@ -61,6 +73,12 @@ def _quality_for(entropy_bits: float) -> PasswordQuality:
 
 
 def _entropy_bits(password: str) -> float:
+    """Return zxcvbn's estimated entropy for a password, in bits.
+
+    Extrapolates linearly past ``_MAX_ZXCVBN_LENGTH`` characters rather
+    than truncating, mirroring KeePassXC's own average-entropy
+    extrapolation.
+    """
     if not password:
         # zxcvbn-python raises on an empty string instead of returning a
         # zero score (verified empirically), so this has to be special-cased.
@@ -75,7 +93,18 @@ def _entropy_bits(password: str) -> float:
 
 
 def evaluate_password_strength(password: str) -> PasswordStrength:
-    """Estimate *password*'s strength: entropy in bits, plus a quality tier."""
+    """Estimate a password's strength: entropy in bits, plus a quality tier.
+
+    Parameters
+    ----------
+    password
+        The candidate passphrase to score.
+
+    Returns
+    -------
+    :
+        The estimated entropy and its corresponding quality tier.
+    """
     entropy_bits = _entropy_bits(password)
     return PasswordStrength(
         entropy_bits=entropy_bits, quality=_quality_for(entropy_bits)

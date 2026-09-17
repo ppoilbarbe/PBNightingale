@@ -44,6 +44,7 @@ _ARCH_MAP = {
 
 
 def _arch_tag() -> str:
+    """Return this machine's architecture tag for a release-asset filename."""
     machine = platform.machine().lower()
     return _ARCH_MAP.get(machine, machine)
 
@@ -54,20 +55,53 @@ def _arch_tag() -> str:
 
 
 class _BaseUpdater:
+    """Common interface for a platform-specific in-place update strategy."""
+
+    #: Short platform tag used in release-asset filenames (e.g. ``"linux"``).
     os_tag: str
 
     def asset_suffix(self, arch: str) -> str:
-        """Return the release-asset filename suffix for this platform."""
+        """Return the release-asset filename suffix for this platform.
+
+        Parameters
+        ----------
+        arch
+            The machine's architecture tag, from ``_arch_tag()``.
+
+        Returns
+        -------
+        :
+            The suffix to match against a release asset's filename.
+        """
         return f"-{self.os_tag}-{arch}"
 
     def resolve_target(self, executable: Path) -> tuple[Path, Path]:
-        """Return (target, dest_dir): the entry to replace, and the
-        directory to download the update into (must be on *target*'s
-        filesystem, so the final swap can be an atomic rename)."""
+        """Locate what to replace and where to stage the download.
+
+        Parameters
+        ----------
+        executable
+            The path of the currently running executable.
+
+        Returns
+        -------
+        :
+            ``(target, dest_dir)`` — the entry to replace, and the
+            directory to download the update into (must be on *target*'s
+            filesystem, so the final swap can be an atomic rename).
+        """
         return executable, executable.parent
 
     def replace(self, target: Path, downloaded_file: Path) -> None:
-        """Replace *target* with *downloaded_file* (consuming it)."""
+        """Replace one entry with another, consuming the source.
+
+        Parameters
+        ----------
+        target
+            The file or directory to replace.
+        downloaded_file
+            The freshly downloaded replacement.
+        """
         raise NotImplementedError
 
 
@@ -77,11 +111,24 @@ class _BaseUpdater:
 
 
 class _LinuxUpdater(_BaseUpdater):
+    """Update strategy for a Linux single-file executable."""
+
+    #: See ``_BaseUpdater.os_tag``.
     os_tag = "linux"
 
     def replace(self, target: Path, downloaded_file: Path) -> None:
-        """Atomic same-filesystem rename — safe even while *target* is the
-        running process's own image (POSIX keeps it mapped by inode)."""
+        """Atomic same-filesystem rename.
+
+        Safe even while *target* is the running process's own image
+        (POSIX keeps it mapped by inode).
+
+        Parameters
+        ----------
+        target
+            The running executable to replace.
+        downloaded_file
+            The freshly downloaded replacement.
+        """
         os.chmod(downloaded_file, target.stat().st_mode)
         os.replace(downloaded_file, target)
 
@@ -92,16 +139,29 @@ class _LinuxUpdater(_BaseUpdater):
 
 
 class _WindowsUpdater(_BaseUpdater):
+    """Update strategy for a Windows single-file executable."""
+
+    #: See ``_BaseUpdater.os_tag``.
     os_tag = "windows"
 
     def asset_suffix(self, arch: str) -> str:
+        """See ``_BaseUpdater.asset_suffix`` — adds the ``.exe`` extension."""
         return f"-{self.os_tag}-{arch}.exe"
 
     def replace(self, target: Path, downloaded_file: Path) -> None:
-        """Windows refuses to overwrite the bytes of a running .exe, but
+        """Rename the running .exe aside, then move the new build into place.
+
+        Windows refuses to overwrite the bytes of a running .exe, but
         renaming it aside is permitted (the loader keeps its handle to the
-        renamed file). Move the new build into place, then best-effort
-        delete the old one."""
+        renamed file). Best-effort deletes the old one afterwards.
+
+        Parameters
+        ----------
+        target
+            The running executable to replace.
+        downloaded_file
+            The freshly downloaded replacement.
+        """
         old = Path(str(target) + ".old")
         old.unlink(missing_ok=True)
         os.replace(target, old)
@@ -122,29 +182,73 @@ class _WindowsUpdater(_BaseUpdater):
 
 
 class _MacUpdater(_BaseUpdater):
+    """Update strategy for a macOS .app bundle."""
+
+    #: See ``_BaseUpdater.os_tag``.
     os_tag = "macos"
 
     def asset_suffix(self, arch: str) -> str:
-        # The .app bundle is a directory; the release job zips it for upload.
+        """See ``_BaseUpdater.asset_suffix``.
+
+        The .app bundle is a directory; the release job zips it for
+        upload, hence the ``.zip`` extension here instead of a bare
+        executable suffix.
+        """
         return f"-{self.os_tag}-{arch}.zip"
 
     def resolve_target(self, executable: Path) -> tuple[Path, Path]:
+        """See ``_BaseUpdater.resolve_target``.
+
+        Parameters
+        ----------
+        executable
+            The path of the currently running executable, somewhere
+            inside the .app bundle.
+
+        Returns
+        -------
+        :
+            ``(app_root, app_root.parent)`` — see ``_BaseUpdater.
+            resolve_target``.
+
+        Raises
+        ------
+        LookupError
+            If no enclosing ``.app`` directory is found.
+        """
         app_root = self._app_root(executable)
         if app_root is None:
             raise LookupError("could not locate the enclosing .app bundle")
         return app_root, app_root.parent
 
     def _app_root(self, executable: Path) -> Path | None:
-        """Walk up from the running executable to find the enclosing .app
-        bundle."""
+        """Walk up from the running executable to find the enclosing bundle.
+
+        Parameters
+        ----------
+        executable
+            The path of the currently running executable.
+
+        Returns
+        -------
+        :
+            The enclosing ``.app`` directory, or ``None`` if not found.
+        """
         for parent in executable.parents:
             if parent.suffix == ".app":
                 return parent
         return None
 
     def replace(self, target: Path, downloaded_file: Path) -> None:
-        """Extract the downloaded .zip (a zipped .app bundle) and swap it in
-        for *target*."""
+        """Extract the downloaded zipped .app bundle and swap it in.
+
+        Parameters
+        ----------
+        target
+            The .app bundle to replace.
+        downloaded_file
+            The freshly downloaded zip archive.
+        """
         with tempfile.TemporaryDirectory(dir=target.parent) as tmp_dir:
             with zipfile.ZipFile(downloaded_file) as zf:
                 zf.extractall(tmp_dir)
@@ -174,6 +278,7 @@ class _MacUpdater(_BaseUpdater):
 
 
 def _updater_for_platform() -> _BaseUpdater:
+    """Return the update strategy matching the running platform."""
     if sys.platform == "win32":
         return _WindowsUpdater()
     if sys.platform == "darwin":
@@ -187,6 +292,7 @@ def _updater_for_platform() -> _BaseUpdater:
 
 
 def _fetch_latest_release() -> dict:
+    """Return the GitHub API's "latest release" JSON payload for this repo."""
     req = urllib.request.Request(
         _API_URL, headers={"Accept": "application/vnd.github+json"}
     )
@@ -195,6 +301,20 @@ def _fetch_latest_release() -> dict:
 
 
 def _find_asset(release: dict, suffix: str) -> dict | None:
+    """Find this platform's asset in a release's asset list.
+
+    Parameters
+    ----------
+    release
+        A release payload from ``_fetch_latest_release()``.
+    suffix
+        The filename suffix to match, from ``_BaseUpdater.asset_suffix()``.
+
+    Returns
+    -------
+    :
+        The matching asset entry, or ``None`` if there isn't one.
+    """
     for asset in release.get("assets", []):
         name = asset.get("name", "")
         if name.startswith("pbnightingale-") and name.endswith(suffix):
@@ -203,6 +323,15 @@ def _find_asset(release: dict, suffix: str) -> dict | None:
 
 
 def _download(url: str, dest: Path) -> None:
+    """Download a URL to a local file.
+
+    Parameters
+    ----------
+    url
+        The address to fetch.
+    dest
+        Where to write the downloaded bytes.
+    """
     # url comes from a GitHub API release asset (browser_download_url),
     # never from user input — always https, but ruff can't verify a
     # non-literal string statically, hence the noqa on both calls below.
@@ -224,7 +353,11 @@ def _download(url: str, dest: Path) -> None:
 def perform_auto_update() -> tuple[bool, str]:
     """Replace the running executable with the latest GitHub release build.
 
-    Returns (ok, message).
+    Returns
+    -------
+    :
+        ``(ok, message)`` — whether the update succeeded (or the running
+        build is already current), and a human-readable status message.
     """
     if not getattr(sys, "frozen", False):
         return False, (

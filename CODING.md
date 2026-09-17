@@ -1854,7 +1854,7 @@ extracting nothing from it. `DOCS_NARRATIVE` in the Makefile expands to
 an explicit `$(wildcard docs/manual/*.rst)` file list instead.
 
 **autodoc vs. PySide6/shiboken**: `autodoc_mock_imports` mocks `PySide6`
-itself plus every generated `*_ui.py` module, to dodge shiboken's own
+itself plus every `*_ui.py` module, to dodge shiboken's own
 import hook choking on `inspect.getsource()` against a `MagicMock` — but
 computed from the source tree (`_UI_ROOT.glob("*_ui.py")`) rather than
 hardcoded, since this app has ~25 dialogs. Three real (non-`_ui`) modules still can't
@@ -1934,6 +1934,27 @@ hosted site would never see.
 - Never read/write the real user's settings either. `tests/conftest.py`'s
   `_isolated_config` fixture (autouse) redirects `settings.py`'s
   `configure()` to a fresh temp dir for every test automatically.
+- Docstrings are [numpydoc](https://numpydoc.readthedocs.io/en/latest/format.html)
+  style, parsed via `sphinx.ext.napoleon` (`docs/conf.py`:
+  `napoleon_numpy_docstring = True`, `napoleon_google_docstring = False`).
+  Every function/method/class in `core/`, `platform/` and top-level modules,
+  and every `ui/*.py` module except `*_ui.py` layout files (pure
+  declarative widget construction, nothing to document), gets one —
+  `*_ui.py` files are skipped entirely. Since every signature is already type-hinted and
+  `autodoc_typehints = "description"` pulls those into the rendered docs
+  automatically, a docstring must not repeat a type:
+  - `Parameters`: just the bare parameter name, no `: type` suffix.
+  - `Returns`: a bare `:` in place of the type, then the description
+    indented below it (numpydoc's syntax for "no type").
+  - Trivial members (no parameters, no return value, nothing non-obvious)
+    keep a one-line summary only — an empty `Parameters`/`Returns` section
+    is noise, not documentation.
+  - Class/dataclass **attributes** are documented with a `#:` comment
+    immediately above the field (Sphinx's own convention for
+    autodoc-documented attributes), not inside the class docstring's body.
+  - Public module-level constants (no leading underscore) get the same
+    `#:` comment treatment; private (`_`-prefixed) ones keep ordinary `#`
+    comments, unchanged.
 
 ## Testing
 

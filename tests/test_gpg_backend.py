@@ -437,7 +437,8 @@ def test_change_passphrase_still_checks_old_one_when_agent_has_it_cached(tmp_pat
     key and this call's fixed two-line script would misapply
     *old_passphrase*'s value as the *new* passphrase instead of actually
     checking it — verified empirically, see CODING.md, "Changing a key's
-    passphrase"."""
+    passphrase".
+    """
     backend = GPGBackend(tmp_path / "home")
     key = backend.generate_key(
         NewKeyRequest(
@@ -469,7 +470,8 @@ def test_change_passphrase_wrong_old_one_with_several_subkeys_reports_cleanly(
     this call's old fixed-length script dry partway through gpg's own
     retry sequence, downgrading a clean bad-passphrase error into a
     confusing "operation canceled" dump of gpg's raw multi-attempt
-    diagnostic output. See CODING.md, "Changing a key's passphrase"."""
+    diagnostic output. See CODING.md, "Changing a key's passphrase".
+    """
     backend = GPGBackend(tmp_path / "home")
     key = backend.generate_key(
         NewKeyRequest(

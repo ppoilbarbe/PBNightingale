@@ -1,5 +1,6 @@
-"""Download Unknown Keys report dialog — shown after fetching a key's
-unknown signers from a keyserver, listing which ones were found.
+"""Download Unknown Keys report dialog — lists which signers were found.
+
+Shown after fetching a key's unknown signers from a keyserver.
 """
 
 from __future__ import annotations
@@ -14,7 +15,19 @@ from pbnightingale.ui.geometry_mixin import GeometryMixin
 
 
 class DownloadSignaturesReportDialog(GeometryMixin, QDialog):
+    """Summarizes a signer-key download: how many were found, and which identifiers came up empty."""
+
     def __init__(self, downloaded: list[DownloadedSignature], parent=None) -> None:
+        """Build the dialog from the download's own per-identifier results.
+
+        Parameters
+        ----------
+        downloaded
+            One entry per identifier that was looked up, each carrying
+            the matching key when found, ``None`` otherwise.
+        parent
+            The owning window.
+        """
         super().__init__(parent)
         self._ui = Ui_DownloadSignaturesReportDialog()
         self._ui.setupUi(self)

@@ -1,5 +1,8 @@
-"""Revoke Photo dialog — strong confirmation (a checkbox, not just a
-button click) before an irreversible operation."""
+"""Revoke Photo dialog.
+
+Strong confirmation (a checkbox, not just a button click) before an
+irreversible operation.
+"""
 
 from __future__ import annotations
 
@@ -15,7 +18,20 @@ from pbnightingale.ui.revoke_photo_dialog_ui import Ui_RevokePhotoDialog
 
 
 class RevokePhotoDialog(GeometryMixin, KeyOperationDialog, QDialog):
+    """Dialog for revoking a photo user ID."""
+
     def __init__(self, fingerprint: str, photo: PhotoUid, parent=None) -> None:
+        """Build the dialog for revoking *photo*.
+
+        Parameters
+        ----------
+        fingerprint
+            The photo's key.
+        photo
+            The photo to revoke.
+        parent
+            The owning widget, if any.
+        """
         super().__init__(parent)
         self._fingerprint = fingerprint
         self._photo = photo
@@ -45,11 +61,19 @@ class RevokePhotoDialog(GeometryMixin, KeyOperationDialog, QDialog):
         self._ui.buttonBox.rejected.connect(self.reject)
 
     def _set_form_enabled(self, enabled: bool) -> None:
+        """Enable or disable every form field and the OK button.
+
+        Parameters
+        ----------
+        enabled
+            Whether the fields should be interactive.
+        """
         self._ui.chkConfirm.setEnabled(enabled)
         self._ui.txtPassphrase.setEnabled(enabled)
         self._ok_button.setEnabled(enabled and self._ui.chkConfirm.isChecked())
 
     def _on_revoke(self) -> None:
+        """Revoke the photo via the backend."""
         self._run_operation(
             lambda: gpg_backend.default_backend().revoke_photo_uid(
                 self._fingerprint, self._ui.txtPassphrase.text(), self._photo.index

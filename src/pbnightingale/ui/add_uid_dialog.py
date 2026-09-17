@@ -1,5 +1,8 @@
-"""Add User ID dialog — adds a new identity (name/email/comment) to a key
-already in the keyring (the key must have its secret part available)."""
+"""Add User ID dialog.
+
+Adds a new identity (name/email/comment) to a key already in the keyring
+(the key must have its secret part available).
+"""
 
 from __future__ import annotations
 
@@ -12,12 +15,36 @@ from pbnightingale.ui.key_operation_dialog import KeyOperationDialog
 
 
 def _looks_like_email(value: str) -> bool:
+    """Return a loose heuristic check for whether *value* looks like an email.
+
+    Parameters
+    ----------
+    value
+        The candidate address.
+
+    Returns
+    -------
+    :
+        ``True`` if *value* has a non-empty local part and a domain
+        containing a dot that doesn't start with one.
+    """
     user, _sep, domain = value.partition("@")
     return bool(user) and "." in domain and not domain.startswith(".")
 
 
 class AddUidDialog(GeometryMixin, KeyOperationDialog, QDialog):
+    """Dialog for adding a new user ID to a key."""
+
     def __init__(self, fingerprint: str, parent=None) -> None:
+        """Build the dialog for the key identified by *fingerprint*.
+
+        Parameters
+        ----------
+        fingerprint
+            The key to add the identity to.
+        parent
+            The owning widget, if any.
+        """
         super().__init__(parent)
         self._fingerprint = fingerprint
         self._ui = Ui_AddUidDialog()
@@ -33,12 +60,20 @@ class AddUidDialog(GeometryMixin, KeyOperationDialog, QDialog):
         self._ui.buttonBox.rejected.connect(self.reject)
 
     def _sync_ok_enabled(self) -> None:
+        """Enable OK once the name is non-empty and the email looks valid."""
         self._ok_button.setEnabled(
             bool(self._ui.txtName.text().strip())
             and _looks_like_email(self._ui.txtEmail.text().strip())
         )
 
     def _set_form_enabled(self, enabled: bool) -> None:
+        """Enable or disable every form field and the OK button.
+
+        Parameters
+        ----------
+        enabled
+            Whether the fields should be interactive.
+        """
         self._ui.txtName.setEnabled(enabled)
         self._ui.txtEmail.setEnabled(enabled)
         self._ui.txtComment.setEnabled(enabled)
@@ -46,6 +81,7 @@ class AddUidDialog(GeometryMixin, KeyOperationDialog, QDialog):
         self._ok_button.setEnabled(enabled and bool(self._ui.txtName.text().strip()))
 
     def _on_add(self) -> None:
+        """Add the new user ID via the backend."""
         self._run_operation(
             lambda: gpg_backend.default_backend().add_uid(
                 self._fingerprint,

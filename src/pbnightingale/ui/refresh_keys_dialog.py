@@ -1,6 +1,8 @@
-"""Refresh Keys dialog — lets the user choose whether "Refresh" (Keyservers
-toolbar/menu) re-fetches only the selected key or every key in the keyring,
-before the (possibly slow) network operation starts.
+"""Refresh Keys dialog — picks the scope of a keyserver "Refresh".
+
+Lets the user choose whether "Refresh" (Keyservers toolbar/menu)
+re-fetches only the selected key or every key in the keyring, before the
+(possibly slow) network operation starts.
 """
 
 from __future__ import annotations
@@ -12,7 +14,20 @@ from pbnightingale.ui.refresh_keys_dialog_ui import Ui_RefreshKeysDialog
 
 
 class RefreshKeysDialog(GeometryMixin, QDialog):
+    """Lets the user choose between refreshing the selected key or all of them, before the network operation starts."""
+
     def __init__(self, *, has_selection: bool, parent=None) -> None:
+        """Build the dialog, defaulting to "selected key" when possible.
+
+        Parameters
+        ----------
+        has_selection
+            Whether a key is currently selected — when ``False``, the
+            "selected key" option is disabled and "every key" is
+            pre-checked instead.
+        parent
+            The owning window.
+        """
         super().__init__(parent)
         self._ui = Ui_RefreshKeysDialog()
         self._ui.setupUi(self)
@@ -34,5 +49,12 @@ class RefreshKeysDialog(GeometryMixin, QDialog):
         self._ui.buttonBox.rejected.connect(self.reject)
 
     def refresh_all(self) -> bool:
-        """True when the user chose "every key" over "the selected key"."""
+        """Report which scope the user chose.
+
+        Returns
+        -------
+        :
+            ``True`` when the user chose "every key" over "the selected
+            key".
+        """
         return self._ui.radioAll.isChecked()

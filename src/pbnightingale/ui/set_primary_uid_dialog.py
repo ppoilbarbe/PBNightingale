@@ -1,6 +1,9 @@
-"""Set Primary User ID dialog — flags an existing UID as the key's primary
-identity. Reversible (another UID can always be set primary later), so no
-strong confirmation is required, just the passphrase to authorize it."""
+"""Set Primary User ID dialog.
+
+Flags an existing UID as the key's primary identity. Reversible (another
+UID can always be set primary later), so no strong confirmation is
+required, just the passphrase to authorize it.
+"""
 
 from __future__ import annotations
 
@@ -14,7 +17,20 @@ from pbnightingale.ui.set_primary_uid_dialog_ui import Ui_SetPrimaryUidDialog
 
 
 class SetPrimaryUidDialog(GeometryMixin, KeyOperationDialog, QDialog):
+    """Dialog for setting a user ID as a key's primary identity."""
+
     def __init__(self, fingerprint: str, uid: Uid, parent=None) -> None:
+        """Build the dialog for setting *uid* as primary.
+
+        Parameters
+        ----------
+        fingerprint
+            The UID's key.
+        uid
+            The user ID to set as primary.
+        parent
+            The owning widget, if any.
+        """
         super().__init__(parent)
         self._fingerprint = fingerprint
         self._uid = uid
@@ -30,12 +46,20 @@ class SetPrimaryUidDialog(GeometryMixin, KeyOperationDialog, QDialog):
         self._ui.buttonBox.rejected.connect(self.reject)
 
     def _set_form_enabled(self, enabled: bool) -> None:
+        """Enable or disable the passphrase field and the OK button.
+
+        Parameters
+        ----------
+        enabled
+            Whether the fields should be interactive.
+        """
         self._ui.txtPassphrase.setEnabled(enabled)
         self._ui.buttonBox.button(QDialogButtonBox.StandardButton.Ok).setEnabled(
             enabled
         )
 
     def _on_set(self) -> None:
+        """Set the user ID as primary via the backend."""
         self._run_operation(
             lambda: gpg_backend.default_backend().set_primary_uid(
                 self._fingerprint, self._ui.txtPassphrase.text(), self._uid.value

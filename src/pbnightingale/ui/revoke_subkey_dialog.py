@@ -1,5 +1,8 @@
-"""Revoke Subkey dialog — strong confirmation (a checkbox, not just a
-button click) before an irreversible operation."""
+"""Revoke Subkey dialog.
+
+Strong confirmation (a checkbox, not just a button click) before an
+irreversible operation.
+"""
 
 from __future__ import annotations
 
@@ -13,7 +16,20 @@ from pbnightingale.ui.revoke_subkey_dialog_ui import Ui_RevokeSubkeyDialog
 
 
 class RevokeSubkeyDialog(GeometryMixin, KeyOperationDialog, QDialog):
+    """Dialog for revoking a subkey."""
+
     def __init__(self, fingerprint: str, subkey: Subkey, parent=None) -> None:
+        """Build the dialog for revoking *subkey*.
+
+        Parameters
+        ----------
+        fingerprint
+            The subkey's primary key.
+        subkey
+            The subkey to revoke.
+        parent
+            The owning widget, if any.
+        """
         super().__init__(parent)
         self._fingerprint = fingerprint
         self._subkey = subkey
@@ -36,11 +52,19 @@ class RevokeSubkeyDialog(GeometryMixin, KeyOperationDialog, QDialog):
         self._ui.buttonBox.rejected.connect(self.reject)
 
     def _set_form_enabled(self, enabled: bool) -> None:
+        """Enable or disable every form field and the OK button.
+
+        Parameters
+        ----------
+        enabled
+            Whether the fields should be interactive.
+        """
         self._ui.chkConfirm.setEnabled(enabled)
         self._ui.txtPassphrase.setEnabled(enabled)
         self._ok_button.setEnabled(enabled and self._ui.chkConfirm.isChecked())
 
     def _on_revoke(self) -> None:
+        """Revoke the subkey via the backend."""
         self._run_operation(
             lambda: gpg_backend.default_backend().revoke_subkey(
                 self._fingerprint, self._subkey.keyid, self._ui.txtPassphrase.text()

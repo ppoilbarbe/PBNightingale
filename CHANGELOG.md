@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Numpydoc docstring convention adopted project-wide (`core/`, `platform/`,
+  top-level modules, and every `ui/*.py` except `*_ui.py` layout files),
+  documented in CODING.md
+- `pydocstyle` (ruff `D`, `numpy` convention) enforced in lint, scoped to
+  match the documented docstring convention
+
+### Fixed
+
+- Sphinx docs: `napoleon_numpy_docstring` was disabled, so numpydoc
+  sections in docstrings were never actually parsed or rendered
+- CI: bumped `codecov-action` to v7 to pick up its own Node 24 runtime
+  (it was pinned to a deprecated Node 20 build via `actions/github-script`)
+
 ## [0.1.0] - 2026-09-16
 
 This program is an evolution (heavily improved) of an older Python

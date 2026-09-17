@@ -1,10 +1,10 @@
-"""Import Key dialog — imports a public key either from a local file or
-from a keyserver, identified by fingerprint, key ID, or email address.
+"""Import Key dialog — imports a public key from a file or keyserver, by fingerprint, key ID, or email address.
 
 Never imports blindly: "Check…" first previews every candidate key
 (identities, full key ID, fingerprint, and whether it's already in the
 keyring) without touching the keyring, then only the ones the user checks
-are actually committed via "Import"."""
+are actually committed via "Import".
+"""
 
 from __future__ import annotations
 
@@ -27,7 +27,10 @@ _CANDIDATE_ROLE = Qt.ItemDataRole.UserRole
 
 
 class ImportKeyDialog(GeometryMixin, QDialog):
+    """Dialog for previewing and importing a key from a file or keyserver."""
+
     def __init__(self, parent=None) -> None:
+        """Build the dialog and wire its check/import flow."""
         super().__init__(parent)
         self._ui = Ui_ImportKeyDialog()
         self._ui.setupUi(self)
@@ -46,6 +49,7 @@ class ImportKeyDialog(GeometryMixin, QDialog):
         self._ui.buttonBox.rejected.connect(self.reject)
 
     def _on_browse(self) -> None:
+        """Prompt for a key file and fill the file-path field with it."""
         path, _filter = QFileDialog.getOpenFileName(
             self,
             _("Choose Key File"),
@@ -57,10 +61,18 @@ class ImportKeyDialog(GeometryMixin, QDialog):
         self._ui.txtFilePath.setText(path)
 
     def _set_editing_enabled(self, enabled: bool) -> None:
+        """Enable or disable the source tabs and the Check button.
+
+        Parameters
+        ----------
+        enabled
+            Whether the file/keyserver source fields are editable.
+        """
         self._ui.tabs.setEnabled(enabled)
         self._ui.btnCheck.setEnabled(enabled)
 
     def _on_check(self) -> None:
+        """Preview the candidate key(s) from the currently selected source, without touching the keyring."""
         if self._ui.tabs.currentIndex() == _FILE_TAB:
             path = self._ui.txtFilePath.text()
             if not path:
@@ -102,6 +114,13 @@ class ImportKeyDialog(GeometryMixin, QDialog):
         )
 
     def _on_check_success(self, candidates: list[ImportPreview]) -> None:
+        """Populate the candidate tree, pre-checking every new key.
+
+        Parameters
+        ----------
+        candidates
+            Keys that would be imported, as reported by the preview.
+        """
         self._ui.progress.setVisible(False)
         self._ui.lblStatus.setText(_("{n} key(s) found.").format(n=len(candidates)))
         tree = self._ui.treeCandidates
@@ -129,6 +148,7 @@ class ImportKeyDialog(GeometryMixin, QDialog):
         self._update_ok_enabled()
 
     def _update_ok_enabled(self) -> None:
+        """Enable the Import button only while at least one candidate is checked."""
         tree = self._ui.treeCandidates
         any_checked = any(
             tree.topLevelItem(i).checkState(0) == Qt.CheckState.Checked
@@ -137,6 +157,13 @@ class ImportKeyDialog(GeometryMixin, QDialog):
         self._ok_button.setEnabled(any_checked)
 
     def _approved_fingerprints(self) -> set[str]:
+        """Return the fingerprints of every checked candidate.
+
+        Returns
+        -------
+        :
+            One fingerprint per checked row in the candidate tree.
+        """
         tree = self._ui.treeCandidates
         return {
             tree.topLevelItem(i).data(0, _CANDIDATE_ROLE).fingerprint
@@ -145,6 +172,7 @@ class ImportKeyDialog(GeometryMixin, QDialog):
         }
 
     def _on_import(self) -> None:
+        """Commit the checked candidates from the last check, for real."""
         if self._pending_commit is None:
             return
         approved = self._approved_fingerprints()
@@ -161,10 +189,24 @@ class ImportKeyDialog(GeometryMixin, QDialog):
         )
 
     def _on_success(self, keys: list[ImportedKey]) -> None:
+        """Record the imported key(s) and close the dialog.
+
+        Parameters
+        ----------
+        keys
+            The keys produced by the commit.
+        """
         self.imported_keys = keys
         self.accept()
 
     def _on_error(self, exc: Exception) -> None:
+        """Show the failure and reset back to the editing state.
+
+        Parameters
+        ----------
+        exc
+            The exception raised by the failed check or import.
+        """
         self._ui.progress.setVisible(False)
         self._ui.lblStatus.setText(
             _("Could not import key: {error}").format(error=str(exc))

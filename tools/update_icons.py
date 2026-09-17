@@ -122,7 +122,8 @@ def _github_request(url: str) -> bytes:
 def fetch_github_index() -> dict[str, str]:
     """Return {lowercased filename: path in repo} for every file directly
     under an `_ICON_DIRS` subdirectory, favoring earlier directories on a
-    name clash."""
+    name clash.
+    """
     data = json.loads(_github_request(_GITHUB_TREE_API))
     by_dir: dict[str, dict[str, str]] = {dirname: {} for dirname in _ICON_DIRS}
     for entry in data.get("tree", []):

@@ -20,8 +20,13 @@ _dirs = AppDirs(_DOMAIN)
 def configure(config_dir: Path | None = None) -> None:
     """Override the configuration directory used by all settings functions.
 
-    Pass ``None`` to restore the platform default. Intended for testing —
-    never run/test against the real user's configuration directory.
+    Intended for testing — never run/test against the real user's
+    configuration directory.
+
+    Parameters
+    ----------
+    config_dir
+        The directory to use, or ``None`` to restore the platform default.
     """
     global _dirs
     if config_dir is None:

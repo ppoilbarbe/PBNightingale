@@ -12,6 +12,12 @@ def system_language() -> str:
     Tries environment variables first (Unix convention), then falls back to
     the ``locale`` module (reliable on Windows and macOS when env vars are
     absent).
+
+    Returns
+    -------
+    :
+        A 2-letter language code (e.g. ``"en"``, ``"fr"``), defaulting to
+        ``"en"`` if nothing usable was found.
     """
     for var in ("LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"):
         val = os.environ.get(var, "")

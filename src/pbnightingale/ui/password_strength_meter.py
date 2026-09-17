@@ -1,7 +1,9 @@
-"""Password strength meter: a colored bar (red for weak, green for
-excellent) plus the estimated entropy in bits, meant to be updated on every
-keystroke of a *new* passphrase (not one unlocking an existing key — see
-``core/password_strength.py``)."""
+"""Password strength meter: a colored bar plus the estimated entropy in bits.
+
+Red for weak, green for excellent. Meant to be updated on every keystroke
+of a *new* passphrase (not one unlocking an existing key — see
+``core/password_strength.py``).
+"""
 
 from __future__ import annotations
 
@@ -27,6 +29,7 @@ _BAR_COLORS = {
 
 
 def _quality_label(quality: PasswordQuality) -> str:
+    """Return the translated, human-readable label for *quality*."""
     return {
         PasswordQuality.BAD: _("Bad"),
         PasswordQuality.POOR: _("Poor"),
@@ -40,12 +43,14 @@ class PasswordStrengthMeter(QWidget):
     """A colored strength bar plus an entropy-in-bits label."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
+        """Build the meter, initially showing an empty password's strength."""
         super().__init__(parent)
         self._ui = Ui_PasswordStrengthMeter()
         self._ui.setupUi(self)
         self.set_password("")
 
     def set_password(self, password: str) -> None:
+        """Re-evaluate *password* and update the bar, tooltip and label."""
         strength = evaluate_password_strength(password)
         self._ui.bar.setValue(max(0, min(round(strength.entropy_bits), 100)))
         color = _BAR_COLORS[strength.quality]

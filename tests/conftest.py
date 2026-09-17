@@ -93,7 +93,8 @@ def _isolated_config(config_dir):
 @pytest.fixture
 def gnupg_home(tmp_path_factory):
     """Return a per-test GNUPGHOME and redirect gpg_backend.default_backend()
-    to it. Never the real user's keyring."""
+    to it. Never the real user's keyring.
+    """
     from pbnightingale.core import gpg_backend
 
     home = tmp_path_factory.mktemp("pbngnupg", numbered=True)
@@ -111,7 +112,8 @@ def _isolated_gnupghome(gnupg_home):
 @pytest.fixture(autouse=True)
 def _isolated_passphrase_cache():
     """Ensure no cached passphrase leaks between tests — this module-level
-    cache otherwise persists across the whole test session."""
+    cache otherwise persists across the whole test session.
+    """
     from pbnightingale.core import passphrase_cache
 
     passphrase_cache.clear()

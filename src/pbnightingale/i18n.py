@@ -29,6 +29,15 @@ class _GettextTranslator(QTranslator):
     def __init__(
         self, translation: gettext.NullTranslations, parent: QApplication
     ) -> None:
+        """Wrap a gettext translation catalogue as a Qt translator.
+
+        Parameters
+        ----------
+        translation
+            The catalogue to delegate every lookup to.
+        parent
+            The Qt object owning this translator.
+        """
         super().__init__(parent)
         self._t = translation
 
@@ -39,6 +48,25 @@ class _GettextTranslator(QTranslator):
         disambiguation: str | None = None,
         n: int = -1,
     ) -> str:
+        """Look up a source string in the wrapped gettext catalogue.
+
+        Parameters
+        ----------
+        context
+            Unused — gettext lookups here aren't context-scoped.
+        source_text
+            The string to translate.
+        disambiguation
+            Unused.
+        n
+            Unused — plural forms aren't handled by this translator.
+
+        Returns
+        -------
+        :
+            The translated string, or ``source_text`` unchanged if no
+            catalogue entry matches.
+        """
         return self._t.gettext(source_text)
 
 
@@ -46,11 +74,16 @@ _system_language = system_language
 
 
 def available_languages() -> list[tuple[str, str]]:
-    """Return ``[(lang_code, lang_name_in_that_language), …]`` sorted by code.
+    """Return every language this app has a compiled catalogue for.
 
     Discovers languages dynamically by scanning ``.mo`` files under the locale
     directory.  Each catalogue must contain a ``language_name`` msgid whose
     msgstr is the language name written in that language (e.g. "Français").
+
+    Returns
+    -------
+    :
+        ``(lang_code, lang_name_in_that_language)`` pairs, sorted by code.
     """
     result: list[tuple[str, str]] = []
     for mo_path in sorted(_LOCALE_DIR.glob(f"*/LC_MESSAGES/{_DOMAIN}.mo")):
@@ -69,6 +102,7 @@ def available_languages() -> list[tuple[str, str]]:
 
 
 def _settings() -> QSettings:
+    """Return the ``QSettings`` instance backing the language override."""
     import pbnightingale.settings as _settings_mod
 
     cfg = _settings_mod._dirs.config_home
@@ -77,13 +111,26 @@ def _settings() -> QSettings:
 
 
 def get_language_override() -> str:
-    """Return the saved language code, or ``""`` for system default."""
+    """Return the saved language override.
+
+    Returns
+    -------
+    :
+        The saved language code, or ``""`` for system default.
+    """
     val = _settings().value(_SETTINGS_KEY, "")
     return val if isinstance(val, str) else ""
 
 
 def set_language_override(code: str) -> None:
-    """Persist *code* as the language override (``""`` clears the override)."""
+    """Persist a language override.
+
+    Parameters
+    ----------
+    code
+        The language code to save, or ``""`` to clear the override and
+        fall back to the system default.
+    """
     _settings().setValue(_SETTINGS_KEY, code)
 
 
@@ -93,6 +140,11 @@ def current_language() -> str:
     Falls back to ``"en"`` when the resolved code has no catalogue of its
     own (no `.mo` under `locale/`) — e.g. a system language this app hasn't
     been translated into.
+
+    Returns
+    -------
+    :
+        The 2-letter language code currently in effect.
     """
     override = get_language_override()
     lang = override if override else _system_language()
@@ -101,9 +153,14 @@ def current_language() -> str:
 
 
 def setup(app: QApplication) -> None:
-    """Install translations for *app*.
+    """Install translations for an application.
 
     Safe to call multiple times (each call replaces the previous translator).
+
+    Parameters
+    ----------
+    app
+        The application to install the gettext- and Qt-level translators on.
     """
     override = get_language_override()
     lang = override if override else _system_language()

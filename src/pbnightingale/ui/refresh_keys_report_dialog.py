@@ -1,5 +1,6 @@
-"""Refresh Keys report dialog — shown after a keyserver refresh completes,
-listing which keys actually picked up a change.
+"""Refresh Keys report dialog — lists which keys picked up a change.
+
+Shown after a keyserver refresh completes.
 """
 
 from __future__ import annotations
@@ -12,7 +13,19 @@ from pbnightingale.ui.refresh_keys_report_dialog_ui import Ui_RefreshKeysReportD
 
 
 class RefreshKeysReportDialog(GeometryMixin, QDialog):
+    """Summarizes a keyserver refresh: how many keys were checked, and which of them actually picked up a change."""
+
     def __init__(self, refreshed: list[RefreshedKey], parent=None) -> None:
+        """Build the dialog from the refresh's own per-key results.
+
+        Parameters
+        ----------
+        refreshed
+            One entry per key that was refreshed, each flagged with
+            whether it actually changed.
+        parent
+            The owning window.
+        """
         super().__init__(parent)
         self._ui = Ui_RefreshKeysReportDialog()
         self._ui.setupUi(self)

@@ -1,5 +1,8 @@
-"""Revoke User ID dialog — strong confirmation (a checkbox, not just a
-button click) before an irreversible operation."""
+"""Revoke User ID dialog.
+
+Strong confirmation (a checkbox, not just a button click) before an
+irreversible operation.
+"""
 
 from __future__ import annotations
 
@@ -13,7 +16,20 @@ from pbnightingale.ui.revoke_uid_dialog_ui import Ui_RevokeUidDialog
 
 
 class RevokeUidDialog(GeometryMixin, KeyOperationDialog, QDialog):
+    """Dialog for revoking a user ID."""
+
     def __init__(self, fingerprint: str, uid: Uid, parent=None) -> None:
+        """Build the dialog for revoking *uid*.
+
+        Parameters
+        ----------
+        fingerprint
+            The UID's key.
+        uid
+            The user ID to revoke.
+        parent
+            The owning widget, if any.
+        """
         super().__init__(parent)
         self._fingerprint = fingerprint
         self._uid = uid
@@ -36,11 +52,19 @@ class RevokeUidDialog(GeometryMixin, KeyOperationDialog, QDialog):
         self._ui.buttonBox.rejected.connect(self.reject)
 
     def _set_form_enabled(self, enabled: bool) -> None:
+        """Enable or disable every form field and the OK button.
+
+        Parameters
+        ----------
+        enabled
+            Whether the fields should be interactive.
+        """
         self._ui.chkConfirm.setEnabled(enabled)
         self._ui.txtPassphrase.setEnabled(enabled)
         self._ok_button.setEnabled(enabled and self._ui.chkConfirm.isChecked())
 
     def _on_revoke(self) -> None:
+        """Revoke the user ID via the backend."""
         self._run_operation(
             lambda: gpg_backend.default_backend().revoke_uid(
                 self._fingerprint, self._ui.txtPassphrase.text(), self._uid.value

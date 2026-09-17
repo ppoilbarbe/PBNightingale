@@ -33,6 +33,22 @@ class GeometryMixin:
         splitters: dict | None = None,
         toolbars: bool = False,
     ) -> None:
+        """Enable geometry persistence for this window.
+
+        Call once, after ``setupUi()``.
+
+        Parameters
+        ----------
+        state_key
+            Short key identifying this window in the settings file.
+        splitters
+            Maps a short key to each ``QSplitter`` whose sizes should be
+            persisted, or ``None`` for a window with none.
+        toolbars
+            Whether to also persist ``QMainWindow.saveState()`` (toolbar
+            position, order and visibility) — only meaningful for a
+            ``QMainWindow``.
+        """
         self._geo_state_key = state_key
         self._geo_splitters = splitters or {}
         self._geo_save_toolbars = toolbars
@@ -41,6 +57,7 @@ class GeometryMixin:
             self.finished.connect(lambda *_args: self._save_geometry())
 
     def _save_geometry(self) -> None:
+        """Persist this window's geometry, splitters and (if enabled) toolbar state."""
         window_state.save_geometry(self._geo_state_key, self.saveGeometry())
         for splitter_key, splitter in self._geo_splitters.items():
             window_state.save_splitter_state(
@@ -50,6 +67,7 @@ class GeometryMixin:
             window_state.save_toolbar_state(self._geo_state_key, self.saveState())
 
     def _restore_geometry(self) -> None:
+        """Restore this window's geometry, splitters and toolbar state, from whatever was last persisted."""
         geometry = window_state.load_geometry(self._geo_state_key)
         if geometry is not None:
             self.restoreGeometry(geometry)
@@ -63,12 +81,29 @@ class GeometryMixin:
                 self.restoreState(toolbar_state)
 
     def showEvent(self, event) -> None:
+        """Restore this window's geometry the first time it is shown.
+
+        Parameters
+        ----------
+        event
+            The Qt show event, forwarded to the base class unchanged.
+        """
         if not self._geo_restored:
             self._geo_restored = True
             self._restore_geometry()
         super().showEvent(event)
 
     def closeEvent(self, event) -> None:
+        """Persist this window's geometry on close.
+
+        Skipped for a ``QDialog``/``QWizard`` — those save on the
+        ``finished`` signal instead (see ``_init_geometry()``).
+
+        Parameters
+        ----------
+        event
+            The Qt close event, forwarded to the base class unchanged.
+        """
         if not hasattr(self, "finished"):
             self._save_geometry()
         super().closeEvent(event)

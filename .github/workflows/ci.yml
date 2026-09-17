@@ -35,7 +35,10 @@ jobs:
         run: make test
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        # v6+ is required to pick up codecov-action's own Node 24 runtime
+        # (it was pinned to actions/github-script's Node 20 build through
+        # v5.5.5); no input/behavior change otherwise.
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage.xml

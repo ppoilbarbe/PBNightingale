@@ -12,6 +12,7 @@ class AboutDialog(QDialog):
     """Application About dialog."""
 
     def __init__(self, parent=None) -> None:
+        """Build the dialog, showing the current version and app icon."""
         super().__init__(parent)
         self._ui = Ui_AboutDialog()
         self._ui.setupUi(self)

@@ -1661,7 +1661,8 @@ def test_on_server_publish_failure_shows_status_and_reenables(qtbot, monkeypatch
 def _accept_refresh_dialogs(monkeypatch):
     """Auto-accept the confirm-scope and report dialogs `_on_server_refresh()`
     opens, so a test driving it through `actionServerRefresh.trigger()`
-    doesn't hang on a real modal event loop."""
+    doesn't hang on a real modal event loop.
+    """
     from pbnightingale.ui.refresh_keys_dialog import RefreshKeysDialog
     from pbnightingale.ui.refresh_keys_report_dialog import RefreshKeysReportDialog
 

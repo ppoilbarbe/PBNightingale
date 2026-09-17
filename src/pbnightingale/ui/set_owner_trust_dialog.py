@@ -1,7 +1,10 @@
-"""Set Owner Trust dialog — records how much the current user trusts a
-key's owner to correctly certify *other* people's keys. A purely local
-judgment call: no passphrase or secret key is involved (see
-``core.gpg_backend.GPGBackend.set_owner_trust()``)."""
+"""Set Owner Trust dialog.
+
+Records how much the current user trusts a key's owner to correctly
+certify *other* people's keys. A purely local judgment call: no
+passphrase or secret key is involved (see
+``core.gpg_backend.GPGBackend.set_owner_trust()``).
+"""
 
 from __future__ import annotations
 
@@ -29,7 +32,18 @@ _TRUST_CODE_TO_KEYWORD = {
 
 
 class SetOwnerTrustDialog(GeometryMixin, QDialog):
+    """Dialog for setting how much a key's owner is trusted to certify others."""
+
     def __init__(self, key: Key, parent=None) -> None:
+        """Build the dialog for *key*, preselecting its current owner trust.
+
+        Parameters
+        ----------
+        key
+            The key whose owner trust is being set.
+        parent
+            The owning widget, if any.
+        """
         super().__init__(parent)
         self._fingerprint = key.fingerprint
         self._ui = Ui_SetOwnerTrustDialog()
@@ -54,12 +68,20 @@ class SetOwnerTrustDialog(GeometryMixin, QDialog):
         self._ui.buttonBox.rejected.connect(self.reject)
 
     def _set_form_enabled(self, enabled: bool) -> None:
+        """Enable or disable the combo box and the OK button.
+
+        Parameters
+        ----------
+        enabled
+            Whether the fields should be interactive.
+        """
         self._ui.cmbOwnerTrust.setEnabled(enabled)
         self._ui.buttonBox.button(QDialogButtonBox.StandardButton.Ok).setEnabled(
             enabled
         )
 
     def _on_set(self) -> None:
+        """Apply the chosen owner trust via the backend."""
         trust = self._ui.cmbOwnerTrust.currentData()
         self._set_form_enabled(False)
         self._ui.progress.setVisible(True)
@@ -74,10 +96,24 @@ class SetOwnerTrustDialog(GeometryMixin, QDialog):
         )
 
     def _on_success(self, key: Key) -> None:
+        """Store the updated key and close the dialog.
+
+        Parameters
+        ----------
+        key
+            The key with its new owner trust applied.
+        """
         self.updated_key = key
         self.accept()
 
     def _on_error(self, exc: GPGBackendError) -> None:
+        """Show the error and re-enable the form.
+
+        Parameters
+        ----------
+        exc
+            The error raised by the backend.
+        """
         self._ui.progress.setVisible(False)
         self._ui.lblStatus.setText(
             _("Could not set owner trust: {error}").format(error=str(exc))

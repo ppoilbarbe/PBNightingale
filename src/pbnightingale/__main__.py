@@ -10,6 +10,20 @@ _log = logging.getLogger(__name__)
 
 
 def _build_parser(*, frozen: bool | None = None) -> argparse.ArgumentParser:
+    """Build the CLI argument parser.
+
+    Parameters
+    ----------
+    frozen
+        Whether to offer the ``--auto-update`` flag (only meaningful for a
+        PyInstaller-frozen executable). ``None`` (the default) autodetects
+        this from ``sys.frozen``; overridable for tests.
+
+    Returns
+    -------
+    :
+        The configured parser.
+    """
     from pbnightingale import __version__
 
     # --auto-update is only meaningful for the single-file PyInstaller
@@ -49,6 +63,7 @@ def _build_parser(*, frozen: bool | None = None) -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Parse CLI arguments and dispatch to ``--auto-update`` or the GUI."""
     logging.basicConfig(
         format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
         datefmt="%H:%M:%S",
@@ -79,6 +94,11 @@ def _load_bundled_fonts(app: object) -> None:  # pragma: no cover
     fontconfig config as a first line of defense, but that still depends on
     fontconfig itself being present and correctly re-initialized on the
     target machine — this is the fix that actually holds regardless.
+
+    Parameters
+    ----------
+    app
+        The running ``QApplication`` to set the default font on.
     """
     if not getattr(sys, "frozen", False):
         return
@@ -109,6 +129,7 @@ def _load_bundled_fonts(app: object) -> None:  # pragma: no cover
 
 
 def _gui_main() -> None:  # pragma: no cover
+    """Build the ``QApplication``, install translations, and show the main window."""
     from PySide6.QtGui import QIcon
     from PySide6.QtWidgets import QApplication
 

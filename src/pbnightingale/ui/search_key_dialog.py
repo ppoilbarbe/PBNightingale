@@ -1,5 +1,4 @@
-"""Search Keyserver dialog — searches a keyserver for a name, email,
-fingerprint or key ID, and imports whichever match the user picks."""
+"""Search Keyserver dialog — searches by name, email, fingerprint or key ID, and imports whichever match the user picks."""
 
 from __future__ import annotations
 
@@ -19,7 +18,10 @@ from pbnightingale.ui.search_key_dialog_ui import Ui_SearchKeyDialog
 
 
 class SearchKeyDialog(GeometryMixin, QDialog):
+    """Dialog for searching a keyserver and importing a chosen result."""
+
     def __init__(self, parent=None) -> None:
+        """Build the dialog and wire its search/import flow."""
         super().__init__(parent)
         self._ui = Ui_SearchKeyDialog()
         self._ui.setupUi(self)
@@ -52,6 +54,7 @@ class SearchKeyDialog(GeometryMixin, QDialog):
         self._ui.buttonBox.rejected.connect(self.reject)
 
     def _update_keyserver_hint(self) -> None:
+        """Show the keys.openpgp.org search-limitations hint when applicable."""
         is_default = self._ui.txtKeyserver.text().strip() == DEFAULT_KEYSERVER
         if is_default:
             self._ui.lblKeyserverHint.setText(
@@ -66,6 +69,14 @@ class SearchKeyDialog(GeometryMixin, QDialog):
         self._ui.lblKeyserverHint.setVisible(is_default)
 
     def _set_form_enabled(self, enabled: bool) -> None:
+        """Enable or disable the search form.
+
+        Parameters
+        ----------
+        enabled
+            Whether the form should be interactive. The Import button
+            also requires a selected result, regardless of *enabled*.
+        """
         self._ui.txtQuery.setEnabled(enabled)
         self._ui.txtKeyserver.setEnabled(enabled)
         self._ui.btnSearch.setEnabled(enabled)
@@ -73,6 +84,7 @@ class SearchKeyDialog(GeometryMixin, QDialog):
         self._ok_button.setEnabled(enabled and self._ui.resultsList.currentRow() >= 0)
 
     def _on_search(self) -> None:
+        """Search the entered query against the configured keyserver."""
         query = self._ui.txtQuery.text().strip()
         if not query:
             self._ui.lblStatus.setText(_("Enter a search query."))
@@ -91,6 +103,13 @@ class SearchKeyDialog(GeometryMixin, QDialog):
         )
 
     def _on_search_success(self, results: list[SearchResult]) -> None:
+        """Populate the results list.
+
+        Parameters
+        ----------
+        results
+            Matches found for the search query.
+        """
         self._ui.progress.setVisible(False)
         self._set_form_enabled(True)
         for result in results:
@@ -107,6 +126,13 @@ class SearchKeyDialog(GeometryMixin, QDialog):
         self._ui.lblStatus.setText(_("{n} result(s) found.").format(n=len(results)))
 
     def _on_search_error(self, exc: Exception) -> None:
+        """Show the search failure.
+
+        Parameters
+        ----------
+        exc
+            The exception raised by the failed search.
+        """
         self._ui.progress.setVisible(False)
         self._set_form_enabled(True)
         self._ui.lblStatus.setText(
@@ -114,6 +140,7 @@ class SearchKeyDialog(GeometryMixin, QDialog):
         )
 
     def _on_import(self) -> None:
+        """Import the currently selected search result."""
         item = self._ui.resultsList.currentItem()
         if item is None:
             return
@@ -133,10 +160,24 @@ class SearchKeyDialog(GeometryMixin, QDialog):
         )
 
     def _on_import_success(self, keys: list[ImportedKey]) -> None:
+        """Record the imported key(s) and close the dialog.
+
+        Parameters
+        ----------
+        keys
+            The keys produced by the import.
+        """
         self.imported_keys = keys
         self.accept()
 
     def _on_import_error(self, exc: Exception) -> None:
+        """Show the import failure.
+
+        Parameters
+        ----------
+        exc
+            The exception raised by the failed import.
+        """
         self._ui.progress.setVisible(False)
         self._set_form_enabled(True)
         self._ui.lblStatus.setText(

@@ -1,7 +1,7 @@
-"""Add Photo dialog — adds a photo user ID to a key already in the keyring
-(the key must have its secret part available).
+"""Add Photo dialog.
 
-The chosen image is scaled down and re-encoded as a small JPEG before being
+Adds a photo user ID to a key already in the keyring (the key must have
+its secret part available). The chosen image is scaled down and re-encoded as a small JPEG before being
 handed to gpg: a full-resolution photo would bloat the key (and therefore
 every copy of it, everywhere it's ever exported to) for no real benefit.
 """
@@ -35,7 +35,18 @@ _JPEG_QUALITY = 85
 
 
 class AddPhotoDialog(GeometryMixin, KeyOperationDialog, QDialog):
+    """Dialog for adding a photo user ID to a key."""
+
     def __init__(self, fingerprint: str, parent=None) -> None:
+        """Build the dialog for the key identified by *fingerprint*.
+
+        Parameters
+        ----------
+        fingerprint
+            The key to add the photo to.
+        parent
+            The owning widget, if any.
+        """
         super().__init__(parent)
         self._fingerprint = fingerprint
         self._ui = Ui_AddPhotoDialog()
@@ -57,6 +68,7 @@ class AddPhotoDialog(GeometryMixin, KeyOperationDialog, QDialog):
         self._ui.buttonBox.rejected.connect(self.reject)
 
     def _on_choose_image(self) -> None:
+        """Prompt for an image file, scale it down, and preview it."""
         path, _filter = QFileDialog.getOpenFileName(
             self,
             _("Choose Image"),
@@ -94,16 +106,25 @@ class AddPhotoDialog(GeometryMixin, KeyOperationDialog, QDialog):
         self._ok_button.setEnabled(True)
 
     def _cleanup_temp_file(self) -> None:
+        """Delete the scaled-down temporary JPEG created by ``_on_choose_image()``."""
         if self._jpeg_path is not None:
             self._jpeg_path.unlink(missing_ok=True)
             self._jpeg_path = None
 
     def _set_form_enabled(self, enabled: bool) -> None:
+        """Enable or disable every form field and the OK button.
+
+        Parameters
+        ----------
+        enabled
+            Whether the fields should be interactive.
+        """
         self._ui.btnChooseImage.setEnabled(enabled)
         self._ui.txtPassphrase.setEnabled(enabled)
         self._ok_button.setEnabled(enabled and self._jpeg_path is not None)
 
     def _on_add(self) -> None:
+        """Add the chosen photo to the key via the backend."""
         self._run_operation(
             lambda: gpg_backend.default_backend().add_photo_uid(
                 self._fingerprint, self._ui.txtPassphrase.text(), self._jpeg_path
@@ -113,9 +134,17 @@ class AddPhotoDialog(GeometryMixin, KeyOperationDialog, QDialog):
         )
 
     def _on_operation_success(self, key: Key) -> None:
+        """Clean up the temporary JPEG once the photo has been added.
+
+        Parameters
+        ----------
+        key
+            The updated key, forwarded to the base implementation.
+        """
         self._cleanup_temp_file()
         super()._on_operation_success(key)
 
     def reject(self) -> None:
+        """Clean up the temporary JPEG before closing the dialog."""
         self._cleanup_temp_file()
         super().reject()

@@ -1,6 +1,7 @@
 """Tests for the KeyOperationDialog mixin in isolation from any real
 dialog. Each real add/set/revoke dialog's own test file also carries one
-light integration test confirming it's actually wired up correctly."""
+light integration test confirming it's actually wired up correctly.
+"""
 
 from __future__ import annotations
 
@@ -85,7 +86,8 @@ class _DummyDialog(KeyOperationDialog, QDialog):
 
 class _DummyPassphraselessDialog(KeyOperationDialog, QDialog):
     """A host dialog whose operation needs no passphrase at all (e.g.
-    ``DeleteKeyDialog``) — ``_passphrase_line_edit()`` returns ``None``."""
+    ``DeleteKeyDialog``) — ``_passphrase_line_edit()`` returns ``None``.
+    """
 
     def __init__(self, call, parent=None) -> None:
         super().__init__(parent)

@@ -13,6 +13,7 @@ class SettingsDialog(GeometryMixin, QDialog):
     """Application settings dialog."""
 
     def __init__(self, parent=None) -> None:
+        """Build the dialog, pre-filled with the current preferences."""
         super().__init__(parent)
         self._ui = Ui_SettingsDialog()
         self._ui.setupUi(self)
@@ -49,6 +50,7 @@ class SettingsDialog(GeometryMixin, QDialog):
         self._ui.buttonBox.accepted.connect(self._save_and_accept)
 
     def _save_and_accept(self) -> None:
+        """Persist every preference field's current value, then close."""
         i18n.set_language_override(self._ui.cmbLanguage.currentData())
         preferences.set_preferred_algorithm(self._ui.cmbAlgorithm.currentData())
         preferences.set_toolbar_icon_size(self._ui.cmbIconSize.currentData())

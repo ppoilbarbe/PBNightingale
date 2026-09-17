@@ -30,7 +30,9 @@ Implementation proceeds milestone by milestone; each milestone is validated
   manually) — GPG tests run against an isolated temporary `GNUPGHOME`, never
   the user's real keyring
 - Lint: ruff (line-length 88, target py314), default rule set + `I`/`PGH`/
-  `UP`/`BLE`/`S` (no explicit `select` — see pyproject.toml comment)
+  `UP`/`BLE`/`S`/`D` (no explicit `select` — see pyproject.toml comment);
+  `D` uses the `numpy` pydocstyle convention, matching this project's
+  numpydoc docstrings (see CODING.md, "Coding conventions")
 - Env: pixi (conda-forge channel only) — `make venv`
 - CI/CD: GitHub Actions (`.github/workflows/ci.yml`) + `make ci` locally
   before pushing

@@ -16,9 +16,22 @@ _cache: dict[str, tuple[str, float]] = {}
 
 
 def get(fingerprint: str) -> str | None:
-    """Return the passphrase cached for *fingerprint*, or ``None`` if
-    there isn't one or it has expired (an expired entry is dropped here,
-    the same as if it had never been cached)."""
+    """Return the passphrase cached for a key, if any.
+
+    An expired entry is dropped here, the same as if it had never been
+    cached.
+
+    Parameters
+    ----------
+    fingerprint
+        The key whose cached passphrase to look up.
+
+    Returns
+    -------
+    :
+        The cached passphrase, or ``None`` if there isn't one or it has
+        expired.
+    """
     entry = _cache.get(fingerprint)
     if entry is None:
         return None
@@ -30,11 +43,20 @@ def get(fingerprint: str) -> str | None:
 
 
 def store(fingerprint: str, passphrase: str, ttl_seconds: float) -> None:
-    """Cache *passphrase* for *fingerprint*, expiring after *ttl_seconds*.
+    """Cache a passphrase for a key, expiring after a given duration.
 
-    A non-positive *ttl_seconds* or an empty *passphrase* is a no-op:
+    A non-positive ``ttl_seconds`` or an empty ``passphrase`` is a no-op:
     caching is opted out of via a 0-minute preference, not a separate
     flag, and an empty passphrase isn't worth caching.
+
+    Parameters
+    ----------
+    fingerprint
+        The key to cache the passphrase for.
+    passphrase
+        The passphrase to cache.
+    ttl_seconds
+        How long to keep it, counted from now.
     """
     if not passphrase or ttl_seconds <= 0:
         return
@@ -42,10 +64,15 @@ def store(fingerprint: str, passphrase: str, ttl_seconds: float) -> None:
 
 
 def forget(fingerprint: str) -> None:
-    """Forget the passphrase cached for *fingerprint*, if any.
+    """Forget the passphrase cached for a key, if any.
 
     A no-op if nothing is cached for it — e.g. double-clicking the key
     list's lock icon after the entry already expired on its own.
+
+    Parameters
+    ----------
+    fingerprint
+        The key whose cached passphrase to forget.
     """
     _cache.pop(fingerprint, None)
 

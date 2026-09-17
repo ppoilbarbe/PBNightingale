@@ -1,5 +1,8 @@
-"""Add Subkey dialog — adds a sign/encrypt/authenticate subkey to a key
-already in the keyring (the key must have its secret part available)."""
+"""Add Subkey dialog.
+
+Adds a sign/encrypt/authenticate subkey to a key already in the keyring
+(the key must have its secret part available).
+"""
 
 from __future__ import annotations
 
@@ -13,7 +16,18 @@ from pbnightingale.ui.key_operation_dialog import KeyOperationDialog
 
 
 class AddSubkeyDialog(GeometryMixin, KeyOperationDialog, QDialog):
+    """Dialog for adding a subkey to an existing key."""
+
     def __init__(self, fingerprint: str, parent=None) -> None:
+        """Build the dialog for the key identified by *fingerprint*.
+
+        Parameters
+        ----------
+        fingerprint
+            The key to add the subkey to.
+        parent
+            The owning widget, if any.
+        """
         super().__init__(parent)
         self._fingerprint = fingerprint
         self._ui = Ui_AddSubkeyDialog()
@@ -31,9 +45,17 @@ class AddSubkeyDialog(GeometryMixin, KeyOperationDialog, QDialog):
         self._ui.buttonBox.rejected.connect(self.reject)
 
     def _sync_key_size_enabled(self) -> None:
+        """Enable the key-size field only for RSA (ED25519 has a fixed curve)."""
         self._ui.cmbKeySize.setEnabled(self._ui.cmbAlgorithm.currentData() == "RSA")
 
     def _set_form_enabled(self, enabled: bool) -> None:
+        """Enable or disable every form field and the OK button.
+
+        Parameters
+        ----------
+        enabled
+            Whether the fields should be interactive.
+        """
         self._ui.cmbPurpose.setEnabled(enabled)
         self._ui.cmbAlgorithm.setEnabled(enabled)
         self._ui.cmbKeySize.setEnabled(
@@ -45,6 +67,7 @@ class AddSubkeyDialog(GeometryMixin, KeyOperationDialog, QDialog):
         )
 
     def _on_add(self) -> None:
+        """Add the new subkey via the backend."""
         self._run_operation(
             lambda: gpg_backend.default_backend().add_subkey(
                 self._fingerprint,

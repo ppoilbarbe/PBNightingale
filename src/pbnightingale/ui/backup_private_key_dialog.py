@@ -1,7 +1,9 @@
-"""Back Up Private Key dialog — exports the full secret key material to a
-chosen file (unlike Export…, which only ever exports the public key).
-GnuPG requires the passphrase to do this at all — see
-``GPGBackend.export_secret_key()``."""
+"""Back Up Private Key dialog.
+
+Exports the full secret key material to a chosen file (unlike Export…,
+which only ever exports the public key). GnuPG requires the passphrase to
+do this at all — see ``GPGBackend.export_secret_key()``.
+"""
 
 from __future__ import annotations
 
@@ -17,7 +19,18 @@ from pbnightingale.ui.key_operation_dialog import KeyOperationDialog
 
 
 class BackupPrivateKeyDialog(GeometryMixin, KeyOperationDialog, QDialog):
+    """Dialog for exporting a key's full private key material to a file."""
+
     def __init__(self, key: Key, parent=None) -> None:
+        """Build the dialog for backing up *key*.
+
+        Parameters
+        ----------
+        key
+            The key to back up.
+        parent
+            The owning widget, if any.
+        """
         super().__init__(parent)
         self._fingerprint = key.fingerprint
         self._destination: str | None = None
@@ -40,10 +53,18 @@ class BackupPrivateKeyDialog(GeometryMixin, KeyOperationDialog, QDialog):
         self._ui.buttonBox.rejected.connect(self.reject)
 
     def _set_form_enabled(self, enabled: bool) -> None:
+        """Enable or disable the passphrase field and the OK button.
+
+        Parameters
+        ----------
+        enabled
+            Whether the fields should be interactive.
+        """
         self._ui.txtPassphrase.setEnabled(enabled)
         self._ok_button.setEnabled(enabled)
 
     def _on_backup(self) -> None:
+        """Prompt for a destination file, then export the secret key to it."""
         # An absolute default directory, not a bare relative filename: this
         # dialog's own suggested name resolving against the process's
         # working directory (rather than somewhere the user would expect,
@@ -69,6 +90,13 @@ class BackupPrivateKeyDialog(GeometryMixin, KeyOperationDialog, QDialog):
         )
 
     def _on_operation_result(self, armored: str) -> None:
+        """Write the exported key to the chosen destination file.
+
+        Parameters
+        ----------
+        armored
+            The ASCII-armored secret key block returned by the backend.
+        """
         try:
             Path(self._destination).write_text(armored, encoding="utf-8")
         except OSError as exc:

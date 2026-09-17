@@ -455,7 +455,8 @@ def test_uid_list_marks_the_primary_identity_with_a_checkmark(qtbot):
 
 def _make_full_key(tmp_path) -> Key:
     """A key with a UID, a photo and a subkey — for tests exercising the
-    mutual exclusivity between those three sections."""
+    mutual exclusivity between those three sections.
+    """
     jpeg = make_test_jpeg(tmp_path / "eve.jpg")
     photo = PhotoUid(index=1, image=jpeg.read_bytes(), revoked=False)
     return Key(

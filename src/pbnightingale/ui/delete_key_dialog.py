@@ -1,8 +1,11 @@
-"""Delete Key dialog — strong confirmation (a checkbox, not just a button
-click) before permanently erasing a key from the keyring. Unlike
-``RevokeKeyDialog``, this needs no passphrase (see ``GPGBackend.
-delete_key()``) and the key no longer exists at all afterwards, rather
-than merely being marked untrustworthy."""
+"""Delete Key dialog.
+
+Strong confirmation (a checkbox, not just a button click) before
+permanently erasing a key from the keyring. Unlike ``RevokeKeyDialog``,
+this needs no passphrase (see ``GPGBackend.delete_key()``) and the key no
+longer exists at all afterwards, rather than merely being marked
+untrustworthy.
+"""
 
 from __future__ import annotations
 
@@ -16,7 +19,18 @@ from pbnightingale.ui.key_operation_dialog import KeyOperationDialog
 
 
 class DeleteKeyDialog(GeometryMixin, KeyOperationDialog, QDialog):
+    """Dialog for permanently deleting a key from the keyring."""
+
     def __init__(self, key: Key, parent: QDialog | None = None) -> None:
+        """Build the dialog for deleting *key*.
+
+        Parameters
+        ----------
+        key
+            The key to delete.
+        parent
+            The owning widget, if any.
+        """
         super().__init__(parent)
         self._fingerprint = key.fingerprint
         self._has_secret = key.has_secret
@@ -39,13 +53,22 @@ class DeleteKeyDialog(GeometryMixin, KeyOperationDialog, QDialog):
         self._ui.buttonBox.rejected.connect(self.reject)
 
     def _passphrase_line_edit(self):
-        return None
+        """Return ``None`` — deleting a key never needs a passphrase."""
+        return
 
     def _set_form_enabled(self, enabled: bool) -> None:
+        """Enable or disable the confirmation checkbox and the OK button.
+
+        Parameters
+        ----------
+        enabled
+            Whether the fields should be interactive.
+        """
         self._ui.chkConfirm.setEnabled(enabled)
         self._ok_button.setEnabled(enabled and self._ui.chkConfirm.isChecked())
 
     def _on_delete(self) -> None:
+        """Delete the key via the backend."""
         self._run_operation(
             lambda: gpg_backend.default_backend().delete_key(
                 self._fingerprint, secret=self._has_secret
@@ -55,4 +78,5 @@ class DeleteKeyDialog(GeometryMixin, KeyOperationDialog, QDialog):
         )
 
     def _on_operation_result(self, _result: None) -> None:
+        """Close the dialog once the key has been deleted."""
         self.accept()

@@ -42,7 +42,7 @@ autodoc_member_order = "bysource"
 autodoc_typehints = "description"
 autodoc_typehints_format = "short"
 
-# Mock PySide6 and every generated *_ui.py module so autodoc never triggers
+# Mock PySide6 and every *_ui.py module so autodoc never triggers
 # PySide6's shibokensupport import hooks, which cause inspect.unwrap() to
 # loop on MagicMock wrappers and raise ValueError. The *_ui.py list is
 # discovered from the source tree rather than hardcoded — this app has ~25
@@ -69,7 +69,7 @@ autodoc_mock_imports = [
 # omitting it outright. See CODING.md, "Packaging & docs".
 
 napoleon_google_docstring = False
-napoleon_numpy_docstring = False
+napoleon_numpy_docstring = True
 
 # Kept True deliberately, even though api.rst uses plain
 # `.. automodule::` directives with no `.. autosummary::` tables (so this

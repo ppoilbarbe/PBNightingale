@@ -41,10 +41,12 @@ make venv   # create the pixi environment
 make run    # launch PBNightingale
 ```
 
-New to GPG, or to PBNightingale? The user manual under
-[`docs/manual/`](docs/manual/) walks through every feature above, starting
-with the underlying GPG concepts (`make docs` builds it as HTML; the
-`.rst` sources are also readable as plain text).
+New to GPG, or to PBNightingale? The user manual walks through every
+feature above, starting with the underlying GPG concepts. Read it online
+at [pbnightingale.readthedocs.io](https://pbnightingale.readthedocs.io/en/latest/)
+(also available in French), or locally under
+[`docs/manual/`](docs/manual/) (`make docs` builds it as HTML; the `.rst`
+sources are also readable as plain text).
 
 See [CODING.md](CODING.md) for the full developer setup and workflow.
 

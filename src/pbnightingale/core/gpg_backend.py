@@ -24,10 +24,11 @@ class GPGBackendError(RuntimeError):
 
 
 class BadPassphraseError(GPGBackendError):
-    """Raised when gpg rejects the passphrase for a secret-key operation
-    (add/revoke subkey). A specialization of GPGBackendError so the UI can
-    show a short, friendly message instead of gpg's full diagnostic dump —
-    see ``_is_bad_passphrase_error()``.
+    """Raised when gpg rejects the passphrase for a secret-key operation.
+
+    A specialization of GPGBackendError so the UI can show a short,
+    friendly message instead of gpg's full diagnostic dump — see
+    ``_is_bad_passphrase_error()``.
     """
 
 
@@ -57,6 +58,7 @@ _ERROR_STATUS_RE = re.compile(r"\[GNUPG:\] ERROR \S+ (\d+)")
 
 
 def _is_bad_passphrase_error(stderr: str) -> bool:
+    """Return whether *stderr* contains gpg's bad-passphrase status code."""
     return any(
         int(code) & 0xFFFF == _BAD_PASSPHRASE_CODE
         for code in _ERROR_STATUS_RE.findall(stderr)
@@ -75,6 +77,7 @@ _FAILURE_STATUS_RE = re.compile(r"\[GNUPG:\] FAILURE \S+ (\d+)")
 
 
 def _is_not_found_failure(stderr: str) -> bool:
+    """Return whether *stderr* contains gpg's not-found failure code."""
     return any(
         int(code) & 0xFFFF == _NOT_FOUND_CODE
         for code in _FAILURE_STATUS_RE.findall(stderr)
@@ -95,6 +98,7 @@ _NO_DATA_CODE = 58
 
 
 def _is_no_data_failure(stderr: str) -> bool:
+    """Return whether *stderr* contains gpg's no-data failure code."""
     return any(
         int(code) & 0xFFFF == _NO_DATA_CODE
         for code in _FAILURE_STATUS_RE.findall(stderr)
@@ -114,14 +118,25 @@ _ATTRIBUTE_REVOKED_FLAG = 0x02
 
 
 def _parse_photos(stderr: str, attribute_data: bytes) -> dict[str, list[PhotoUid]]:
-    """Split *attribute_data* (gpg's ``--attribute-file`` output) into
-    per-fingerprint photos, using *stderr*'s ``ATTRIBUTE`` status lines to
-    know each subpacket's key, size and revoked flag.
+    """Split raw attribute-file data into per-fingerprint photos.
 
     Each subpacket is an RFC 4880 "Image Attribute": a little-endian
     16-bit header length, a version byte, a format byte (1 = JPEG), 12
     reserved bytes, then the raw image — the header length is read rather
     than assumed to be 16, in case a future header version is longer.
+
+    Parameters
+    ----------
+    stderr
+        gpg's status output, whose ``ATTRIBUTE`` status lines give each
+        subpacket's key, size and revoked flag.
+    attribute_data
+        The raw bytes from gpg's ``--attribute-file`` output.
+
+    Returns
+    -------
+    :
+        ``{fingerprint: [PhotoUid, ...]}``.
     """
     photos: dict[str, list[PhotoUid]] = {}
     cursor = 0
@@ -146,23 +161,23 @@ def _parse_photos(stderr: str, attribute_data: bytes) -> dict[str, list[PhotoUid
 
 @dataclass(frozen=True)
 class Uid:
-    """A single user ID (identity) attached to a primary key.
+    """A single user ID (identity) attached to a primary key."""
 
-    ``primary`` flags gpg's currently-designated primary UID. A single-UID
-    key's only UID is trivially primary; for a key with more than one UID,
-    gpg's plain ``--list-keys`` output never exposes which one is primary
-    (that flag only shows up in ``--edit-key``'s interactive listing,
-    verified empirically — see CODING.md, "Editable user IDs"), and UID
-    listing order is *not* a reliable stand-in for it either (verified: UIDs
-    added in order A, B, C came back listed as C, A, B). So a multi-UID key
-    costs one extra ``gpg --edit-key`` subprocess call to resolve this —
-    see ``GPGBackend._load_primary_uids()``/``_primary_uid_value()`` — kept
-    cheap in aggregate by only paying it for keys that actually have more
-    than one UID.
-    """
-
+    #: The UID string itself, e.g. ``"Name (Comment) <email>"``.
     value: str
+    #: Whether this UID has been revoked.
     revoked: bool
+    #: Whether gpg currently considers this its primary UID. A single-UID
+    #: key's only UID is trivially primary; for a key with more than one
+    #: UID, gpg's plain ``--list-keys`` output never exposes which one is
+    #: primary (that flag only shows up in ``--edit-key``'s interactive
+    #: listing, verified empirically — see CODING.md, "Editable user IDs"),
+    #: and UID listing order is *not* a reliable stand-in for it either
+    #: (verified: UIDs added in order A, B, C came back listed as C, A, B).
+    #: So a multi-UID key costs one extra ``gpg --edit-key`` subprocess
+    #: call to resolve this — see ``GPGBackend._load_primary_uids()``/
+    #: ``_primary_uid_value()`` — kept cheap in aggregate by only paying it
+    #: for keys that actually have more than one UID.
     primary: bool = False
 
 
@@ -172,21 +187,36 @@ def format_uid(name: str, email: str, comment: str = "") -> str:
     Mirrors the conventional form gpg itself produces from separate
     name/comment/email fields — used both for ``GPGBackend.add_uid()`` and
     for previewing the resulting identity in the UI.
+
+    Parameters
+    ----------
+    name
+        The identity's real name.
+    email
+        The identity's email address.
+    comment
+        An optional parenthesized comment; omitted from the result
+        entirely when empty.
+
+    Returns
+    -------
+    :
+        The formatted user ID string.
     """
     return f"{name} ({comment}) <{email}>" if comment else f"{name} <{email}>"
 
 
 @dataclass(frozen=True)
 class PhotoUid:
-    """A photo (image) user attribute attached to a primary key.
+    """A photo (image) user attribute attached to a primary key."""
 
-    ``index`` is 1-based, counting only this key's photos in the order gpg
-    reports them — the identifier ``GPGBackend.revoke_photo_uid()`` needs,
-    since (unlike a text ``Uid``) a photo has no string to select it by.
-    """
-
+    #: 1-based, counting only this key's photos in the order gpg reports
+    #: them — the identifier ``GPGBackend.revoke_photo_uid()`` needs, since
+    #: (unlike a text ``Uid``) a photo has no string to select it by.
     index: int
+    #: The raw decoded image bytes (JPEG).
     image: bytes
+    #: Whether this photo has been revoked.
     revoked: bool
 
 
@@ -194,16 +224,28 @@ class PhotoUid:
 class Subkey:
     """A single subkey attached to a primary key."""
 
+    #: The subkey's short key ID.
     keyid: str
+    #: The subkey's own full fingerprint.
     fingerprint: str
+    #: The subkey's algorithm, e.g. ``"rsa4096"`` or ``"ed25519"``.
     algo: str
+    #: The subkey's length in bits (0 when not applicable, e.g. EdDSA).
     length: int
+    #: Creation date, as a Unix timestamp.
     created: int
+    #: Expiration date, as a Unix timestamp, or ``None`` if it never
+    #: expires.
     expires: int | None
+    #: This subkey's own validity/trust, gpg's one-letter colon code.
     trust: str
+    #: Whether this subkey can sign.
     can_sign: bool
+    #: Whether this subkey can encrypt.
     can_encrypt: bool
+    #: Whether this subkey can certify.
     can_certify: bool
+    #: Whether this subkey can authenticate.
     can_authenticate: bool
 
 
@@ -211,188 +253,231 @@ class Subkey:
 class NewKeyRequest:
     """Parameters for ``GPGBackend.generate_key()``.
 
-    ``algorithm`` is ``"RSA"`` or ``"ED25519"`` (EdDSA/Curve25519, the
-    modern default pairing). ``signing_subkey``/``encryption_subkey`` (both
-    ``True`` by default) each add a dedicated subkey with that usage; when
-    one is turned off, the primary key itself takes on that usage instead —
-    except encryption under ED25519, which EdDSA cannot itself provide, so
-    a dedicated Curve25519 encryption subkey is always created regardless of
-    ``encryption_subkey``. The primary key is otherwise certify-only, per
-    current best practice. Expiration is always "never" for now — expiry
-    management is milestone 11's concern.
+    Expiration is always "never" for now — expiry management is milestone
+    11's concern.
     """
 
+    #: The primary identity's real name.
     name: str
+    #: The primary identity's email address.
     email: str
+    #: An optional parenthesized comment on the primary identity.
     comment: str = ""
+    #: ``"RSA"`` or ``"ED25519"`` (EdDSA/Curve25519, the modern default
+    #: pairing).
     algorithm: str = "RSA"
+    #: The RSA key length in bits; unused for ED25519.
     key_length: int = 4096
+    #: The new key's passphrase; empty for an unprotected key.
     passphrase: str = ""
+    #: Add a dedicated signing subkey (default ``True``). When turned off,
+    #: the primary key itself takes on signing usage instead — the primary
+    #: key is otherwise certify-only, per current best practice.
     signing_subkey: bool = True
+    #: Add a dedicated encryption subkey (default ``True``). When turned
+    #: off, the primary key itself takes on encryption usage instead —
+    #: except under ED25519, which EdDSA cannot itself provide, so a
+    #: dedicated Curve25519 encryption subkey is always created regardless
+    #: of this flag.
     encryption_subkey: bool = True
 
 
-# Valid values for GPGBackend.set_owner_trust()'s *trust* argument, in
-# increasing order — gpg's own --quick-set-ownertrust keywords, verified
-# empirically (its own error message on an invalid value doesn't list them).
+#: Valid values for GPGBackend.set_owner_trust()'s *trust* argument, in
+#: increasing order — gpg's own --quick-set-ownertrust keywords, verified
+#: empirically (its own error message on an invalid value doesn't list
+#: them).
 OWNER_TRUST_LEVELS = ("undefined", "never", "marginal", "full", "ultimate")
 
-# GPGBackend.import_from_keyserver()'s default: a modern, privacy-respecting
-# keyserver (no email search, doesn't propagate third-party signatures) run
-# by the OpenPGP community — a sensible default for a fingerprint/key-ID
-# fetch when the caller doesn't ask for a specific one.
+#: GPGBackend.import_from_keyserver()'s default: a modern, privacy-respecting
+#: keyserver (no email search, doesn't propagate third-party signatures) run
+#: by the OpenPGP community — a sensible default for a fingerprint/key-ID
+#: fetch when the caller doesn't ask for a specific one.
 DEFAULT_KEYSERVER = "hkps://keys.openpgp.org"
 
 
 @dataclass(frozen=True)
 class Key:
-    """A primary key: its identity (UIDs) plus its subkeys.
+    """A primary key: its identity (UIDs) plus its subkeys."""
 
-    ``trust`` is the key's computed *validity* (how much the UID-to-key
-    binding itself is trusted, per the web of trust) — confusingly, gpg's
-    own colon output also calls this field "trust". ``owner_trust`` is a
-    different thing entirely: how much *you* trust this key's owner to
-    correctly certify *other* people's keys, a purely local judgment call
-    (see ``GPGBackend.set_owner_trust()``) that feeds back into computing
-    everyone else's validity. Both use the same one-letter codes (see
-    ``ui/key_list_view.py``'s ``_trust_label()``).
-    """
-
+    #: The key's full fingerprint.
     fingerprint: str
+    #: The key's short key ID.
     keyid: str
+    #: The primary key's algorithm, e.g. ``"rsa4096"`` or ``"ed25519"``.
     algo: str
+    #: The primary key's length in bits (0 when not applicable, e.g.
+    #: EdDSA).
     length: int
+    #: Creation date, as a Unix timestamp.
     created: int
+    #: Expiration date, as a Unix timestamp, or ``None`` if it never
+    #: expires.
     expires: int | None
+    #: The key's computed *validity* — how much the UID-to-key binding
+    #: itself is trusted, per the web of trust (gpg's one-letter colon
+    #: code). Confusingly, gpg's own colon output also calls this field
+    #: "trust"; see ``ui/key_list_view.py``'s ``_trust_label()`` for the
+    #: code-to-label mapping.
     trust: str
+    #: How much *you* trust this key's owner to correctly certify *other*
+    #: people's keys — a purely local judgment call (see
+    #: ``GPGBackend.set_owner_trust()``) that feeds back into computing
+    #: everyone else's validity. A different thing entirely from ``trust``
+    #: above, despite sharing the same one-letter codes.
     owner_trust: str
+    #: This key's text user IDs.
     uids: list[Uid]
+    #: This key's photo user IDs.
     photos: list[PhotoUid]
+    #: This key's subkeys.
     subkeys: list[Subkey]
+    #: Whether the secret part of this key is held in this keyring.
     has_secret: bool
+    #: Whether the primary key itself can sign.
     can_sign: bool
+    #: Whether the primary key itself can encrypt.
     can_encrypt: bool
+    #: Whether the primary key itself can certify.
     can_certify: bool
+    #: Whether the primary key itself can authenticate.
     can_authenticate: bool
 
 
 @dataclass(frozen=True)
 class SearchResult:
-    """One hit from ``GPGBackend.search_keyserver()`` — enough to show a
-    candidate in a picker; once chosen, it's imported by fingerprint
-    through the already-exact ``import_from_keyserver()``.
+    """One hit from ``GPGBackend.search_keyserver()``.
+
+    Enough to show a candidate in a picker; once chosen, it's imported by
+    fingerprint through the already-exact ``import_from_keyserver()``.
     """
 
+    #: The candidate's fingerprint (or, depending on the keyserver, only
+    #: its key ID).
     fingerprint: str
+    #: The candidate's user IDs, as raw strings.
     uids: list[str]
+    #: The candidate's algorithm.
     algo: str
+    #: The candidate's length in bits.
     length: int
+    #: Creation date, as a Unix timestamp.
     created: int
 
 
 @dataclass(frozen=True)
 class ImportedKey:
-    """One key produced by ``import_from_keyserver()``/``import_from_file()``,
-    plus whether it was absent from the keyring before this import (an
-    entirely new key) as opposed to already present. gpg's import is a
-    merge, so re-importing a key already in the keyring can still pick up
-    new signatures/UIDs/subkeys without counting as "new" here — both
-    cases report as already present, since there's no cheap way to tell
-    "genuinely unchanged" from "merged something" apart without special-
-    casing gpg's own per-import-source result shapes (the WKD/email path
-    doesn't expose one at all — see ``import_from_keyserver()``).
+    """One key produced by ``import_from_keyserver()``/``import_from_file()``.
+
+    gpg's import is a merge, so re-importing a key already in the keyring
+    can still pick up new signatures/UIDs/subkeys without counting as
+    "new" here — both cases report as already present, since there's no
+    cheap way to tell "genuinely unchanged" from "merged something" apart
+    without special-casing gpg's own per-import-source result shapes (the
+    WKD/email path doesn't expose one at all — see
+    ``import_from_keyserver()``).
     """
 
+    #: The imported key, as it now stands in the keyring.
     key: Key
+    #: Whether this key was absent from the keyring before this import (an
+    #: entirely new key) as opposed to already present.
     is_new: bool
 
 
 @dataclass(frozen=True)
 class RefreshedKey:
-    """One key produced by ``refresh_from_keyserver()``, plus whether
-    anything about it actually changed.
+    """One key produced by ``refresh_from_keyserver()``."""
 
-    ``updated`` is computed by comparing the full ``Key`` snapshot before
-    and after the refresh (frozen dataclasses compare structurally, deep
-    through ``uids``/``photos``/``subkeys``) — this catches a new/revoked
-    UID, a new subkey, a changed expiration or a validity change, but
-    *not* a certification (signature) added by someone else that doesn't
-    itself change any of those fields: same "no cheap way to tell
-    genuinely unchanged from merged something apart" limitation already
-    documented on ``ImportedKey`` above, just via a different mechanism
-    (gpg's own per-import status reasons are exactly as ambiguous here).
-    """
-
+    #: The key, as it now stands in the keyring after the refresh.
     key: Key
+    #: Whether anything about the key actually changed. Computed by
+    #: comparing the full ``Key`` snapshot before and after the refresh
+    #: (frozen dataclasses compare structurally, deep through
+    #: ``uids``/``photos``/``subkeys``) — this catches a new/revoked UID,
+    #: a new subkey, a changed expiration or a validity change, but *not*
+    #: a certification (signature) added by someone else that doesn't
+    #: itself change any of those fields: same "no cheap way to tell
+    #: genuinely unchanged from merged something apart" limitation already
+    #: documented on ``ImportedKey`` above, just via a different mechanism
+    #: (gpg's own per-import status reasons are exactly as ambiguous
+    #: here).
     updated: bool
 
 
 @dataclass(frozen=True)
 class KeySignature:
-    """One certification found on a key's own user IDs, as reported by
-    ``GPGBackend.list_key_signatures()`` (``gpg --list-sigs``).
+    """One certification found on a key's own user IDs.
 
-    ``fingerprint`` comes straight from the signature packet's own "Issuer
-    Fingerprint" subpacket — colon field 13 of the ``sig`` record — which
-    GnuPG has embedded in every signature it makes since 2.1, regardless
-    of whether the signing key is still present in the local keyring
-    (verified empirically: deleting the signer from the keyring entirely
-    still leaves this field populated). It's ``None`` only for a signature
-    old enough to predate that subpacket, leaving ``keyid`` (the classic
-    16-character long key ID) as the sole identifier. ``key`` is the
-    matching local ``Key`` when the signer is already in the keyring,
-    ``None`` otherwise. Self-certifications (the key signing its own user
+    As reported by ``GPGBackend.list_key_signatures()`` (``gpg
+    --list-sigs``). Self-certifications (the key signing its own user
     IDs) are excluded by ``list_key_signatures()``, not represented here.
     """
 
+    #: The signing key's classic 16-character long key ID.
     keyid: str
+    #: The signing key's full fingerprint, read straight from the
+    #: signature packet's own "Issuer Fingerprint" subpacket — colon field
+    #: 13 of the ``sig`` record — which GnuPG has embedded in every
+    #: signature it makes since 2.1, regardless of whether the signing key
+    #: is still present in the local keyring (verified empirically:
+    #: deleting the signer from the keyring entirely still leaves this
+    #: field populated). ``None`` only for a signature old enough to
+    #: predate that subpacket, leaving ``keyid`` as the sole identifier.
     fingerprint: str | None
+    #: The matching local ``Key`` when the signer is already in the
+    #: keyring, ``None`` otherwise.
     key: Key | None
 
 
 @dataclass(frozen=True)
 class DownloadedSignature:
-    """One signer key ``GPGBackend.download_unknown_signatures()`` tried to
-    fetch from a keyserver, keyed by the *identifier* it was requested
-    with (a ``KeySignature``'s ``fingerprint``, or its bare ``keyid`` when
-    no fingerprint was available). ``key`` is populated on success,
-    ``None`` when the keyserver has no such key.
-    """
+    """One signer key fetch attempted by ``download_unknown_signatures()``."""
 
+    #: The identifier this fetch was requested with — a ``KeySignature``'s
+    #: ``fingerprint``, or its bare ``keyid`` when no fingerprint was
+    #: available.
     identifier: str
+    #: The fetched key on success, ``None`` when the keyserver has no such
+    #: key.
     key: Key | None
 
 
 @dataclass(frozen=True)
 class ImportPreview:
-    """One key that WOULD be imported by ``commit_import_from_file()``/
-    ``commit_import_from_keyserver()``, for the caller to show the user
-    before anything is actually committed to the real keyring.
+    """One key that WOULD be imported, shown to the user for approval.
 
-    Deliberately lighter than ``Key``/``ImportedKey`` — just enough for
-    the user to recognize and approve/reject a candidate (identities,
-    full key ID, fingerprint, and whether it's already in the keyring).
+    Produced by ``commit_import_from_file()``/
+    ``commit_import_from_keyserver()`` before anything is actually
+    committed to the real keyring. Deliberately lighter than
+    ``Key``/``ImportedKey`` — just enough for the user to recognize and
+    approve/reject a candidate (identities, full key ID, fingerprint, and
+    whether it's already in the keyring).
     """
 
+    #: The candidate's full fingerprint.
     fingerprint: str
+    #: The candidate's short key ID.
     keyid: str
+    #: The candidate's user IDs, as raw strings.
     uids: list[str]
+    #: Whether this key is absent from the keyring (an entirely new key)
+    #: as opposed to already present.
     is_new: bool
 
 
 def _int_or_none(value: str) -> int | None:
+    """Return *value* parsed as an int, or ``None`` if it's empty."""
     return int(value) if value else None
 
 
 def _decode_hkp_uid(uid: str) -> str:
-    """Percent-decode a user ID coming from a keyserver's ``--search-keys``
-    index listing.
+    r"""Percent-decode a user ID from a keyserver's index listing.
 
     The HKP index format (RFC draft, ``op=index``) percent-encodes the uid
     field (e.g. a space as ``%20``, ``<``/``>`` as ``%3C``/``%3E``) like a
     URL component; gpg passes it straight through on its `uid` status line
     without decoding it, and python-gnupg's own uid parsing only handles
-    gpg's *other* colon-format escapes (``\\xHH``, ``\\:``), not this one —
+    gpg's *other* colon-format escapes (``\xHH``, ``\:``), not this one —
     so without this, search results show the raw encoded text.
     """
     return urllib.parse.unquote(uid)
@@ -410,11 +495,13 @@ _COLON_BASIC_ESCAPES = {
 
 
 def _unescape_colon_field(value: str) -> str:
-    """Undo gpg's ``--with-colons`` string escaping (``\\xHH`` hex escapes
-    plus a handful of named ones for control characters) — mirrors
-    python-gnupg's own internal ``SearchKeys.uid()`` handling, needed here
-    because ``_primary_uid_value()`` reads gpg's raw colon output directly
-    via ``subprocess`` rather than through python-gnupg's own wrapper.
+    r"""Undo gpg's ``--with-colons`` string escaping.
+
+    ``\xHH`` hex escapes plus a handful of named ones for control
+    characters — mirrors python-gnupg's own internal
+    ``SearchKeys.uid()`` handling, needed here because
+    ``_primary_uid_value()`` reads gpg's raw colon output directly via
+    ``subprocess`` rather than through python-gnupg's own wrapper.
     """
     value = _COLON_HEX_ESCAPE_RE.sub(lambda m: chr(int(m.group(1), 16)), value)
     for escaped, actual in _COLON_BASIC_ESCAPES.items():
@@ -423,16 +510,43 @@ def _unescape_colon_field(value: str) -> str:
 
 
 def _has_capability(cap: str, letter: str) -> bool:
-    """Return True if *letter* (s/e/c/a) appears in *cap*, in either case.
+    """Return whether a capability letter appears in a ``cap`` field.
 
-    python-gnupg's ``cap`` field concatenates the potential (lowercase) and
-    usable (uppercase) capability letters, e.g. ``"escarESCA"``. Any casing
-    of the letter being present is enough to consider the capability offered.
+    Checked case-insensitively. python-gnupg's ``cap`` field concatenates
+    the potential (lowercase) and usable (uppercase) capability letters,
+    e.g. ``"escarESCA"``. Any casing of the letter being present is
+    enough to consider the capability offered.
+
+    Parameters
+    ----------
+    cap
+        The raw ``cap`` field to check.
+    letter
+        The capability letter to look for (``s``/``e``/``c``/``a``).
+
+    Returns
+    -------
+    :
+        Whether *letter* appears in *cap*.
     """
     return letter in cap.lower()
 
 
 def _parse_subkey(keyid: str, info: dict) -> Subkey:
+    """Build a ``Subkey`` from python-gnupg's raw per-subkey info dict.
+
+    Parameters
+    ----------
+    keyid
+        The subkey's short key ID.
+    info
+        python-gnupg's ``subkey_info`` entry for this key ID.
+
+    Returns
+    -------
+    :
+        The parsed subkey.
+    """
     return Subkey(
         keyid=keyid,
         fingerprint=info.get("fingerprint", ""),
@@ -451,17 +565,32 @@ def _parse_subkey(keyid: str, info: dict) -> Subkey:
 def _parse_uids(
     raw_uids: list[str], uid_map: dict[str, dict], primary_value: str | None
 ) -> list[Uid]:
-    # uid_map (python-gnupg's ListKeys.uid_map) is keyed by raw UID string
-    # across the *whole* listing, not scoped per key — a byte-identical UID
-    # string on two different keys in the same keyring would collide here.
-    # Harmless in practice (worst case: a wrong revoked flag on that rare
-    # shared string) and there is no other public API to get per-UID
-    # validity out of python-gnupg.
-    #
-    # A single-UID key's only UID is trivially primary (primary_value is
-    # never even looked up for those — see _load_primary_uids()); for a
-    # multi-UID key, only the one matching the resolved primary_value is
-    # flagged (none are, if resolving it failed for some reason).
+    """Build this key's ``Uid`` list from python-gnupg's raw uid data.
+
+    Parameters
+    ----------
+    raw_uids
+        This key's raw UID strings, in gpg's own listing order.
+    uid_map
+        python-gnupg's ``ListKeys.uid_map``, keyed by raw UID string
+        across the *whole* listing, not scoped per key — a byte-identical
+        UID string on two different keys in the same keyring would
+        collide here. Harmless in practice (worst case: a wrong revoked
+        flag on that rare shared string) and there is no other public API
+        to get per-UID validity out of python-gnupg.
+    primary_value
+        The UID string gpg currently considers primary, or ``None`` — see
+        ``GPGBackend._primary_uid_value()``. A single-UID key's only UID
+        is trivially primary (this is never even looked up for those —
+        see ``GPGBackend._load_primary_uids()``); for a multi-UID key,
+        only the one matching this value is flagged (none are, if
+        resolving it failed for some reason).
+
+    Returns
+    -------
+    :
+        The parsed UIDs, in the same order as *raw_uids*.
+    """
     single = len(raw_uids) == 1
     return [
         Uid(
@@ -481,6 +610,29 @@ def _parse_key(
     photos: dict[str, list[PhotoUid]],
     primary_uids: dict[str, str],
 ) -> Key:
+    """Build a ``Key`` from python-gnupg's raw per-key listing entry.
+
+    Parameters
+    ----------
+    entry
+        python-gnupg's raw listing entry for this key.
+    has_secret
+        Whether this key's secret part is held in this keyring.
+    uid_map
+        python-gnupg's ``ListKeys.uid_map`` for the whole listing — see
+        ``_parse_uids()``.
+    photos
+        ``{fingerprint: [PhotoUid, ...]}`` for the whole keyring — see
+        ``GPGBackend._load_photos()``.
+    primary_uids
+        ``{fingerprint: primary_uid_value}`` for keys with more than one
+        UID — see ``GPGBackend._load_primary_uids()``.
+
+    Returns
+    -------
+    :
+        The parsed key.
+    """
     subkey_info: dict = entry.get("subkey_info", {})
     subkeys = [
         _parse_subkey(keyid, info)
@@ -511,9 +663,22 @@ def _parse_key(
 
 
 def _algo_spec(algorithm: str, key_length: int) -> tuple[dict, str, str, bool]:
-    """Return (primary ``gen_key_input`` kwargs, sign-subkey algorithm,
-    encrypt-subkey algorithm, whether encryption *must* be a dedicated
-    subkey) for *algorithm* (``"RSA"`` or ``"ED25519"``).
+    """Return the key-generation parameters for a primary key/algorithm pair.
+
+    Parameters
+    ----------
+    algorithm
+        ``"RSA"`` or ``"ED25519"``.
+    key_length
+        The RSA key length in bits; unused for ED25519.
+
+    Returns
+    -------
+    :
+        A 4-tuple: the primary key's ``gen_key_input`` kwargs, the
+        signing-subkey algorithm, the encryption-subkey algorithm, and
+        whether encryption *must* be a dedicated subkey (true for
+        ED25519, whose EdDSA primary key cannot itself encrypt).
     """
     if algorithm == "ED25519":
         return (
@@ -531,13 +696,7 @@ def _algo_spec(algorithm: str, key_length: int) -> tuple[dict, str, str, bool]:
 
 
 class GPGBackend:
-    """Wraps a single GNUPGHOME and exposes the key operations the GUI needs.
-
-    *gnupghome* must always be an isolated directory in tests — never the
-    real user's keyring. Passing ``None`` uses GnuPG's own default
-    (``~/.gnupg`` or platform equivalent), which is what the running application
-    does in production.
-    """
+    """Wraps a single GNUPGHOME and exposes the key operations the GUI needs."""
 
     def __init__(
         self,
@@ -545,6 +704,27 @@ class GPGBackend:
         *,
         gpgbinary: str | None = None,
     ) -> None:
+        """Wrap the GNUPGHOME at *gnupghome*.
+
+        Parameters
+        ----------
+        gnupghome
+            The GNUPGHOME directory to use — always an isolated directory
+            in tests, never the real user's keyring. Passing ``None``
+            (the default) uses GnuPG's own default (``~/.gnupg`` or
+            platform equivalent), which is what the running application
+            does in production. Created with ``0o700`` permissions if it
+            doesn't exist yet.
+        gpgbinary
+            The ``gpg`` executable to use; ``None`` lets python-gnupg
+            resolve it from ``PATH``.
+
+        Raises
+        ------
+        GPGBackendError
+            If the underlying ``gnupg.GPG`` wrapper cannot be
+            initialized.
+        """
         home = Path(gnupghome) if gnupghome is not None else None
         if home is not None:
             home.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -560,17 +740,30 @@ class GPGBackend:
 
     @property
     def home(self) -> str | None:
+        """The backend's GNUPGHOME, or ``None`` for GnuPG's own default."""
         return self._gpg.gnupghome
 
     def _homedir_args(self) -> list[str]:
-        # self._gpg.gnupghome is None in production (no configure() override):
-        # gpg then uses its own platform default homedir, which python-gnupg
-        # never resolves to an actual path — passing None straight through to
-        # subprocess.run() would raise a TypeError, so omit --homedir entirely
-        # (mirrors python-gnupg's own make_args()).
+        """Return the ``--homedir`` argument list for a direct subprocess call.
+
+        Returns
+        -------
+        :
+            ``["--homedir", <path>]``, or ``[]`` when ``self._gpg.gnupghome``
+            is ``None`` (production, no ``configure()`` override): gpg then
+            uses its own platform default homedir, which python-gnupg never
+            resolves to an actual path — passing ``None`` straight through
+            to ``subprocess.run()`` would raise a ``TypeError``, so
+            ``--homedir`` is omitted entirely (mirrors python-gnupg's own
+            ``make_args()``).
+        """
         return ["--homedir", self._gpg.gnupghome] if self._gpg.gnupghome else []
 
     def _restart_agent(self) -> None:
+        """Kill the running ``gpg-agent``.
+
+        The next call needing it starts a fresh one.
+        """
         subprocess.run(  # noqa: S603
             ["gpgconf", *self._homedir_args(), "--kill", "gpg-agent"],  # noqa: S607
             capture_output=True,
@@ -579,13 +772,15 @@ class GPGBackend:
         )
 
     def _clear_agent_passphrase_cache(self) -> None:
-        # RELOADAGENT (not _restart_agent()'s `gpgconf --kill`) flushes
-        # gpg-agent's passphrase cache in place, synchronously — a kill is
-        # asynchronous and can race the very next gpg call into reusing the
-        # not-yet-dead agent's still-cached passphrase (verified
-        # empirically). Only change_passphrase() needs this: every other
-        # secret-key operation here is unaffected by (or actively benefits
-        # from) an already-unlocked key.
+        """Flush gpg-agent's passphrase cache in place, synchronously.
+
+        Uses ``RELOADAGENT`` rather than ``_restart_agent()``'s ``gpgconf
+        --kill``: a kill is asynchronous and can race the very next gpg
+        call into reusing the not-yet-dead agent's still-cached passphrase
+        (verified empirically). Only ``change_passphrase()`` needs this:
+        every other secret-key operation here is unaffected by (or
+        actively benefits from) an already-unlocked key.
+        """
         subprocess.run(  # noqa: S603
             ["gpg-connect-agent", *self._homedir_args(), "RELOADAGENT", "/bye"],  # noqa: S607
             capture_output=True,
@@ -594,9 +789,20 @@ class GPGBackend:
         )
 
     def _run_with_agent_retry(self, call):
-        """Run *call* (returning a python-gnupg result with a ``fingerprint``
-        and a ``stderr``); on a stale-agent version mismatch, restart the
-        agent and retry once — see ``_AGENT_VERSION_MISMATCH_MARKER``.
+        """Run *call*, retrying once on a stale-agent version mismatch.
+
+        Parameters
+        ----------
+        call
+            A zero-argument callable returning a python-gnupg result with
+            a ``fingerprint`` and a ``stderr`` attribute.
+
+        Returns
+        -------
+        :
+            *call*'s result — retried once, restarting the agent first, if
+            the first attempt failed with a stale-agent version mismatch
+            (see ``_AGENT_VERSION_MISMATCH_MARKER``).
         """
         result = call()
         if not result.fingerprint and _AGENT_VERSION_MISMATCH_MARKER in (
@@ -684,13 +890,15 @@ class GPGBackend:
         return _parse_photos(result.stderr, attribute_data)
 
     def _load_primary_uids(self, raw) -> dict[str, str]:
-        """Return ``{fingerprint: primary_uid_value}``, computed only for
-        keys with more than one UID — see ``Uid.primary``'s docstring for
-        why a single-UID key never needs this. Unlike ``_load_photos()``,
-        this can't be done in one pass over the whole keyring: the primary
-        flag only appears in ``--edit-key``'s own listing, which is
-        inherently per-key, so this costs one ``gpg`` subprocess call for
-        each key that actually has more than one identity.
+        """Return ``{fingerprint: primary_uid_value}`` for multi-UID keys.
+
+        Computed only for keys with more than one UID — see
+        ``Uid.primary``'s docstring for why a single-UID key never needs
+        this. Unlike ``_load_photos()``, this can't be done in one pass
+        over the whole keyring: the primary flag only appears in
+        ``--edit-key``'s own listing, which is inherently per-key, so
+        this costs one ``gpg`` subprocess call for each key that actually
+        has more than one identity.
         """
         return {
             entry["fingerprint"]: value
@@ -701,12 +909,12 @@ class GPGBackend:
         }
 
     def _primary_uid_value(self, fingerprint: str) -> str | None:
-        """Return the exact UID string gpg currently considers primary for
-        *fingerprint*, or ``None`` if it can't be determined.
+        """Return the exact UID string gpg currently considers primary.
 
-        Scripted the same way as the photo-revoked-flag lookup right above
-        this class's other ``--edit-key`` uses (``list``/``quit``, no
-        passphrase needed for a read-only listing): the ``uid`` colon
+        ``None`` if it can't be determined. Scripted the same way as the
+        photo-revoked-flag lookup right above this class's other
+        ``--edit-key`` uses (``list``/``quit``, no passphrase needed for
+        a read-only listing): the ``uid`` colon
         record's second-to-last field holds ``"<rank>,p"`` for the primary
         UID and just ``"<rank>,"`` for the others (verified empirically —
         undocumented in gpg's own doc/DETAILS, which only spells out the
@@ -746,10 +954,25 @@ class GPGBackend:
         return None
 
     def generate_key(self, request: NewKeyRequest) -> Key:
-        """Generate a new personal key per *request* and return it.
+        """Generate a new personal key and return it.
 
         Blocking (can take a noticeable time for large key sizes) — always
         run via ``ui/gpg_worker.run_async``, never on the GUI thread.
+
+        Parameters
+        ----------
+        request
+            The key to generate.
+
+        Returns
+        -------
+        :
+            The newly generated key.
+
+        Raises
+        ------
+        GPGBackendError
+            If gpg failed to generate the primary key.
         """
         primary_kwargs, sign_algo, encrypt_algo, encryption_forced = _algo_spec(
             request.algorithm, request.key_length
@@ -796,10 +1019,25 @@ class GPGBackend:
     ) -> Key:
         """Add a new subkey to an existing (secret) key and return it updated.
 
-        *usage* is ``"sign"``, ``"encrypt"`` or ``"auth"``. *algorithm* is
-        ``"RSA"`` or ``"ED25519"`` — for ED25519 the actual curve is picked
-        from *usage* (EdDSA for sign/auth, Curve25519 for encrypt, since
-        EdDSA itself cannot encrypt).
+        Parameters
+        ----------
+        fingerprint
+            The primary key to add the subkey to.
+        passphrase
+            Unlocks the primary key's secret part.
+        usage
+            ``"sign"``, ``"encrypt"`` or ``"auth"``.
+        algorithm
+            ``"RSA"`` or ``"ED25519"`` — for ED25519 the actual curve is
+            picked from *usage* (EdDSA for sign/auth, Curve25519 for
+            encrypt, since EdDSA itself cannot encrypt).
+        key_length
+            The RSA key length in bits; unused for ED25519.
+
+        Returns
+        -------
+        :
+            The key, updated with the new subkey.
         """
         if algorithm == "ED25519":
             raw_algorithm = "cv25519" if usage == "encrypt" else "ed25519"
@@ -811,10 +1049,31 @@ class GPGBackend:
     def _add_subkey(
         self, fingerprint: str, passphrase: str, algorithm: str, usage: str
     ) -> None:
-        # master_passphrase must be a string, never None, even when empty:
-        # python-gnupg only enables --pinentry-mode loopback when the value
-        # is not None, and an unprotected primary key still needs that mode
-        # to add a subkey without an interactive pinentry program available.
+        """Add a subkey to *fingerprint*, in gpg's own raw algorithm/usage form.
+
+        Parameters
+        ----------
+        fingerprint
+            The primary key to add the subkey to.
+        passphrase
+            Unlocks the primary key's secret part. Must be a string,
+            never ``None``, even when empty: python-gnupg only enables
+            ``--pinentry-mode loopback`` when the value is not ``None``,
+            and an unprotected primary key still needs that mode to add a
+            subkey without an interactive pinentry program available.
+        algorithm
+            gpg's own raw algorithm string, e.g. ``"rsa4096"`` or
+            ``"ed25519"``.
+        usage
+            ``"sign"``, ``"encrypt"`` or ``"auth"``.
+
+        Raises
+        ------
+        BadPassphraseError
+            If *passphrase* is wrong.
+        GPGBackendError
+            On any other failure.
+        """
         result = self._run_with_agent_retry(
             lambda: self._gpg.add_subkey(
                 master_key=fingerprint,
@@ -859,15 +1118,6 @@ class GPGBackend:
         for the new passphrase instead. Verified empirically against a real
         agent; see CODING.md, "Changing a key's passphrase".
 
-        Only meaningful for a key that is *already* passphrase-protected —
-        this dialog always asks for the current passphrase first, which
-        presupposes one exists. Verified empirically: unlike ``--edit-key``'s
-        ``passwd`` sub-command, ``--change-passphrase`` silently does
-        nothing when *fingerprint* currently has no protection at all
-        (``old_passphrase`` would be ``""`` with nothing to actually check),
-        even though it reports success — it is not a substitute for a
-        "protect this bare key" operation.
-
         A *correct* old passphrase always takes exactly two prompts
         (old, then new) no matter how many subkeys the key has — gpg
         unlocks the primary key once and reuses that for every subkey via
@@ -889,6 +1139,34 @@ class GPGBackend:
         is reached: gpg simply stops reading and exits without consuming
         them, exactly like the trailing ``save`` line below (not a
         ``--edit-key`` REPL command — verified unread even today).
+
+        Parameters
+        ----------
+        fingerprint
+            The key whose passphrase is being changed.
+        old_passphrase
+            The key's current passphrase. Only meaningful for a key that
+            is *already* passphrase-protected — this presupposes one
+            exists. Verified empirically: unlike ``--edit-key``'s
+            ``passwd`` sub-command, ``--change-passphrase`` silently does
+            nothing when *fingerprint* currently has no protection at all
+            (*old_passphrase* would be ``""`` with nothing to actually
+            check), even though it reports success — it is not a
+            substitute for a "protect this bare key" operation.
+        new_passphrase
+            The key's new passphrase.
+
+        Returns
+        -------
+        :
+            The key, unchanged except for its new passphrase.
+
+        Raises
+        ------
+        BadPassphraseError
+            If *old_passphrase* is wrong.
+        GPGBackendError
+            On any other failure.
         """
         self._clear_agent_passphrase_cache()
         retries = f"{old_passphrase}\n" * _MAX_SECRET_KEY_PARTS
@@ -929,13 +1207,34 @@ class GPGBackend:
     def revoke_subkey(
         self, fingerprint: str, subkey_keyid: str, passphrase: str
     ) -> Key:
-        """Revoke one subkey of the key identified by *fingerprint*.
+        """Revoke one subkey of a key.
 
         Irreversible — the caller must already have obtained a strong
         confirmation from the user before calling this. python-gnupg has no
         wrapper for subkey revocation, so this drives ``gpg --edit-key``
         directly over its `--command-fd`/`--status-fd` scripting protocol
         (verified empirically; see CODING.md — "Subkey management").
+
+        Parameters
+        ----------
+        fingerprint
+            The primary key owning the subkey.
+        subkey_keyid
+            The subkey to revoke, by its short key ID.
+        passphrase
+            Unlocks the primary key's secret part.
+
+        Returns
+        -------
+        :
+            The key, updated with the subkey now revoked.
+
+        Raises
+        ------
+        BadPassphraseError
+            If *passphrase* is wrong.
+        GPGBackendError
+            On any other failure.
         """
         script = f"key {subkey_keyid}\nrevkey\ny\n0\n\ny\n{passphrase}\nsave\n"
 
@@ -977,14 +1276,33 @@ class GPGBackend:
         return self._find_key(fingerprint)
 
     def revoke_key(self, fingerprint: str, passphrase: str) -> Key:
-        """Revoke the primary key identified by *fingerprint* itself — not
-        one of its subkeys (see ``revoke_subkey()``).
+        """Revoke a primary key itself — not one of its subkeys.
 
-        Irreversible — the caller must already have obtained a strong
-        confirmation from the user before calling this. Same
-        ``--edit-key`` scripting as ``revoke_subkey()``, minus the leading
-        ``key <keyid>`` selection: with no subkey selected, ``revkey``
-        targets the primary key instead (verified empirically).
+        See ``revoke_subkey()`` for the latter. Irreversible — the caller
+        must already have obtained a strong confirmation from the user
+        before calling this. Same ``--edit-key`` scripting as
+        ``revoke_subkey()``, minus the leading ``key <keyid>`` selection:
+        with no subkey selected, ``revkey`` targets the primary key
+        instead (verified empirically).
+
+        Parameters
+        ----------
+        fingerprint
+            The key to revoke.
+        passphrase
+            Unlocks the key's secret part.
+
+        Returns
+        -------
+        :
+            The key, now revoked.
+
+        Raises
+        ------
+        BadPassphraseError
+            If *passphrase* is wrong.
+        GPGBackendError
+            On any other failure.
         """
         script = f"revkey\ny\n0\n\ny\n{passphrase}\nsave\n"
 
@@ -1021,16 +1339,30 @@ class GPGBackend:
         return self._find_key(fingerprint)
 
     def delete_key(self, fingerprint: str, *, secret: bool) -> None:
-        """Permanently remove *fingerprint* from the keyring — unlike
-        ``revoke_key()``, which keeps the (now untrustworthy) key around,
-        this actually erases the key material, public and (if *secret*)
-        private alike. Irreversible — the caller must already have
-        obtained a strong confirmation from the user before calling this.
+        """Permanently remove a key from the keyring.
+
+        Unlike ``revoke_key()``, which keeps the (now untrustworthy) key
+        around, this actually erases the key material, public and (if
+        *secret*) private alike. Irreversible — the caller must already
+        have obtained a strong confirmation from the user before calling
+        this.
 
         No passphrase needed: deleting is a local keyring-management
         operation, not a cryptographic one, so GnuPG never asks to unlock
         the secret key for it (unlike revoking, which must produce a
         valid signature).
+
+        Parameters
+        ----------
+        fingerprint
+            The key to delete.
+        secret
+            Also erase the secret key material, not just the public part.
+
+        Raises
+        ------
+        GPGBackendError
+            If gpg failed to delete the key.
         """
         command = "--delete-secret-and-public-key" if secret else "--delete-keys"
         result = subprocess.run(  # noqa: S603
@@ -1060,26 +1392,76 @@ class GPGBackend:
         email: str,
         comment: str = "",
     ) -> Key:
-        """Add a new user ID (identity) to an existing (secret) key."""
+        """Add a new user ID (identity) to an existing (secret) key.
+
+        Parameters
+        ----------
+        fingerprint
+            The key to add the identity to.
+        passphrase
+            Unlocks the key's secret part.
+        name
+            The identity's real name.
+        email
+            The identity's email address.
+        comment
+            An optional parenthesized comment on the identity.
+
+        Returns
+        -------
+        :
+            The key, updated with the new user ID.
+        """
         uid = format_uid(name, email, comment)
         self._run_quick_command("--quick-add-uid", fingerprint, passphrase, uid)
         return self._find_key(fingerprint)
 
     def set_primary_uid(self, fingerprint: str, passphrase: str, uid: str) -> Key:
-        """Flag *uid* (an existing UID's exact string) as the primary
-        identity of the key identified by *fingerprint*."""
+        """Flag an existing user ID as a key's primary identity.
+
+        Parameters
+        ----------
+        fingerprint
+            The key to update.
+        passphrase
+            Unlocks the key's secret part.
+        uid
+            The user ID to flag as primary, by its exact string.
+
+        Returns
+        -------
+        :
+            The key, updated with the new primary user ID.
+        """
         self._run_quick_command("--quick-set-primary-uid", fingerprint, passphrase, uid)
         return self._find_key(fingerprint)
 
     def revoke_uid(self, fingerprint: str, passphrase: str, uid: str) -> Key:
-        """Revoke *uid* (an existing UID's exact string) on the key
-        identified by *fingerprint*.
+        """Revoke a user ID on a key.
 
         Irreversible — the caller must already have obtained a strong
-        confirmation from the user before calling this. gpg itself refuses
-        to revoke the last non-revoked UID on a key (raised as a plain
-        ``GPGBackendError``); the UI should disable this action in that case
-        rather than let the user hit that wall.
+        confirmation from the user before calling this.
+
+        Parameters
+        ----------
+        fingerprint
+            The key owning the user ID.
+        passphrase
+            Unlocks the key's secret part.
+        uid
+            The user ID to revoke, by its exact string.
+
+        Returns
+        -------
+        :
+            The key, updated with the user ID now revoked.
+
+        Raises
+        ------
+        GPGBackendError
+            On any failure — including gpg's own refusal to revoke the
+            last non-revoked UID on a key; the UI should disable this
+            action in that case rather than let the user hit that wall.
         """
         self._run_quick_command("--quick-revoke-uid", fingerprint, passphrase, uid)
         return self._find_key(fingerprint)
@@ -1087,11 +1469,25 @@ class GPGBackend:
     def set_key_expiration(self, fingerprint: str, passphrase: str, expire: str) -> Key:
         """Set the primary key's own expiration.
 
-        *expire* follows gpg's own ``--quick-set-expire`` syntax: ``"0"``
-        for no expiration, ``"<n>d"``/``"w"``/``"m"``/``"y"`` for a relative
-        duration from now, or an absolute ``"YYYY-MM-DD"`` date. Leaves
-        every subkey's own expiration untouched — verified empirically,
-        see CODING.md, "Expiration dates".
+        Leaves every subkey's own expiration untouched — verified
+        empirically, see CODING.md, "Expiration dates".
+
+        Parameters
+        ----------
+        fingerprint
+            The key to update.
+        passphrase
+            Unlocks the key's secret part.
+        expire
+            Follows gpg's own ``--quick-set-expire`` syntax: ``"0"`` for
+            no expiration, ``"<n>d"``/``"w"``/``"m"``/``"y"`` for a
+            relative duration from now, or an absolute ``"YYYY-MM-DD"``
+            date.
+
+        Returns
+        -------
+        :
+            The key, updated with its new expiration.
         """
         self._run_quick_command("--quick-set-expire", fingerprint, passphrase, expire)
         return self._find_key(fingerprint)
@@ -1099,10 +1495,28 @@ class GPGBackend:
     def set_subkey_expiration(
         self, fingerprint: str, passphrase: str, subkey_fingerprint: str, expire: str
     ) -> Key:
-        """Set one subkey's expiration, identified by *subkey_fingerprint*
-        (the subkey's own fingerprint, not the primary key's) — see
-        ``Subkey.fingerprint``. Leaves the primary key's own expiration and
-        every other subkey's untouched.
+        """Set one subkey's expiration.
+
+        Leaves the primary key's own expiration and every other subkey's
+        untouched.
+
+        Parameters
+        ----------
+        fingerprint
+            The primary key owning the subkey.
+        passphrase
+            Unlocks the primary key's secret part.
+        subkey_fingerprint
+            The subkey to update, identified by its own fingerprint (not
+            the primary key's) — see ``Subkey.fingerprint``.
+        expire
+            Follows gpg's own ``--quick-set-expire`` syntax — see
+            ``set_key_expiration()``.
+
+        Returns
+        -------
+        :
+            The key, updated with the subkey's new expiration.
         """
         self._run_quick_command(
             "--quick-set-expire", fingerprint, passphrase, expire, subkey_fingerprint
@@ -1118,16 +1532,30 @@ class GPGBackend:
         cert_level: int = 0,
         local_only: bool = False,
     ) -> Key:
-        """Sign every user ID of the key identified by *fingerprint*, using
-        the secret key identified by *signing_key_fingerprint* — the
-        foundation of the web of trust.
+        """Sign every user ID of a key — the foundation of the web of trust.
 
-        *cert_level* (0-3) is gpg's own certification-check scale: 0 (no
-        particular claim), 1 (not verified — a "persona" signature), 2
-        (casual verification), 3 (extensive verification). *local_only*
-        drives ``--quick-lsign-key`` instead of ``--quick-sign-key``: a
-        local signature never leaves this keyring on export, useful for
-        casual verification the signer isn't ready to assert publicly.
+        Parameters
+        ----------
+        fingerprint
+            The key being signed.
+        passphrase
+            Unlocks the signing key's secret part.
+        signing_key_fingerprint
+            The secret key used to make the signature.
+        cert_level
+            gpg's own certification-check scale (0-3): 0 (no particular
+            claim), 1 (not verified — a "persona" signature), 2 (casual
+            verification), 3 (extensive verification).
+        local_only
+            Drive ``--quick-lsign-key`` instead of ``--quick-sign-key``: a
+            local signature never leaves this keyring on export, useful
+            for casual verification the signer isn't ready to assert
+            publicly.
+
+        Returns
+        -------
+        :
+            The signed key.
         """
         command = "--quick-lsign-key" if local_only else "--quick-sign-key"
         self._run_quick_command(
@@ -1144,15 +1572,33 @@ class GPGBackend:
         return self._find_key(fingerprint)
 
     def set_owner_trust(self, fingerprint: str, trust: str) -> Key:
-        """Set how much *fingerprint*'s owner is trusted to correctly
-        certify other people's keys — the other half of the web of trust
-        (see ``sign_key()``): a signature only strengthens a key's
-        computed *validity* if it comes from a sufficiently trusted owner.
+        """Set how much a key's owner is trusted to certify other keys.
 
-        *trust* is one of ``"undefined"``, ``"never"``, ``"marginal"``,
-        ``"full"`` or ``"ultimate"``. Unlike every other write operation in
-        this module, this is a purely local judgment call recorded in the
-        trust database — no secret key or passphrase is involved at all.
+        The other half of the web of trust (see ``sign_key()``): a
+        signature only strengthens a key's computed *validity* if it
+        comes from a sufficiently trusted owner.
+
+        Unlike every other write operation in this module, this is a
+        purely local judgment call recorded in the trust database — no
+        secret key or passphrase is involved at all.
+
+        Parameters
+        ----------
+        fingerprint
+            The key whose owner trust is being set.
+        trust
+            One of ``"undefined"``, ``"never"``, ``"marginal"``,
+            ``"full"`` or ``"ultimate"`` — see ``OWNER_TRUST_LEVELS``.
+
+        Returns
+        -------
+        :
+            The key, updated with its new owner trust.
+
+        Raises
+        ------
+        GPGBackendError
+            If gpg failed to set the owner trust.
         """
         result = subprocess.run(  # noqa: S603
             [
@@ -1175,10 +1621,11 @@ class GPGBackend:
         return self._find_key(fingerprint)
 
     def refresh_trust(self) -> None:
-        """Recompute the web of trust for the whole keyring, without
-        prompting for anything (``--check-trustdb``, not the interactive
-        ``--update-trustdb``) — skips keys with a not-yet-defined
-        ownertrust rather than asking about them.
+        """Recompute the web of trust for the whole keyring.
+
+        Non-interactive (``--check-trustdb``, not ``--update-trustdb``) —
+        skips keys with a not-yet-defined ownertrust rather than asking
+        about them.
         """
         result = subprocess.run(  # noqa: S603
             [
@@ -1205,16 +1652,40 @@ class GPGBackend:
         *args: str,
         extra_options: tuple[str, ...] = (),
     ) -> None:
-        # No python-gnupg wrapper for any of gpg's --quick-* commands
-        # (2.1+) — they all take the passphrase non-interactively via
-        # --passphrase-fd, unlike subkey/photo revocation which still need
-        # the --edit-key scripting protocol (see revoke_subkey()). The
-        # passphrase is piped over stdin, never passed as a --passphrase
-        # argument, so it never shows up in a process listing.
-        # *extra_options* are inserted before *command* itself — e.g.
-        # sign_key()'s "-u <signer>" and "--default-cert-level <n>", which
-        # (unlike every other quick command's arguments) are options of
-        # gpg itself, not positional arguments of the command.
+        """Run one of gpg's non-interactive ``--quick-*`` commands (2.1+).
+
+        No python-gnupg wrapper for any of these — they all take the
+        passphrase non-interactively via ``--passphrase-fd``, unlike
+        subkey/photo revocation which still need the ``--edit-key``
+        scripting protocol (see ``revoke_subkey()``). The passphrase is
+        piped over stdin, never passed as a ``--passphrase`` argument, so
+        it never shows up in a process listing.
+
+        Parameters
+        ----------
+        command
+            The ``--quick-*`` command itself, e.g.
+            ``"--quick-set-primary-uid"``.
+        fingerprint
+            The key the command applies to.
+        passphrase
+            Unlocks the key's secret part.
+        *args
+            Positional arguments to *command*, after *fingerprint*.
+        extra_options
+            Options of gpg itself, inserted *before* *command* — unlike
+            *args*, which are *command*'s own positional arguments. Used
+            by ``sign_key()`` for ``"-u <signer>"`` and
+            ``"--default-cert-level <n>"``.
+
+        Raises
+        ------
+        BadPassphraseError
+            If *passphrase* is wrong.
+        GPGBackendError
+            On any other failure.
+        """
+
         def _run() -> subprocess.CompletedProcess:
             return subprocess.run(  # noqa: S603
                 [
@@ -1280,6 +1751,27 @@ class GPGBackend:
         no documented size threshold to replicate client-side, so this
         peeks at gpg's live status output just long enough to see whether
         it actually shows up this time before deciding what to send next.
+
+        Parameters
+        ----------
+        fingerprint
+            The key to add the photo to.
+        passphrase
+            Unlocks the key's secret part.
+        jpeg_path
+            Path to the JPEG file to attach.
+
+        Returns
+        -------
+        :
+            The key, updated with the new photo.
+
+        Raises
+        ------
+        BadPassphraseError
+            If *passphrase* is wrong.
+        GPGBackendError
+            On any other failure.
         """
 
         def _run() -> subprocess.CompletedProcess:
@@ -1387,8 +1879,7 @@ class GPGBackend:
     def revoke_photo_uid(
         self, fingerprint: str, passphrase: str, photo_index: int
     ) -> Key:
-        """Revoke the *photo_index*-th photo (1-based, in ``Key.photos``
-        order) on the key identified by *fingerprint*.
+        """Revoke a photo on a key.
 
         Irreversible — the caller must already have obtained a strong
         confirmation. There is no ``--quick-revoke-uid`` equivalent for a
@@ -1396,6 +1887,27 @@ class GPGBackend:
         ``gpg --edit-key`` directly, same shape as ``revoke_subkey()``,
         after resolving *photo_index* to gpg's own uid-editing index via
         ``_resolve_photo_edit_index()``.
+
+        Parameters
+        ----------
+        fingerprint
+            The key owning the photo.
+        passphrase
+            Unlocks the key's secret part.
+        photo_index
+            The photo to revoke, 1-based in ``Key.photos`` order.
+
+        Returns
+        -------
+        :
+            The key, updated with the photo now revoked.
+
+        Raises
+        ------
+        BadPassphraseError
+            If *passphrase* is wrong.
+        GPGBackendError
+            On any other failure.
         """
         edit_index = self._resolve_photo_edit_index(fingerprint, photo_index)
         script = f"uid {edit_index}\nrevuid\ny\n0\n\ny\n{passphrase}\nsave\n"
@@ -1434,9 +1946,28 @@ class GPGBackend:
         return self._find_key(fingerprint)
 
     def _resolve_photo_edit_index(self, fingerprint: str, photo_index: int) -> int:
-        """Return the ``uid N`` index ``--edit-key`` uses for the
-        *photo_index*-th photo (1-based) on *fingerprint*, read off a
-        read-only ``list`` — see ``Key.photos``/``PhotoUid.index``.
+        """Resolve a photo's index to gpg's own ``--edit-key`` uid index.
+
+        Read off a read-only ``list`` — see ``Key.photos``/
+        ``PhotoUid.index``.
+
+        Parameters
+        ----------
+        fingerprint
+            The key owning the photo.
+        photo_index
+            The photo's 1-based index, in ``Key.photos`` order.
+
+        Returns
+        -------
+        :
+            The ``uid N`` index ``--edit-key`` uses for this photo.
+
+        Raises
+        ------
+        GPGBackendError
+            If the listing itself failed, or *photo_index* is out of
+            range for *fingerprint*.
         """
         result = subprocess.run(  # noqa: S603
             [
@@ -1479,9 +2010,21 @@ class GPGBackend:
         raise GPGBackendError(f"Photo {photo_index} not found on key {fingerprint}")
 
     def import_from_file(self, path: str | Path) -> list[ImportedKey]:
-        """Import one or more keys from an exported key file (armored or
-        binary; a single key or a whole keyring export) and return them,
-        each flagged with whether it was new to the keyring.
+        """Import one or more keys from an exported key file.
+
+        *path* may hold a single key or a whole keyring export, armored
+        or binary.
+
+        Returns
+        -------
+        :
+            The imported keys, each flagged with whether it was new to
+            the keyring.
+
+        Raises
+        ------
+        GPGBackendError
+            If no key was found in the file.
         """
         existing = {e["fingerprint"] for e in self._gpg.list_keys(False)}
         result = self._gpg.import_keys_file(str(path))
@@ -1495,13 +2038,12 @@ class GPGBackend:
     def _locate_key_by_email(
         self, email: str, keyserver: str
     ) -> tuple[str | None, str]:
-        """Resolve *email* to a fingerprint via gpg's own auto-key-locate
-        (WKD first, falling back to *keyserver*), importing it into the
-        keyring as a side effect if found. Returns ``(fingerprint, stderr)``
-        — *fingerprint* is ``None`` if nothing was found.
+        """Resolve an email address to a fingerprint via gpg's auto-key-locate.
 
-        Scripted directly with ``subprocess`` rather than python-gnupg's
-        own ``auto_locate_key()``: that method appends its ``extra_args``
+        WKD first, falling back to *keyserver* — importing the key into
+        the keyring as a side effect if found. Scripted directly with
+        ``subprocess`` rather than python-gnupg's own
+        ``auto_locate_key()``: that method appends its ``extra_args``
         (needed here for ``--keyserver``) *after* the positional *email*
         argument to ``--locate-keys``, which gpg then swallows as an
         extra, bogus user ID to locate instead of parsing as an option —
@@ -1515,6 +2057,19 @@ class GPGBackend:
         anything cached. Every option — not just ``--keyserver`` — must
         come *before* ``--auto-key-locate``/``--locate-keys``, which
         consumes every argument after it as a user ID to locate.
+
+        Parameters
+        ----------
+        email
+            The email address to resolve.
+        keyserver
+            The keyserver to fall back to when WKD fails.
+
+        Returns
+        -------
+        :
+            ``(fingerprint, stderr)`` — *fingerprint* is ``None`` if
+            nothing was found.
         """
         result = subprocess.run(  # noqa: S603
             [
@@ -1546,8 +2101,7 @@ class GPGBackend:
     def import_from_keyserver(
         self, query: str, keyserver: str = DEFAULT_KEYSERVER
     ) -> list[ImportedKey]:
-        """Import a key from a keyserver, identified by fingerprint, key
-        ID, or email address.
+        """Import a key from a keyserver.
 
         An address containing "@" is resolved through gpg's own
         auto-key-locate (WKD first — a direct HTTPS lookup at the email
@@ -1561,6 +2115,24 @@ class GPGBackend:
         reasons. See CODING.md, "Key import". Anything else is treated as
         a literal fingerprint or key ID and fetched directly with
         `--recv-keys`, which needs an exact match.
+
+        Parameters
+        ----------
+        query
+            A fingerprint, key ID, or email address identifying the key.
+        keyserver
+            The keyserver to fetch from.
+
+        Returns
+        -------
+        :
+            The imported key, as a single-element list.
+
+        Raises
+        ------
+        GPGBackendError
+            If no key was found, or gpg refused to import it (e.g. a key
+            with no user ID attached).
         """
         query = query.strip()
         existing = {e["fingerprint"] for e in self._gpg.list_keys(False)}
@@ -1602,14 +2174,29 @@ class GPGBackend:
         ]
 
     def preview_import_from_file(self, path: str | Path) -> list[ImportPreview]:
-        """Report what ``commit_import_from_file()`` would import from
-        *path*, without touching the keyring at all.
+        """Report what ``commit_import_from_file()`` would import.
 
-        Uses python-gnupg's ``scan_keys()``, which drives gpg's own
+        Without touching the keyring at all. Uses python-gnupg's
+        ``scan_keys()``, which drives gpg's own
         ``--dry-run --import-options import-show --import`` — verified
         empirically to leave the keyring untouched (``list_keys()``
         unchanged before/after) and to report the same fingerprint/keyid/
         uids shape as a real listing.
+
+        Parameters
+        ----------
+        path
+            Path to the exported key file to preview.
+
+        Returns
+        -------
+        :
+            The keys that would be imported.
+
+        Raises
+        ------
+        GPGBackendError
+            If no key was found in the file.
         """
         existing = {e["fingerprint"] for e in self._gpg.list_keys(False)}
         result = self._gpg.scan_keys(str(path))
@@ -1628,17 +2215,34 @@ class GPGBackend:
     def preview_import_from_keyserver(
         self, query: str, keyserver: str = DEFAULT_KEYSERVER
     ) -> list[ImportPreview]:
-        """Report what ``commit_import_from_keyserver()`` would import for
-        *query*, without touching this keyring at all.
+        """Report what ``commit_import_from_keyserver()`` would import.
 
-        There is no dry-run equivalent for a keyserver/WKD fetch — gpg
-        always merges straight into whatever keyring it's pointed at — so
-        this actually fetches into a throwaway scratch keyring instead
-        (discarded before returning), and reuses ``import_from_keyserver()``
-        entirely for the fetch itself (WKD/email vs. exact key ID, and its
-        error messages). ``is_new`` is recomputed against *this* (real)
+        Without touching this keyring at all. There is no dry-run
+        equivalent for a keyserver/WKD fetch — gpg always merges straight
+        into whatever keyring it's pointed at — so this actually fetches
+        into a throwaway scratch keyring instead (discarded before
+        returning), and reuses ``import_from_keyserver()`` entirely for
+        the fetch itself (WKD/email vs. exact key ID, and its error
+        messages). ``is_new`` is recomputed against *this* (real)
         keyring — the scratch keyring's own copy is always "new" since it
         started empty, which isn't the answer the caller needs.
+
+        Parameters
+        ----------
+        query
+            A fingerprint, key ID, or email address identifying the key.
+        keyserver
+            The keyserver to fetch from.
+
+        Returns
+        -------
+        :
+            The key that would be imported, as a single-element list.
+
+        Raises
+        ------
+        GPGBackendError
+            If no key was found for *query*.
         """
         existing = {e["fingerprint"] for e in self._gpg.list_keys(False)}
         scratch_dir = tempfile.mkdtemp()
@@ -1660,13 +2264,24 @@ class GPGBackend:
     def _commit_filtered(
         self, imported: list[ImportedKey], approved: set[str]
     ) -> list[ImportedKey]:
-        """After a real import that may have brought in more keys than the
-        user approved, delete any newly-added (never pre-existing) key
-        that wasn't approved, and return only the approved ones.
+        """Filter a real import down to only the approved keys.
 
-        A key that was already present is left untouched either way —
-        leaving it unchecked only means "don't count it as imported here",
-        never "remove my existing copy".
+        Deletes any newly-added (never pre-existing) key that wasn't
+        approved. A key that was already present is left untouched
+        either way — leaving it unchecked only means "don't count it as
+        imported here", never "remove my existing copy".
+
+        Parameters
+        ----------
+        imported
+            Every key a real import just brought in.
+        approved
+            The fingerprints the caller actually wants kept.
+
+        Returns
+        -------
+        :
+            *imported*, filtered down to only the approved keys.
         """
         kept = []
         for entry in imported:
@@ -1679,10 +2294,24 @@ class GPGBackend:
     def commit_import_from_file(
         self, path: str | Path, approved: set[str]
     ) -> list[ImportedKey]:
-        """Import from *path* for real, keeping only the *approved*
-        fingerprints (see ``preview_import_from_file()``) — any other,
-        newly-added key that came along in the same file is removed again
-        immediately. A no-op (no import at all) if *approved* is empty.
+        """Import from a file for real, keeping only the approved keys.
+
+        Any other, newly-added key that came along in the same file is
+        removed again immediately.
+
+        Parameters
+        ----------
+        path
+            Path to the exported key file to import (see
+            ``preview_import_from_file()``).
+        approved
+            The fingerprints to actually keep. A no-op (no import at all)
+            if empty.
+
+        Returns
+        -------
+        :
+            The approved, newly-imported keys.
         """
         if not approved:
             return []
@@ -1691,11 +2320,24 @@ class GPGBackend:
     def commit_import_from_keyserver(
         self, query: str, keyserver: str, approved: set[str]
     ) -> list[ImportedKey]:
-        """Import *query* from *keyserver* for real, keeping only the
-        *approved* fingerprints (see ``preview_import_from_keyserver()``).
-        A no-op — no fetch at all — if *approved* is empty, so declining
-        the one candidate this can ever surface never touches the network
-        or the keyring.
+        """Import from a keyserver for real, keeping only the approved keys.
+
+        Parameters
+        ----------
+        query
+            A fingerprint, key ID, or email address identifying the key
+            (see ``preview_import_from_keyserver()``).
+        keyserver
+            The keyserver to fetch from.
+        approved
+            The fingerprints to actually keep. A no-op — no fetch at all —
+            if empty, so declining the one candidate this can ever
+            surface never touches the network or the keyring.
+
+        Returns
+        -------
+        :
+            The approved, newly-imported keys.
         """
         if not approved:
             return []
@@ -1706,8 +2348,7 @@ class GPGBackend:
     def search_keyserver(
         self, query: str, keyserver: str = DEFAULT_KEYSERVER
     ) -> list[SearchResult]:
-        """Search *keyserver* for *query*, returning every match for the
-        caller to pick from.
+        """Search a keyserver, returning every match for the user to pick.
 
         Unlike ``import_from_keyserver()``, which needs an exact
         fingerprint, key ID or email and fetches it directly, this drives
@@ -1720,6 +2361,25 @@ class GPGBackend:
         reasons it doesn't index emails either — so this only returns
         anything against a keyserver that still offers `op=index` (a
         self-hosted one, for instance).
+
+        Parameters
+        ----------
+        query
+            The search query — a name, email address, fingerprint or key
+            ID, depending on what *keyserver* supports.
+        keyserver
+            The keyserver to search.
+
+        Returns
+        -------
+        :
+            Every match, empty if none.
+
+        Raises
+        ------
+        GPGBackendError
+            If the search itself failed (as opposed to a normal empty
+            result).
         """
         result = self._gpg.search_keys(query, keyserver=keyserver)
         if not result:
@@ -1745,7 +2405,20 @@ class GPGBackend:
     def publish_to_keyserver(
         self, fingerprint: str, keyserver: str = DEFAULT_KEYSERVER
     ) -> None:
-        """Publish *fingerprint*'s public key to *keyserver*."""
+        """Publish a public key to a keyserver.
+
+        Parameters
+        ----------
+        fingerprint
+            The key to publish.
+        keyserver
+            The keyserver to publish to.
+
+        Raises
+        ------
+        GPGBackendError
+            If gpg failed to publish the key.
+        """
         result = self._gpg.send_keys(keyserver, fingerprint)
         if result.returncode != 0:
             raise GPGBackendError(
@@ -1757,17 +2430,37 @@ class GPGBackend:
         fingerprints: list[str] | None = None,
         keyserver: str = DEFAULT_KEYSERVER,
     ) -> list[RefreshedKey]:
-        """Re-fetch keys already in the keyring from *keyserver* — the same
-        effect as gpg's own ``--refresh-keys``, which python-gnupg doesn't
-        wrap: fetching a key already present merges in any new signatures,
-        revocations or expiry changes rather than duplicating it.
+        """Re-fetch keys already in the keyring from a keyserver.
 
-        *fingerprints* selects which keys to refresh; ``None`` (the
-        default) refreshes every key in the keyring. A no-op (returns
-        ``[]``) when there is nothing to refresh — either an empty keyring
-        with *fingerprints* unset, or an explicitly empty *fingerprints*
-        list — since calling ``recv_keys()`` with zero keyids would
-        otherwise wait on unexpected input.
+        The same effect as gpg's own ``--refresh-keys``, which
+        python-gnupg doesn't wrap: fetching a key already present merges
+        in any new signatures, revocations or expiry changes rather than
+        duplicating it.
+
+        Parameters
+        ----------
+        fingerprints
+            Which keys to refresh; ``None`` (the default) refreshes every
+            key in the keyring.
+        keyserver
+            The keyserver to refresh from.
+
+        Returns
+        -------
+        :
+            The refreshed keys, each flagged with whether anything about
+            it actually changed. Empty when there is nothing to refresh —
+            either an empty keyring with *fingerprints* unset, or an
+            explicitly empty *fingerprints* list — since calling
+            ``recv_keys()`` with zero keyids would otherwise wait on
+            unexpected input.
+
+        Raises
+        ------
+        GPGBackendError
+            If the refresh itself failed (as opposed to one requested key
+            no longer being available from the keyserver, which is
+            silently skipped).
         """
         if fingerprints is None:
             fingerprints = [key.fingerprint for key in self.list_keys()]
@@ -1786,7 +2479,7 @@ class GPGBackend:
         ]
 
     def list_key_signatures(self, fingerprint: str) -> list[KeySignature]:
-        """Return every key that has certified *fingerprint*'s user IDs.
+        """Return every key that has certified a key's user IDs.
 
         Driven by a raw ``--with-colons --list-sigs`` listing rather than
         python-gnupg's own ``list_keys(sigs=True)``: that wrapper's ``sig()``
@@ -1795,6 +2488,16 @@ class GPGBackend:
         (colon field 13 — see ``KeySignature``). Self-certifications
         (key ID matching *fingerprint*'s own) are excluded, and several
         user IDs signed by the same key collapse to a single entry.
+
+        Parameters
+        ----------
+        fingerprint
+            The key whose signatures are being listed.
+
+        Returns
+        -------
+        :
+            Every certifying signature found, deduplicated by signer.
         """
         result = subprocess.run(  # noqa: S603
             [
@@ -1844,15 +2547,27 @@ class GPGBackend:
     def download_unknown_signatures(
         self, identifiers: list[str], keyserver: str = DEFAULT_KEYSERVER
     ) -> list[DownloadedSignature]:
-        """Fetch each of *identifiers* (a ``KeySignature``'s ``fingerprint``,
-        or its bare ``keyid`` when no fingerprint was available) from
-        *keyserver*, one at a time.
+        """Fetch signer keys not already in the keyring, one at a time.
 
         One at a time rather than a single batched ``--recv-keys`` call:
         such a call can't tell a genuine per-key miss apart from another
         identifier in the same request merely failing for an unrelated
         reason (see ``refresh_from_keyserver()``'s own note on this) — the
         caller needs to know exactly which ones were found.
+
+        Parameters
+        ----------
+        identifiers
+            A ``KeySignature``'s ``fingerprint``, or its bare ``keyid``
+            when no fingerprint was available, for each signer to fetch.
+        keyserver
+            The keyserver to fetch from.
+
+        Returns
+        -------
+        :
+            One entry per identifier, in the same order, each with the
+            fetched key on success or ``None`` when not found.
         """
         results = []
         for identifier in identifiers:
@@ -1864,22 +2579,48 @@ class GPGBackend:
         return results
 
     def export_public_key(self, fingerprint: str) -> str:
-        """Return the ASCII-armored public key block for *fingerprint*."""
+        """Return the ASCII-armored public key block for a key.
+
+        Raises
+        ------
+        GPGBackendError
+            If gpg failed to export the key.
+        """
         armored = self._gpg.export_keys(fingerprint)
         if not armored:
             raise GPGBackendError(f"Could not export key {fingerprint}")
         return armored
 
     def export_secret_key(self, fingerprint: str, passphrase: str) -> str:
-        """Return the ASCII-armored *secret* key block for *fingerprint* —
-        a full backup of the private key material, unlike
+        """Return the ASCII-armored *secret* key block for a key.
+
+        A full backup of the private key material, unlike
         ``export_public_key()``. GnuPG >= 2.1 refuses to export a secret
         key at all without its passphrase (see python-gnupg's own
-        ``export_keys()`` docstring); driven directly via
-        ``--passphrase-fd`` rather than through that wrapper, whose
-        ``export_keys()`` only returns the raw armored bytes and discards
-        stderr, so a wrong passphrase couldn't be told apart from any
-        other failure.
+        ``export_keys()`` docstring);
+        driven directly via ``--passphrase-fd`` rather than through that
+        wrapper, whose ``export_keys()`` only returns the raw armored
+        bytes and discards stderr, so a wrong passphrase couldn't be told
+        apart from any other failure.
+
+        Parameters
+        ----------
+        fingerprint
+            The key to export.
+        passphrase
+            Unlocks the key's secret part.
+
+        Returns
+        -------
+        :
+            The ASCII-armored secret key block.
+
+        Raises
+        ------
+        BadPassphraseError
+            If *passphrase* is wrong.
+        GPGBackendError
+            On any other failure.
         """
 
         def _run() -> subprocess.CompletedProcess:
@@ -1918,6 +2659,15 @@ class GPGBackend:
         return result.stdout
 
     def _find_key(self, fingerprint: str) -> Key:
+        """Look up a key by fingerprint.
+
+        Re-lists the keyring to get its current state.
+
+        Raises
+        ------
+        GPGBackendError
+            If no key with this fingerprint is in the keyring.
+        """
         for key in self.list_keys():
             if key.fingerprint == fingerprint:
                 return key

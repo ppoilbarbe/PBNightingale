@@ -1,8 +1,9 @@
-"""Mixin factoring out what every add/set/revoke dialog in this app does
-identically: run one passphrase-guarded ``GPGBackend`` call off the GUI
-thread, show a busy indicator while it's in flight, report a new ``Key``
-on success (and close), or a translated error message on failure — plus,
-now, caching a passphrase that turned out to be correct.
+"""Mixin factoring out what every add/set/revoke dialog in this app does identically.
+
+Runs one passphrase-guarded ``GPGBackend`` call off the GUI thread, shows
+a busy indicator while it's in flight, reports a new ``Key`` on success
+(and closes), or a translated error message on failure — plus, now,
+caches a passphrase that turned out to be correct.
 
 Usage::
 
@@ -47,7 +48,10 @@ from pbnightingale.ui.gpg_worker import run_async
 
 
 class KeyOperationDialog:
+    """Mixin providing the common accept/busy/error flow — see module docstring."""
+
     def _init_key_operation(self) -> None:
+        """Initialize the worker pool and operation state — call after ``self._ui`` is ready."""
         self._pool = QThreadPool(self)
         self.updated_key: Key | None = None
         self._pending_fingerprint: str | None = None
@@ -55,26 +59,37 @@ class KeyOperationDialog:
         self._sync_cached_passphrase()
 
     def _passphrase_line_edit(self):
-        """The field holding the passphrase to cache/prefill — every
-        dialog names it the same, so this rarely needs overriding.
-        ``None`` if the operation needs no passphrase at all (e.g.
-        ``DeleteKeyDialog`` — deleting is a local keyring operation, not
-        a cryptographic one) — nothing to prefill or cache then."""
+        """Return the field holding the passphrase to cache/prefill.
+
+        Returns
+        -------
+        :
+            Every dialog names this field the same, so this rarely needs
+            overriding. ``None`` if the operation needs no passphrase at
+            all (e.g. ``DeleteKeyDialog`` — deleting is a local keyring
+            operation, not a cryptographic one) — nothing to prefill or
+            cache then.
+        """
         return self._ui.txtPassphrase
 
     def _cache_fingerprint(self) -> str | None:
-        """Which key's passphrase this dialog's field holds. Defaults to
-        ``self._fingerprint`` (every dialog but ``SignKeyDialog`` sets
-        this to the key being operated on); ``None`` disables both
-        prefill and caching.
+        """Return which key's passphrase this dialog's field holds.
+
+        Returns
+        -------
+        :
+            Defaults to ``self._fingerprint`` (every dialog but
+            ``SignKeyDialog`` sets this to the key being operated on);
+            ``None`` disables both prefill and caching.
         """
         return getattr(self, "_fingerprint", None)
 
     def _sync_cached_passphrase(self) -> None:
-        """Fill the passphrase field from the cache for the key it
-        currently applies to (clearing it if there's nothing cached) —
-        call again after anything that changes ``_cache_fingerprint()``'s
-        answer, e.g. a "sign as" key combo box changing selection.
+        """Fill the passphrase field from the cache for the key it currently applies to.
+
+        Clears the field if there's nothing cached. Call again after
+        anything that changes ``_cache_fingerprint()``'s answer, e.g. a
+        "sign as" key combo box changing selection.
         """
         field = self._passphrase_line_edit()
         if field is None:
@@ -84,20 +99,37 @@ class KeyOperationDialog:
         field.setText(cached or "")
 
     def _bad_passphrase_message(self) -> str:
-        """Overridable: most dialogs unlock the *primary* key, but a
-        couple need different wording (see ``RevokeKeyDialog``,
-        ``SignKeyDialog``)."""
+        """Return the message shown for a wrong passphrase.
+
+        Overridable: most dialogs unlock the *primary* key, but a couple
+        need different wording (see ``RevokeKeyDialog``, ``SignKeyDialog``).
+        """
         return _("Incorrect primary key passphrase.")
 
     def _format_error(self, exc: Exception) -> str:
+        """Return a message for *exc*, using this dialog's own wording for a wrong passphrase.
+
+        Parameters
+        ----------
+        exc
+            The exception raised by the failed operation.
+        """
         if isinstance(exc, BadPassphraseError):
             return self._bad_passphrase_message()
         return str(exc)
 
     def _run_operation(self, call, *, busy_text: str, error_template: str) -> None:
-        """Run *call* (a zero-arg callable returning a ``Key``) off the
-        GUI thread. *busy_text* is shown immediately; *error_template*
-        (with an ``{error}`` placeholder) is shown on failure.
+        """Run *call* off the GUI thread and update the dialog accordingly.
+
+        Parameters
+        ----------
+        call
+            Zero-arg callable returning a ``Key``, run on a worker thread.
+        busy_text
+            Shown immediately in the status label while *call* runs.
+        error_template
+            Shown on failure, with an ``{error}`` placeholder for the
+            formatted error message.
         """
         self._error_template = error_template
         self._pending_fingerprint = self._cache_fingerprint()
@@ -114,6 +146,14 @@ class KeyOperationDialog:
         )
 
     def _on_operation_success(self, result) -> None:
+        """Cache the passphrase just used (if any) and forward *result*.
+
+        Parameters
+        ----------
+        result
+            The value returned by the operation's ``call``, forwarded to
+            ``_on_operation_result()``.
+        """
         if self._pending_fingerprint and self._pending_passphrase:
             passphrase_cache.store(
                 self._pending_fingerprint,
@@ -123,14 +163,27 @@ class KeyOperationDialog:
         self._on_operation_result(result)
 
     def _on_operation_result(self, key: Key) -> None:
-        """Overridable: what a successful call's return value means for
-        this dialog. Defaults to "it's the updated Key" and accepts —
-        ``BackupPrivateKeyDialog`` overrides this since its call returns
-        armored key text to write to a file, not a ``Key``."""
+        """Handle a successful call's return value — overridable.
+
+        Parameters
+        ----------
+        key
+            Defaults to being treated as "it's the updated Key", which is
+            stored and accepts the dialog. ``BackupPrivateKeyDialog``
+            overrides this since its call returns armored key text to
+            write to a file, not a ``Key``.
+        """
         self.updated_key = key
         self.accept()
 
     def _on_operation_error(self, exc: Exception) -> None:
+        """Show the formatted error and re-enable the form.
+
+        Parameters
+        ----------
+        exc
+            The exception raised by the failed operation.
+        """
         self._ui.progress.setVisible(False)
         self._ui.lblStatus.setText(
             self._error_template.format(error=self._format_error(exc))
