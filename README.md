@@ -9,6 +9,9 @@ tooling — GPG's command line in particular — is too intimidating. PBNighting
 makes everyday GPG key management approachable on Linux, Windows and macOS,
 without hiding what it does.
 
+This program is a legacy (heavily improved) from an older Python
+program, itself an evolution of an ancient (~2014) Perl program.
+
 ## Features
 
 - **Personal keys**: generate an RSA or ED25519 key pair, with a live
