@@ -65,6 +65,12 @@ class Ui_KeyListView:
             [_("Name"), "", _("Email"), _("Key ID"), _("Expires")]
         )
         self.treeKeys.setRootIsDecorated(True)
+        # Sorting is applied manually within each "My keys"/"Other keys"
+        # group (see KeyListView._on_header_section_clicked()) rather than
+        # via QTreeWidget.setSortingEnabled(), which would sort the two
+        # top-level group rows themselves along with their children.
+        self.treeKeys.header().setSectionsClickable(True)
+        self.treeKeys.header().setSortIndicatorShown(True)
         self.treeKeys.setToolTip(_("Keys in your keyring"))
         self.treeKeys.setWhatsThis(
             _(
@@ -73,7 +79,9 @@ class Ui_KeyListView:
                 "only). The unlabeled column between Name and Email shows "
                 "whether a personal key's passphrase is currently "
                 "remembered: unlocked if so, locked otherwise. "
-                "Double-click that icon to forget a remembered passphrase."
+                "Double-click that icon to forget a remembered passphrase. "
+                "Click a column header to sort the keys within each group "
+                "by that column; click it again to reverse the order."
             )
         )
 

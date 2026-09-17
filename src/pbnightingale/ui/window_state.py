@@ -93,6 +93,42 @@ def load_header_state(window_key: str, header_key: str) -> QByteArray | None:
     return value if isinstance(value, QByteArray) else None
 
 
+def save_sort_state(window_key: str, sort_key: str, column: int, order: int) -> None:
+    """Persist a tree/table's header sort column and order.
+
+    Parameters
+    ----------
+    window_key
+        The window the sorted view belongs to.
+    sort_key
+        Short key identifying this view within *window_key*.
+    column
+        The sorted column's index.
+    order
+        The sort direction, as a ``Qt.SortOrder`` value.
+    """
+    settings = _settings()
+    settings.setValue(f"windowState/{window_key}/sort/{sort_key}/column", column)
+    settings.setValue(f"windowState/{window_key}/sort/{sort_key}/order", order)
+
+
+def load_sort_state(window_key: str, sort_key: str) -> tuple[int, int] | None:
+    """Return the (column, order) sort state last saved for *window_key*/*sort_key*.
+
+    Returns
+    -------
+    :
+        The saved ``(column, order)`` pair, or ``None`` if nothing was
+        ever saved for it.
+    """
+    settings = _settings()
+    column = settings.value(f"windowState/{window_key}/sort/{sort_key}/column")
+    order = settings.value(f"windowState/{window_key}/sort/{sort_key}/order")
+    if column is None or order is None:
+        return None
+    return int(column), int(order)
+
+
 def save_toolbar_state(key: str, state: QByteArray) -> None:
     """Persist a ``QMainWindow.saveState()`` blob: toolbar position, order and visibility (and dock widget layout, unused here)."""
     _settings().setValue(f"windowState/{key}/toolbars", state)

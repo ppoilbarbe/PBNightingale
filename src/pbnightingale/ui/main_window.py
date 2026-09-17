@@ -109,12 +109,18 @@ class MainWindow(GeometryMixin, QMainWindow):
         header_state = window_state.load_header_state(self._geo_state_key, "keys")
         if header_state is not None:
             self._ui.keyListView.restore_column_widths(header_state)
+        sort_state = window_state.load_sort_state(self._geo_state_key, "keys")
+        if sort_state is not None:
+            self._ui.keyListView.restore_sort_state(*sort_state)
 
     def _save_geometry(self) -> None:
-        """Persist the window/splitters (base class), then column widths."""
+        """Persist the window/splitters (base class), then column widths and sort order."""
         super()._save_geometry()
         window_state.save_header_state(
             self._geo_state_key, "keys", self._ui.keyListView.save_column_widths()
+        )
+        window_state.save_sort_state(
+            self._geo_state_key, "keys", *self._ui.keyListView.save_sort_state()
         )
 
     def _connect_signals(self) -> None:

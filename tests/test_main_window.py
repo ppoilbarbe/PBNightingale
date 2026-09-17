@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import QToolBar
 
@@ -1912,3 +1913,36 @@ def test_key_list_column_widths_persist_across_instances(qtbot, monkeypatch):
     # restore, not just the restore itself — see KeyListView.
     # restore_column_widths().
     assert second_tree.header().sectionSize(0) == 321
+
+
+def test_key_list_sort_order_persists_across_instances(qtbot, monkeypatch):
+    from pbnightingale.core import gpg_backend
+
+    class _FakeBackend:
+        def list_keys(self):
+            return [_PERSONAL_KEY, _PUBLIC_KEY]
+
+    monkeypatch.setattr(gpg_backend, "default_backend", _FakeBackend)
+
+    first = MainWindow()
+    qtbot.addWidget(first)
+    first.show()
+    first_tree = first._ui.keyListView._ui.treeKeys
+    qtbot.waitUntil(lambda: first_tree.topLevelItem(0) is not None)
+    qtbot.waitUntil(lambda: first_tree.topLevelItem(0).child(0) is not None)
+    # Key ID (column 3), not Name (0, already the default sort column) — a
+    # broken restore could otherwise coincidentally still land on (0,
+    # ascending) even without ever restoring anything.
+    first_tree.header().sectionClicked.emit(3)
+    first.close()
+
+    second = MainWindow()
+    qtbot.addWidget(second)
+    second.show()
+    second_key_view = second._ui.keyListView
+    qtbot.waitUntil(lambda: second_key_view._ui.treeKeys.topLevelItem(0) is not None)
+    qtbot.waitUntil(
+        lambda: second_key_view._ui.treeKeys.topLevelItem(0).child(0) is not None
+    )
+
+    assert second_key_view.save_sort_state() == (3, Qt.SortOrder.AscendingOrder.value)

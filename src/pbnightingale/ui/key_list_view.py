@@ -49,6 +49,51 @@ def _parse_uid(uid: str) -> tuple[str, str]:
     return name or uid, email
 
 
+def _display_name_email(key: Key) -> tuple[str, str]:
+    """Return (name, email) for *key*'s primary UID (or its first, or "")."""
+    display_uid = next((u for u in key.uids if u.primary), None) or (
+        key.uids[0] if key.uids else None
+    )
+    return _parse_uid(display_uid.value) if display_uid else ("", "")
+
+
+# Sortable columns of the main key list — see key_list_view_ui.py's header
+# labels. Column 1 (the lock icon) has no header text and isn't sortable.
+_NAME_COLUMN = 0
+_EMAIL_COLUMN = 2
+_KEYID_COLUMN = 3
+_EXPIRES_COLUMN = 4
+
+
+def _sort_value(column: int, key: Key):
+    """Return *key*'s sort key for *column*, one of the ``_*_COLUMN`` constants."""
+    if column == _NAME_COLUMN:
+        return _display_name_email(key)[0].casefold()
+    if column == _EMAIL_COLUMN:
+        return _display_name_email(key)[1].casefold()
+    if column == _KEYID_COLUMN:
+        return key.keyid
+    return 0
+
+
+def _sorted_keys(column: int, order: Qt.SortOrder, keys: list[Key]) -> list[Key]:
+    """Sort *keys* by *column*, in *order* — the ordering within one key-list group.
+
+    A key with no expiration date always sorts last in the "Expires"
+    column, in either direction: "never" isn't a point on the timeline, so
+    reversing the sort shouldn't move it to the front.
+    """
+    reverse = order == Qt.SortOrder.DescendingOrder
+    if column == _EXPIRES_COLUMN:
+        dated = sorted(
+            (k for k in keys if k.expires is not None),
+            key=lambda k: k.expires,
+            reverse=reverse,
+        )
+        return dated + [k for k in keys if k.expires is None]
+    return sorted(keys, key=lambda k: _sort_value(column, k), reverse=reverse)
+
+
 _PRIMARY_UID_MARK = "✓ "  # ✓ — see CODING.md, "Editable user IDs"
 
 
@@ -206,13 +251,23 @@ class KeyListView(QWidget):
         self._ui.lstPhotos.itemSelectionChanged.connect(self.selectionChanged)
         self._ui.btnCopyFingerprint.clicked.connect(self._on_copy_fingerprint)
         self._ui.treeKeys.itemDoubleClicked.connect(self._on_key_item_double_clicked)
+        self._ui.treeKeys.header().sectionClicked.connect(
+            self._on_header_section_clicked
+        )
         self._ui.lstPhotos.itemActivated.connect(self._on_photo_activated)
         self._ui.tabDetail.currentChanged.connect(self._on_detail_tab_changed)
         self._ui.btnDownloadUnknownSignatures.clicked.connect(
             self._on_download_unknown_signatures_clicked
         )
         self._my_keys: list[Key] = []
+        self._keys: list[Key] = []
         self._current_signatures: list[KeySignature] = []
+        # Sorted by name, ascending, until a header click or a restored
+        # previous session's choice (restore_sort_state()) says otherwise —
+        # there's always an active sort, never raw keyring insertion order.
+        self._sort_column: int = _NAME_COLUMN
+        self._sort_order = Qt.SortOrder.AscendingOrder
+        self._ui.treeKeys.header().setSortIndicator(self._sort_column, self._sort_order)
         # Set once column widths are restored from a previous session (see
         # restore_column_widths()) — set_keys() then stops auto-sizing
         # columns to content on every refresh, which would otherwise
@@ -279,8 +334,44 @@ class KeyListView(QWidget):
         Also stops ``set_keys()`` from auto-sizing columns to content on
         the next refresh — that would otherwise immediately undo this.
         """
-        self._ui.treeKeys.header().restoreState(state)
+        header = self._ui.treeKeys.header()
+        header.restoreState(state)
+        # QHeaderView.restoreState() also overwrites sectionsClickable and
+        # sortIndicatorShown with whatever they were when *state* was
+        # saved — for anyone who already used the app (and so has a
+        # column-width state on disk) from before header-click sorting
+        # existed, that silently turns header clicks back into a no-op on
+        # every subsequent launch. Re-apply key_list_view_ui.py's own
+        # setup unconditionally, after the restore, not before.
+        header.setSectionsClickable(True)
+        header.setSortIndicatorShown(True)
         self._columns_restored = True
+
+    def save_sort_state(self) -> tuple[int, int]:
+        """Return the main key list's current (column, order) sort state.
+
+        Returns
+        -------
+        :
+            ``(column, order)``, with *order* a ``Qt.SortOrder`` value.
+        """
+        return self._sort_column, self._sort_order.value
+
+    def restore_sort_state(self, column: int, order: int) -> None:
+        """Apply a previously-saved (column, order) sort state.
+
+        Parameters
+        ----------
+        column
+            The column to sort by.
+        order
+            The sort direction, as a ``Qt.SortOrder`` value.
+        """
+        self._sort_column = column
+        self._sort_order = Qt.SortOrder(order)
+        self._ui.treeKeys.header().setSortIndicator(column, self._sort_order)
+        if self._keys:
+            self._rebuild_tree(preserve_selection=True)
 
     def selected_key(self) -> Key | None:
         """Report the currently selected key.
@@ -640,10 +731,57 @@ class KeyListView(QWidget):
             The full keyring listing, as returned by
             ``GPGBackend.list_keys()``.
         """
+        self._keys = keys
+        self._rebuild_tree()
+
+    def _on_header_section_clicked(self, column: int) -> None:
+        """Sort the keys within each group by *column*; toggle order on a repeat click.
+
+        The "My keys"/"Other keys" groups themselves never reorder — only
+        the keys within each one, per key_list_view_ui.py's own note on
+        why native ``QTreeWidget`` sorting isn't used here.
+
+        Parameters
+        ----------
+        column
+            The clicked header section; a no-op for the header-less lock
+            icon column (``_LOCK_COLUMN``).
+        """
+        if column == _LOCK_COLUMN:
+            return
+        if column == self._sort_column:
+            self._sort_order = (
+                Qt.SortOrder.DescendingOrder
+                if self._sort_order == Qt.SortOrder.AscendingOrder
+                else Qt.SortOrder.AscendingOrder
+            )
+        else:
+            self._sort_column = column
+            self._sort_order = Qt.SortOrder.AscendingOrder
+        self._ui.treeKeys.header().setSortIndicator(column, self._sort_order)
+        self._rebuild_tree(preserve_selection=True)
+
+    def _rebuild_tree(self, *, preserve_selection: bool = False) -> None:
+        """Rebuild the "My keys"/"Other keys" groups from ``self._keys``.
+
+        Applies the current sort column/order within each group.
+
+        Parameters
+        ----------
+        preserve_selection
+            Whether to re-select the currently selected key afterwards.
+            Only for a local re-sort — a fresh ``set_keys()`` keyring
+            reload always resets the selection to the placeholder, as
+            before (callers re-select explicitly when appropriate, e.g.
+            via ``select_key()``).
+        """
+        current = self.selected_key() if preserve_selection else None
         self._ui.treeKeys.clear()
-        mine = [k for k in keys if k.has_secret]
-        others = [k for k in keys if not k.has_secret]
+        mine = [k for k in self._keys if k.has_secret]
+        others = [k for k in self._keys if not k.has_secret]
         self._my_keys = mine
+        mine = _sorted_keys(self._sort_column, self._sort_order, mine)
+        others = _sorted_keys(self._sort_column, self._sort_order, others)
         self._add_group(_("My keys ({n})").format(n=len(mine)), mine)
         self._add_group(_("Other keys ({n})").format(n=len(others)), others)
         self._ui.treeKeys.expandAll()
@@ -661,6 +799,8 @@ class KeyListView(QWidget):
         self._ui.treeKeys.setColumnWidth(
             _LOCK_COLUMN, self._ui.treeKeys.iconSize().width() + 8
         )
+        if current is not None:
+            self.select_key(current.fingerprint)
         self._on_selection_changed()
 
     def _add_group(self, label: str, keys: list[Key]) -> None:
@@ -683,10 +823,7 @@ class KeyListView(QWidget):
         group.setFlags(Qt.ItemFlag.ItemIsEnabled)
         self._ui.treeKeys.addTopLevelItem(group)
         for key in keys:
-            display_uid = next((u for u in key.uids if u.primary), None) or (
-                key.uids[0] if key.uids else None
-            )
-            name, email = _parse_uid(display_uid.value) if display_uid else ("", "")
+            name, email = _display_name_email(key)
             item = QTreeWidgetItem(
                 [name, "", email, key.keyid, _format_expires(key.expires)]
             )

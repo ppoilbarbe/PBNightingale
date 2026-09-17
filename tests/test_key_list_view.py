@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QEvent, QSize
+from PySide6.QtCore import QEvent, QSize, Qt
 from PySide6.QtGui import QAction
 
 from pbnightingale.core import passphrase_cache
@@ -66,6 +66,36 @@ _OTHER_KEY = Key(
     can_certify=True,
     can_authenticate=False,
 )
+
+
+_KEY_CHARLIE = Key(
+    **{
+        **_MY_KEY.__dict__,
+        "fingerprint": "CCCC111122223333444455556666777788889999",
+        "keyid": "3333000011112222",
+        "uids": [Uid("Charlie Example <charlie@example.com>", revoked=False)],
+        "expires": 1_900_000_000,
+    }
+)
+
+_KEY_BOB_SECRET = Key(
+    **{
+        **_MY_KEY.__dict__,
+        "fingerprint": "DDDD111122223333444455556666777788889999",
+        "keyid": "1111222233334444",
+        "uids": [Uid("Bob Two <bob2@example.com>", revoked=False)],
+        "expires": None,
+    }
+)
+
+# Inserted in this order (Alice, Charlie, Bob) so the un-sorted order is
+# distinguishable from a sort-by-name (Alice, Bob, Charlie) or
+# sort-by-keyid (Bob, Charlie, Alice) result.
+_SORTABLE_KEYS = [_MY_KEY, _KEY_CHARLIE, _KEY_BOB_SECRET]
+
+
+def _names(group) -> list[str]:
+    return [group.child(i).text(0) for i in range(group.childCount())]
 
 
 def test_no_selection_by_default(qtbot):
@@ -341,6 +371,145 @@ def test_select_key_also_restores_subkey_selection(qtbot):
 
     assert view.selected_key() is _MY_KEY
     assert view.selected_subkey() is _SUBKEY
+
+
+def test_keys_are_sorted_by_name_ascending_by_default(qtbot):
+    """No header ever clicked, no previous session to restore from — still sorted, not raw insertion order."""
+    view = KeyListView()
+    qtbot.addWidget(view)
+
+    view.set_keys(_SORTABLE_KEYS)
+
+    assert _names(view._ui.treeKeys.topLevelItem(0)) == [
+        "Alice Example",
+        "Bob Two",
+        "Charlie Example",
+    ]
+    header = view._ui.treeKeys.header()
+    assert header.sortIndicatorSection() == 0
+    assert header.sortIndicatorOrder() == Qt.SortOrder.AscendingOrder
+    assert view.save_sort_state() == (0, Qt.SortOrder.AscendingOrder.value)
+
+
+def test_header_click_on_the_active_column_reverses_the_order(qtbot):
+    view = KeyListView()
+    qtbot.addWidget(view)
+    view.set_keys(_SORTABLE_KEYS)
+
+    # Name (column 0) is already the active (default) sort — one click on
+    # it reverses, it doesn't restart at ascending.
+    view._ui.treeKeys.header().sectionClicked.emit(0)
+
+    assert _names(view._ui.treeKeys.topLevelItem(0)) == [
+        "Charlie Example",
+        "Bob Two",
+        "Alice Example",
+    ]
+
+    view._ui.treeKeys.header().sectionClicked.emit(0)
+
+    assert _names(view._ui.treeKeys.topLevelItem(0)) == [
+        "Alice Example",
+        "Bob Two",
+        "Charlie Example",
+    ]
+
+
+def test_header_click_on_a_different_column_sorts_it_ascending(qtbot):
+    view = KeyListView()
+    qtbot.addWidget(view)
+    view.set_keys(_SORTABLE_KEYS)
+
+    view._ui.treeKeys.header().sectionClicked.emit(3)  # key ID
+
+    assert _names(view._ui.treeKeys.topLevelItem(0)) == [
+        "Bob Two",
+        "Charlie Example",
+        "Alice Example",
+    ]
+
+
+def test_sorting_does_not_reorder_the_groups_themselves(qtbot):
+    view = KeyListView()
+    qtbot.addWidget(view)
+    view.set_keys([*_SORTABLE_KEYS, _OTHER_KEY])
+
+    view._ui.treeKeys.header().sectionClicked.emit(3)
+
+    tree = view._ui.treeKeys
+    assert tree.topLevelItem(0).text(0).startswith("My keys")
+    assert tree.topLevelItem(1).text(0).startswith("Other keys")
+
+
+def test_expires_column_sorts_keys_with_no_expiration_last_either_direction(qtbot):
+    view = KeyListView()
+    qtbot.addWidget(view)
+    view.set_keys(_SORTABLE_KEYS)
+    header = view._ui.treeKeys.header()
+
+    header.sectionClicked.emit(4)  # ascending
+
+    assert _names(view._ui.treeKeys.topLevelItem(0)) == [
+        "Alice Example",
+        "Charlie Example",
+        "Bob Two",
+    ]
+
+    header.sectionClicked.emit(4)  # descending
+
+    assert _names(view._ui.treeKeys.topLevelItem(0)) == [
+        "Charlie Example",
+        "Alice Example",
+        "Bob Two",
+    ]
+
+
+def test_header_click_on_the_lock_column_is_a_no_op(qtbot):
+    view = KeyListView()
+    qtbot.addWidget(view)
+    view.set_keys(_SORTABLE_KEYS)
+    before = _names(view._ui.treeKeys.topLevelItem(0))
+    before_sort_state = view.save_sort_state()
+
+    view._ui.treeKeys.header().sectionClicked.emit(1)
+
+    assert _names(view._ui.treeKeys.topLevelItem(0)) == before
+    assert view.save_sort_state() == before_sort_state
+
+
+def test_save_and_restore_sort_state_round_trip(qtbot):
+    view = KeyListView()
+    qtbot.addWidget(view)
+    view.set_keys(_SORTABLE_KEYS)
+
+    view._ui.treeKeys.header().sectionClicked.emit(0)  # ascending -> descending
+    saved = view.save_sort_state()
+    assert saved == (0, Qt.SortOrder.DescendingOrder.value)
+
+    restored = KeyListView()
+    qtbot.addWidget(restored)
+    restored.restore_sort_state(*saved)
+    restored.set_keys(_SORTABLE_KEYS)
+
+    assert _names(restored._ui.treeKeys.topLevelItem(0)) == [
+        "Charlie Example",
+        "Bob Two",
+        "Alice Example",
+    ]
+
+
+def test_restore_sort_state_rebuilds_a_tree_already_populated(qtbot):
+    view = KeyListView()
+    qtbot.addWidget(view)
+    view.set_keys(_SORTABLE_KEYS)
+
+    view.restore_sort_state(3, Qt.SortOrder.AscendingOrder.value)
+
+    assert _names(view._ui.treeKeys.topLevelItem(0)) == [
+        "Bob Two",
+        "Charlie Example",
+        "Alice Example",
+    ]
 
 
 def test_select_key_unknown_fingerprint_is_a_no_op(qtbot):
@@ -906,6 +1075,45 @@ def test_restore_column_widths_applies_the_saved_state(qtbot):
     other.restore_column_widths(state)
 
     assert other._ui.treeKeys.header().sectionSize(0) == 321
+
+
+def test_restore_column_widths_keeps_the_header_sortable(qtbot):
+    """A header state saved before header-click sorting existed must not un-clickable it back.
+
+    ``QHeaderView.saveState()``/``restoreState()`` round-trips
+    ``sectionsClickable``/``sortIndicatorShown`` along with the column
+    widths — a real user's on-disk state, saved by an older build where
+    neither was ever turned on, would otherwise silently disable header
+    clicks again on every subsequent launch. Reported against the real
+    running app: clicking a header did nothing at all for a user with a
+    pre-existing column-width state.
+    """
+    from PySide6.QtWidgets import QTreeWidget
+
+    stale_tree = QTreeWidget()
+    qtbot.addWidget(stale_tree)
+    stale_header = stale_tree.header()
+    stale_header.setSectionsClickable(False)
+    stale_header.setSortIndicatorShown(False)
+    stale_state = stale_header.saveState()
+
+    view = KeyListView()
+    qtbot.addWidget(view)
+    view.set_keys(_SORTABLE_KEYS)
+
+    view.restore_column_widths(stale_state)
+
+    header = view._ui.treeKeys.header()
+    assert header.sectionsClickable()
+    assert header.isSortIndicatorShown()
+    # Name (column 0) is already the default active sort — a click on it
+    # reverses the order, proving the click was actually processed.
+    header.sectionClicked.emit(0)
+    assert _names(view._ui.treeKeys.topLevelItem(0)) == [
+        "Charlie Example",
+        "Bob Two",
+        "Alice Example",
+    ]
 
 
 def test_set_keys_does_not_override_restored_column_widths(qtbot):

@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Sortable main key list: clicking a column header (Name, Email, Key ID,
+  Expires) sorts the keys inside each group, clicking it again reverses the
+  order. The "My keys" and "Other keys" groups themselves keep their fixed
+  order, and keys that never expire always sort last in the Expires column.
+  The list is sorted by name ascending on first launch, and the chosen sort
+  column and direction are remembered across sessions
 - Numpydoc docstring convention adopted project-wide (`core/`, `platform/`,
   top-level modules, and every `ui/*.py` except `*_ui.py` layout files),
   documented in CODING.md
