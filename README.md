@@ -1,5 +1,11 @@
 # PBNightingale
 
+[![Release](https://img.shields.io/github/v/release/ppoilbarbe/PBNightingale)](https://github.com/ppoilbarbe/PBNightingale/releases/latest)
+[![CI](https://github.com/ppoilbarbe/PBNightingale/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ppoilbarbe/PBNightingale/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/ppoilbarbe/PBNightingale/branch/main/graph/badge.svg)](https://codecov.io/gh/ppoilbarbe/PBNightingale)
+[![PyPI](https://img.shields.io/pypi/v/pbnightingale)](https://pypi.org/project/pbnightingale/)
+[![Documentation Status](https://readthedocs.org/projects/pbnightingale/badge/?version=latest)](https://pbnightingale.readthedocs.io/en/latest/?badge=latest)
+
 A cross-platform graphical GPG key management utility built with Qt 6 (PySide6).
 
 ## Why
