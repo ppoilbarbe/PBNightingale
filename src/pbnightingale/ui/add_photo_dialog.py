@@ -18,6 +18,7 @@ from PySide6.QtWidgets import QDialog, QDialogButtonBox, QFileDialog
 
 from pbnightingale.core import gpg_backend
 from pbnightingale.core.gpg_backend import Key
+from pbnightingale.core.secret import Passphrase
 from pbnightingale.ui.add_photo_dialog_ui import (
     MAX_PREVIEW_DIMENSION,
     Ui_AddPhotoDialog,
@@ -127,7 +128,9 @@ class AddPhotoDialog(GeometryMixin, KeyOperationDialog, QDialog):
         """Add the chosen photo to the key via the backend."""
         self._run_operation(
             lambda: gpg_backend.default_backend().add_photo_uid(
-                self._fingerprint, self._ui.txtPassphrase.text(), self._jpeg_path
+                self._fingerprint,
+                Passphrase(self._ui.txtPassphrase.text()),
+                self._jpeg_path,
             ),
             busy_text=_("Adding photo…"),
             error_template=_("Could not add photo: {error}"),

@@ -16,6 +16,7 @@ from pbnightingale.core.gpg_backend import (
     GPGBackendError,
     NewKeyRequest,
 )
+from pbnightingale.core.secret import Passphrase
 from tests.gpg_test_helpers import generate_test_key as _generate_key
 from tests.gpg_test_helpers import make_large_test_jpeg, make_test_jpeg
 
@@ -160,7 +161,7 @@ def test_generate_key_with_passphrase_succeeds(tmp_path):
             name="Carol Example",
             email="carol@example.com",
             key_length=1024,
-            passphrase="s3cret-pass",
+            passphrase=Passphrase("s3cret-pass"),
         )
     )
 
@@ -266,7 +267,7 @@ def test_add_subkey_to_existing_key(tmp_path):
     assert key.subkeys == []
 
     updated = backend.add_subkey(
-        key.fingerprint, "", usage="auth", algorithm="RSA", key_length=1024
+        key.fingerprint, Passphrase(""), usage="auth", algorithm="RSA", key_length=1024
     )
 
     assert len(updated.subkeys) == 1
@@ -285,7 +286,9 @@ def test_add_subkey_ed25519_picks_curve_from_usage(tmp_path):
         )
     )
 
-    updated = backend.add_subkey(key.fingerprint, "", usage="auth", algorithm="ED25519")
+    updated = backend.add_subkey(
+        key.fingerprint, Passphrase(""), usage="auth", algorithm="ED25519"
+    )
 
     auth_subkey = next(s for s in updated.subkeys if s.can_authenticate)
     assert auth_subkey.algo == "22"  # EdDSA, not Curve25519
@@ -309,7 +312,7 @@ def test_add_subkey_raises_on_failure(tmp_path, monkeypatch):
     )
 
     with pytest.raises(GPGBackendError, match="bad subkey"):
-        backend.add_subkey(key.fingerprint, "", usage="auth")
+        backend.add_subkey(key.fingerprint, Passphrase(""), usage="auth")
 
 
 def test_add_subkey_wrong_passphrase_raises_bad_passphrase_error(tmp_path):
@@ -319,12 +322,14 @@ def test_add_subkey_wrong_passphrase_raises_bad_passphrase_error(tmp_path):
             name="Grace Example",
             email="grace@example.com",
             key_length=1024,
-            passphrase="correct-horse",
+            passphrase=Passphrase("correct-horse"),
         )
     )
 
     with pytest.raises(BadPassphraseError):
-        backend.add_subkey(key.fingerprint, "wrong-passphrase", usage="auth")
+        backend.add_subkey(
+            key.fingerprint, Passphrase("wrong-passphrase"), usage="auth"
+        )
 
 
 def test_revoke_subkey_marks_it_revoked(tmp_path):
@@ -334,7 +339,7 @@ def test_revoke_subkey_marks_it_revoked(tmp_path):
     )
     subkey = key.subkeys[0]
 
-    updated = backend.revoke_subkey(key.fingerprint, subkey.keyid, "")
+    updated = backend.revoke_subkey(key.fingerprint, subkey.keyid, Passphrase(""))
 
     revoked = next(s for s in updated.subkeys if s.keyid == subkey.keyid)
     assert revoked.trust == "r"
@@ -347,13 +352,15 @@ def test_revoke_subkey_wrong_passphrase_raises_and_leaves_it_intact(tmp_path):
             name="Heidi Example",
             email="heidi@example.com",
             key_length=1024,
-            passphrase="correct-horse",
+            passphrase=Passphrase("correct-horse"),
         )
     )
     subkey = key.subkeys[0]
 
     with pytest.raises(BadPassphraseError):
-        backend.revoke_subkey(key.fingerprint, subkey.keyid, "wrong-passphrase")
+        backend.revoke_subkey(
+            key.fingerprint, subkey.keyid, Passphrase("wrong-passphrase")
+        )
 
     unchanged = next(
         s for s in backend.list_keys()[0].subkeys if s.keyid == subkey.keyid
@@ -367,7 +374,7 @@ def test_revoke_key_marks_it_revoked(tmp_path):
         NewKeyRequest(name="Iris Example", email="iris@example.com", key_length=1024)
     )
 
-    updated = backend.revoke_key(key.fingerprint, "")
+    updated = backend.revoke_key(key.fingerprint, Passphrase(""))
 
     assert updated.trust == "r"
 
@@ -379,12 +386,12 @@ def test_revoke_key_wrong_passphrase_raises_and_leaves_it_intact(tmp_path):
             name="James Example",
             email="james@example.com",
             key_length=1024,
-            passphrase="correct-horse",
+            passphrase=Passphrase("correct-horse"),
         )
     )
 
     with pytest.raises(BadPassphraseError):
-        backend.revoke_key(key.fingerprint, "wrong-passphrase")
+        backend.revoke_key(key.fingerprint, Passphrase("wrong-passphrase"))
 
     assert backend.list_keys()[0].trust != "r"
 
@@ -396,19 +403,25 @@ def test_change_passphrase_changes_it(tmp_path):
             name="Kelly Example",
             email="kelly@example.com",
             key_length=1024,
-            passphrase="old-secret",
+            passphrase=Passphrase("old-secret"),
         )
     )
 
-    updated = backend.change_passphrase(key.fingerprint, "old-secret", "new-secret")
+    updated = backend.change_passphrase(
+        key.fingerprint, Passphrase("old-secret"), Passphrase("new-secret")
+    )
 
     assert updated.fingerprint == key.fingerprint
     # The only way to see the new passphrase actually protects the key
     # without shelling out to gpg directly: change it right back with the
     # *old* one now rejected and the *new* one accepted.
     with pytest.raises(BadPassphraseError):
-        backend.change_passphrase(key.fingerprint, "old-secret", "whatever")
-    backend.change_passphrase(key.fingerprint, "new-secret", "old-secret")
+        backend.change_passphrase(
+            key.fingerprint, Passphrase("old-secret"), Passphrase("whatever")
+        )
+    backend.change_passphrase(
+        key.fingerprint, Passphrase("new-secret"), Passphrase("old-secret")
+    )
 
 
 def test_change_passphrase_wrong_old_passphrase_raises_and_leaves_it_intact(tmp_path):
@@ -418,16 +431,20 @@ def test_change_passphrase_wrong_old_passphrase_raises_and_leaves_it_intact(tmp_
             name="Liam Example",
             email="liam@example.com",
             key_length=1024,
-            passphrase="correct-horse",
+            passphrase=Passphrase("correct-horse"),
         )
     )
 
     with pytest.raises(BadPassphraseError):
-        backend.change_passphrase(key.fingerprint, "wrong-passphrase", "new-secret")
+        backend.change_passphrase(
+            key.fingerprint, Passphrase("wrong-passphrase"), Passphrase("new-secret")
+        )
 
     # The original passphrase must still work — the failed attempt above
     # must not have left the key in some half-changed state.
-    backend.change_passphrase(key.fingerprint, "correct-horse", "new-secret")
+    backend.change_passphrase(
+        key.fingerprint, Passphrase("correct-horse"), Passphrase("new-secret")
+    )
 
 
 def test_change_passphrase_still_checks_old_one_when_agent_has_it_cached(tmp_path):
@@ -445,19 +462,23 @@ def test_change_passphrase_still_checks_old_one_when_agent_has_it_cached(tmp_pat
             name="Nora Example",
             email="nora@example.com",
             key_length=1024,
-            passphrase="correct-horse",
+            passphrase=Passphrase("correct-horse"),
         )
     )
     # Prime the agent's cache for this key via an unrelated secret-key
     # operation first, like a user doing something else before this.
-    backend.set_key_expiration(key.fingerprint, "correct-horse", "0")
+    backend.set_key_expiration(key.fingerprint, Passphrase("correct-horse"), "0")
 
     with pytest.raises(BadPassphraseError):
-        backend.change_passphrase(key.fingerprint, "wrong-passphrase", "new-secret")
+        backend.change_passphrase(
+            key.fingerprint, Passphrase("wrong-passphrase"), Passphrase("new-secret")
+        )
 
     # Must still be "correct-horse" — not silently overwritten with
     # "wrong-passphrase" by a misfired single-prompt exchange.
-    backend.change_passphrase(key.fingerprint, "correct-horse", "new-secret")
+    backend.change_passphrase(
+        key.fingerprint, Passphrase("correct-horse"), Passphrase("new-secret")
+    )
 
 
 def test_change_passphrase_wrong_old_one_with_several_subkeys_reports_cleanly(
@@ -478,17 +499,23 @@ def test_change_passphrase_wrong_old_one_with_several_subkeys_reports_cleanly(
             name="Oscar Example",
             email="oscar@example.com",
             key_length=1024,
-            passphrase="correct-horse",
+            passphrase=Passphrase("correct-horse"),
         )
     )
-    backend.add_subkey(key.fingerprint, "correct-horse", usage="auth", key_length=1024)
+    backend.add_subkey(
+        key.fingerprint, Passphrase("correct-horse"), usage="auth", key_length=1024
+    )
     assert len(backend.list_keys()[0].subkeys) == 3  # sign + encrypt + auth
 
     with pytest.raises(BadPassphraseError):
-        backend.change_passphrase(key.fingerprint, "wrong-passphrase", "new-secret")
+        backend.change_passphrase(
+            key.fingerprint, Passphrase("wrong-passphrase"), Passphrase("new-secret")
+        )
 
     # The original passphrase must still work.
-    backend.change_passphrase(key.fingerprint, "correct-horse", "new-secret")
+    backend.change_passphrase(
+        key.fingerprint, Passphrase("correct-horse"), Passphrase("new-secret")
+    )
 
 
 def test_delete_key_removes_secret_and_public_key(tmp_path):
@@ -543,7 +570,10 @@ def test_add_uid_appends_a_new_uid(tmp_path):
     )
 
     updated = backend.add_uid(
-        key.fingerprint, "", name="Judy Example", email="judy@work.example.com"
+        key.fingerprint,
+        Passphrase(""),
+        name="Judy Example",
+        email="judy@work.example.com",
     )
 
     # gpg's own UID listing order isn't stable/meaningful (verified
@@ -576,7 +606,10 @@ def test_add_uid_new_uid_becomes_primary_by_default(tmp_path):
     )
 
     updated = backend.add_uid(
-        key.fingerprint, "", name="Omar Example", email="omar@work.example.com"
+        key.fingerprint,
+        Passphrase(""),
+        name="Omar Example",
+        email="omar@work.example.com",
     )
 
     primary = [uid for uid in updated.uids if uid.primary]
@@ -590,14 +623,14 @@ def test_add_uid_wrong_passphrase_raises_bad_passphrase_error(tmp_path):
             name="Karl Example",
             email="karl@example.com",
             key_length=1024,
-            passphrase="correct-horse",
+            passphrase=Passphrase("correct-horse"),
         )
     )
 
     with pytest.raises(BadPassphraseError):
         backend.add_uid(
             key.fingerprint,
-            "wrong-passphrase",
+            Passphrase("wrong-passphrase"),
             name="Karl Example",
             email="karl@work.example.com",
         )
@@ -609,11 +642,14 @@ def test_set_primary_uid_leaves_both_uids_present_and_unrevoked(tmp_path):
         NewKeyRequest(name="Laura Example", email="laura@example.com", key_length=1024)
     )
     key = backend.add_uid(
-        key.fingerprint, "", name="Laura Example", email="laura@work.example.com"
+        key.fingerprint,
+        Passphrase(""),
+        name="Laura Example",
+        email="laura@work.example.com",
     )
     target = key.uids[1].value
 
-    updated = backend.set_primary_uid(key.fingerprint, "", target)
+    updated = backend.set_primary_uid(key.fingerprint, Passphrase(""), target)
 
     assert {uid.value for uid in updated.uids} == {uid.value for uid in key.uids}
     assert all(not uid.revoked for uid in updated.uids)
@@ -630,7 +666,10 @@ def test_primary_uid_lookup_failure_leaves_no_uid_flagged_primary(
         NewKeyRequest(name="Pia Example", email="pia@example.com", key_length=1024)
     )
     backend.add_uid(
-        key.fingerprint, "", name="Pia Example", email="pia@work.example.com"
+        key.fingerprint,
+        Passphrase(""),
+        name="Pia Example",
+        email="pia@work.example.com",
     )
 
     real_run = gpg_backend_module.subprocess.run
@@ -658,11 +697,16 @@ def test_set_primary_uid_flags_the_chosen_uid_as_primary(tmp_path):
         NewKeyRequest(name="Mona Example", email="mona@example.com", key_length=1024)
     )
     key = backend.add_uid(
-        key.fingerprint, "", name="Mona Example", email="mona@work.example.com"
+        key.fingerprint,
+        Passphrase(""),
+        name="Mona Example",
+        email="mona@work.example.com",
     )
     non_primary = next(uid for uid in key.uids if not uid.primary)
 
-    updated = backend.set_primary_uid(key.fingerprint, "", non_primary.value)
+    updated = backend.set_primary_uid(
+        key.fingerprint, Passphrase(""), non_primary.value
+    )
 
     primary = [uid for uid in updated.uids if uid.primary]
     assert [uid.value for uid in primary] == [non_primary.value]
@@ -676,11 +720,14 @@ def test_revoke_uid_marks_it_revoked(tmp_path):
         )
     )
     key = backend.add_uid(
-        key.fingerprint, "", name="Mallory Example", email="mallory@work.example.com"
+        key.fingerprint,
+        Passphrase(""),
+        name="Mallory Example",
+        email="mallory@work.example.com",
     )
     second_uid = key.uids[1].value
 
-    updated = backend.revoke_uid(key.fingerprint, "", second_uid)
+    updated = backend.revoke_uid(key.fingerprint, Passphrase(""), second_uid)
 
     revoked = next(uid for uid in updated.uids if uid.value == second_uid)
     assert revoked.revoked is True
@@ -693,12 +740,12 @@ def test_revoke_uid_wrong_passphrase_raises_and_leaves_it_intact(tmp_path):
             name="Nadia Example",
             email="nadia@example.com",
             key_length=1024,
-            passphrase="correct-horse",
+            passphrase=Passphrase("correct-horse"),
         )
     )
     key = backend.add_uid(
         key.fingerprint,
-        "correct-horse",
+        Passphrase("correct-horse"),
         name="Nadia Example",
         email="nadia@work.example.com",
     )
@@ -710,7 +757,7 @@ def test_revoke_uid_wrong_passphrase_raises_and_leaves_it_intact(tmp_path):
     backend._restart_agent()
 
     with pytest.raises(BadPassphraseError):
-        backend.revoke_uid(key.fingerprint, "wrong-passphrase", second_uid)
+        backend.revoke_uid(key.fingerprint, Passphrase("wrong-passphrase"), second_uid)
 
     unchanged = next(
         uid for uid in backend.list_keys()[0].uids if uid.value == second_uid
@@ -725,7 +772,7 @@ def test_revoke_uid_refuses_to_revoke_the_last_valid_uid(tmp_path):
     )
 
     with pytest.raises(GPGBackendError):
-        backend.revoke_uid(key.fingerprint, "", key.uids[0].value)
+        backend.revoke_uid(key.fingerprint, Passphrase(""), key.uids[0].value)
 
 
 def test_set_key_expiration_relative_duration(tmp_path):
@@ -736,7 +783,7 @@ def test_set_key_expiration_relative_duration(tmp_path):
     assert key.expires is None
 
     before = time.time()
-    updated = backend.set_key_expiration(key.fingerprint, "", "30d")
+    updated = backend.set_key_expiration(key.fingerprint, Passphrase(""), "30d")
 
     assert updated.expires is not None
     assert abs(updated.expires - (before + 30 * 86400)) < 120
@@ -750,7 +797,7 @@ def test_set_key_expiration_absolute_date(tmp_path):
         NewKeyRequest(name="Xena Example", email="xena@example.com", key_length=1024)
     )
 
-    updated = backend.set_key_expiration(key.fingerprint, "", "2030-06-15")
+    updated = backend.set_key_expiration(key.fingerprint, Passphrase(""), "2030-06-15")
 
     assert datetime.fromtimestamp(updated.expires).date() == date(2030, 6, 15)  # noqa: DTZ006
 
@@ -760,10 +807,10 @@ def test_set_key_expiration_zero_removes_it(tmp_path):
     key = backend.generate_key(
         NewKeyRequest(name="Yara Example", email="yara@example.com", key_length=1024)
     )
-    key = backend.set_key_expiration(key.fingerprint, "", "30d")
+    key = backend.set_key_expiration(key.fingerprint, Passphrase(""), "30d")
     assert key.expires is not None
 
-    updated = backend.set_key_expiration(key.fingerprint, "", "0")
+    updated = backend.set_key_expiration(key.fingerprint, Passphrase(""), "0")
 
     assert updated.expires is None
 
@@ -775,12 +822,14 @@ def test_set_key_expiration_wrong_passphrase_raises_bad_passphrase_error(tmp_pat
             name="Zach Example",
             email="zach@example.com",
             key_length=1024,
-            passphrase="correct-horse",
+            passphrase=Passphrase("correct-horse"),
         )
     )
 
     with pytest.raises(BadPassphraseError):
-        backend.set_key_expiration(key.fingerprint, "wrong-passphrase", "30d")
+        backend.set_key_expiration(
+            key.fingerprint, Passphrase("wrong-passphrase"), "30d"
+        )
 
 
 def test_set_subkey_expiration_updates_only_that_subkey(tmp_path):
@@ -792,7 +841,7 @@ def test_set_subkey_expiration_updates_only_that_subkey(tmp_path):
     target, other = key.subkeys
 
     updated = backend.set_subkey_expiration(
-        key.fingerprint, "", target.fingerprint, "30d"
+        key.fingerprint, Passphrase(""), target.fingerprint, "30d"
     )
 
     updated_target = next(
@@ -813,14 +862,14 @@ def test_set_subkey_expiration_wrong_passphrase_raises_bad_passphrase_error(tmp_
             name="Bella Example",
             email="bella@example.com",
             key_length=1024,
-            passphrase="correct-horse",
+            passphrase=Passphrase("correct-horse"),
         )
     )
     subkey = key.subkeys[0]
 
     with pytest.raises(BadPassphraseError):
         backend.set_subkey_expiration(
-            key.fingerprint, "wrong-passphrase", subkey.fingerprint, "30d"
+            key.fingerprint, Passphrase("wrong-passphrase"), subkey.fingerprint, "30d"
         )
 
 
@@ -849,7 +898,7 @@ def test_set_key_expiration_retries_once_after_agent_version_mismatch(
 
     monkeypatch.setattr(gpg_backend_module.subprocess, "run", _fake_run)
 
-    updated = backend.set_key_expiration(key.fingerprint, "", "30d")
+    updated = backend.set_key_expiration(key.fingerprint, Passphrase(""), "30d")
 
     assert len(calls) == 2
     assert updated.expires is not None
@@ -903,7 +952,10 @@ def test_sign_key_raises_the_signed_keys_validity(tmp_path):
     assert target.trust != "f"
 
     updated = backend.sign_key(
-        target.fingerprint, "", signing_key_fingerprint=signer.fingerprint, cert_level=2
+        target.fingerprint,
+        Passphrase(""),
+        signing_key_fingerprint=signer.fingerprint,
+        cert_level=2,
     )
 
     assert updated.trust == "f"
@@ -928,7 +980,7 @@ def test_sign_key_local_only_still_raises_validity(tmp_path):
     # here so this test actually demonstrates local-only signing counts.
     updated = backend.sign_key(
         target.fingerprint,
-        "",
+        Passphrase(""),
         signing_key_fingerprint=signer.fingerprint,
         cert_level=2,
         local_only=True,
@@ -944,7 +996,7 @@ def test_sign_key_wrong_passphrase_raises_bad_passphrase_error(tmp_path):
             name="Signer Example",
             email="signer3@example.com",
             key_length=1024,
-            passphrase="correct-horse",
+            passphrase=Passphrase("correct-horse"),
         )
     )
     target = backend.generate_key(
@@ -956,7 +1008,7 @@ def test_sign_key_wrong_passphrase_raises_bad_passphrase_error(tmp_path):
     with pytest.raises(BadPassphraseError):
         backend.sign_key(
             target.fingerprint,
-            "wrong-passphrase",
+            Passphrase("wrong-passphrase"),
             signing_key_fingerprint=signer.fingerprint,
         )
 
@@ -992,7 +1044,7 @@ def test_sign_key_retries_once_after_agent_version_mismatch(tmp_path, monkeypatc
     monkeypatch.setattr(gpg_backend_module.subprocess, "run", _fake_run)
 
     updated = backend.sign_key(
-        target.fingerprint, "", signing_key_fingerprint=signer.fingerprint
+        target.fingerprint, Passphrase(""), signing_key_fingerprint=signer.fingerprint
     )
 
     assert len(calls) == 2
@@ -1026,7 +1078,7 @@ def test_add_photo_uid_appends_a_photo(tmp_path):
     )
     jpeg = make_test_jpeg(tmp_path / "photo.jpg")
 
-    updated = backend.add_photo_uid(key.fingerprint, "", jpeg)
+    updated = backend.add_photo_uid(key.fingerprint, Passphrase(""), jpeg)
 
     assert len(updated.photos) == 1
     photo = updated.photos[0]
@@ -1052,7 +1104,7 @@ def test_add_photo_uid_handles_the_large_jpeg_size_confirmation_prompt(tmp_path)
     jpeg = make_large_test_jpeg(tmp_path / "large.jpg")
     assert jpeg.stat().st_size > 20_000  # large enough to trigger the prompt
 
-    updated = backend.add_photo_uid(key.fingerprint, "", jpeg)
+    updated = backend.add_photo_uid(key.fingerprint, Passphrase(""), jpeg)
 
     assert len(updated.photos) == 1
     assert updated.photos[0].image.startswith(b"\xff\xd8")
@@ -1066,8 +1118,8 @@ def test_add_photo_uid_second_photo_gets_the_next_index(tmp_path):
     blue_jpeg = make_test_jpeg(tmp_path / "blue.jpg", "blue")
     red_jpeg = make_test_jpeg(tmp_path / "red.jpg", "red")
 
-    key = backend.add_photo_uid(key.fingerprint, "", blue_jpeg)
-    updated = backend.add_photo_uid(key.fingerprint, "", red_jpeg)
+    key = backend.add_photo_uid(key.fingerprint, Passphrase(""), blue_jpeg)
+    updated = backend.add_photo_uid(key.fingerprint, Passphrase(""), red_jpeg)
 
     assert [p.index for p in updated.photos] == [1, 2]
     assert all(not p.revoked for p in updated.photos)
@@ -1082,13 +1134,13 @@ def test_add_photo_uid_wrong_passphrase_raises_bad_passphrase_error(tmp_path):
             name="Randy Example",
             email="randy@example.com",
             key_length=1024,
-            passphrase="correct-horse",
+            passphrase=Passphrase("correct-horse"),
         )
     )
     jpeg = make_test_jpeg(tmp_path / "photo.jpg")
 
     with pytest.raises(BadPassphraseError):
-        backend.add_photo_uid(key.fingerprint, "wrong-passphrase", jpeg)
+        backend.add_photo_uid(key.fingerprint, Passphrase("wrong-passphrase"), jpeg)
 
 
 def test_add_photo_uid_rejects_a_non_jpeg_file(tmp_path):
@@ -1100,7 +1152,7 @@ def test_add_photo_uid_rejects_a_non_jpeg_file(tmp_path):
     not_a_jpeg.write_bytes(b"this is not a jpeg file")
 
     with pytest.raises(GPGBackendError):
-        backend.add_photo_uid(key.fingerprint, "", not_a_jpeg)
+        backend.add_photo_uid(key.fingerprint, Passphrase(""), not_a_jpeg)
 
 
 def test_revoke_photo_uid_marks_it_revoked(tmp_path):
@@ -1110,10 +1162,10 @@ def test_revoke_photo_uid_marks_it_revoked(tmp_path):
     )
     blue_jpeg = make_test_jpeg(tmp_path / "blue.jpg", "blue")
     red_jpeg = make_test_jpeg(tmp_path / "red.jpg", "red")
-    key = backend.add_photo_uid(key.fingerprint, "", blue_jpeg)
-    key = backend.add_photo_uid(key.fingerprint, "", red_jpeg)
+    key = backend.add_photo_uid(key.fingerprint, Passphrase(""), blue_jpeg)
+    key = backend.add_photo_uid(key.fingerprint, Passphrase(""), red_jpeg)
 
-    updated = backend.revoke_photo_uid(key.fingerprint, "", photo_index=2)
+    updated = backend.revoke_photo_uid(key.fingerprint, Passphrase(""), photo_index=2)
 
     assert [p.revoked for p in updated.photos] == [False, True]
 
@@ -1125,17 +1177,19 @@ def test_revoke_photo_uid_wrong_passphrase_raises_and_leaves_it_intact(tmp_path)
             name="Ursula Example",
             email="ursula@example.com",
             key_length=1024,
-            passphrase="correct-horse",
+            passphrase=Passphrase("correct-horse"),
         )
     )
     jpeg = make_test_jpeg(tmp_path / "photo.jpg")
-    key = backend.add_photo_uid(key.fingerprint, "correct-horse", jpeg)
+    key = backend.add_photo_uid(key.fingerprint, Passphrase("correct-horse"), jpeg)
     # See test_revoke_uid_wrong_passphrase_raises_and_leaves_it_intact: the
     # agent still has "correct-horse" cached from add_photo_uid() above.
     backend._restart_agent()
 
     with pytest.raises(BadPassphraseError):
-        backend.revoke_photo_uid(key.fingerprint, "wrong-passphrase", photo_index=1)
+        backend.revoke_photo_uid(
+            key.fingerprint, Passphrase("wrong-passphrase"), photo_index=1
+        )
 
     unchanged = backend.list_keys()[0].photos[0]
     assert unchanged.revoked is False
@@ -1150,7 +1204,7 @@ def test_revoke_photo_uid_unknown_index_raises(tmp_path):
     )
 
     with pytest.raises(GPGBackendError):
-        backend.revoke_photo_uid(key.fingerprint, "", photo_index=1)
+        backend.revoke_photo_uid(key.fingerprint, Passphrase(""), photo_index=1)
 
 
 def test_add_uid_retries_once_after_agent_version_mismatch(tmp_path, monkeypatch):
@@ -1181,7 +1235,7 @@ def test_add_uid_retries_once_after_agent_version_mismatch(tmp_path, monkeypatch
     monkeypatch.setattr(gpg_backend_module.subprocess, "run", _fake_run)
 
     updated = backend.add_uid(
-        key.fingerprint, "", name="Test User", email="test@work.example.com"
+        key.fingerprint, Passphrase(""), name="Test User", email="test@work.example.com"
     )
 
     assert len(calls) == 2
@@ -1208,7 +1262,10 @@ def test_add_uid_does_not_retry_on_unrelated_failure(tmp_path, monkeypatch):
 
     with pytest.raises(GPGBackendError, match="some other error"):
         backend.add_uid(
-            key.fingerprint, "", name="Test User", email="test@work.example.com"
+            key.fingerprint,
+            Passphrase(""),
+            name="Test User",
+            email="test@work.example.com",
         )
 
     assert restart_calls == []
@@ -1891,7 +1948,10 @@ def test_refresh_from_keyserver_reports_updated_when_the_key_actually_changed(
         # Simulate the keyserver's copy carrying a UID this keyring
         # doesn't have yet, merged in by the "fetch".
         backend.add_uid(
-            key.fingerprint, "", name="Rosa Example", email="rosa@newmail.example.com"
+            key.fingerprint,
+            Passphrase(""),
+            name="Rosa Example",
+            email="rosa@newmail.example.com",
         )
         return _FakeImportResult()
 
@@ -2017,7 +2077,9 @@ def test_list_key_signatures_reports_a_known_signer(tmp_path):
     target = backend.generate_key(
         NewKeyRequest(name="Yara Example", email="yara@example.com", key_length=1024)
     )
-    backend.sign_key(target.fingerprint, "", signing_key_fingerprint=signer.fingerprint)
+    backend.sign_key(
+        target.fingerprint, Passphrase(""), signing_key_fingerprint=signer.fingerprint
+    )
 
     (signature,) = backend.list_key_signatures(target.fingerprint)
 
@@ -2035,7 +2097,9 @@ def test_list_key_signatures_reports_a_signer_no_longer_in_the_keyring(tmp_path)
     target = backend.generate_key(
         NewKeyRequest(name="Amara Example", email="amara@example.com", key_length=1024)
     )
-    backend.sign_key(target.fingerprint, "", signing_key_fingerprint=signer.fingerprint)
+    backend.sign_key(
+        target.fingerprint, Passphrase(""), signing_key_fingerprint=signer.fingerprint
+    )
     backend.delete_key(signer.fingerprint, secret=True)
 
     (signature,) = backend.list_key_signatures(target.fingerprint)
@@ -2140,11 +2204,11 @@ def test_export_secret_key_returns_armored_secret_block(tmp_path):
             name="Jill Example",
             email="jill@example.com",
             key_length=1024,
-            passphrase="correct-horse",
+            passphrase=Passphrase("correct-horse"),
         )
     )
 
-    armored = backend.export_secret_key(key.fingerprint, "correct-horse")
+    armored = backend.export_secret_key(key.fingerprint, Passphrase("correct-horse"))
 
     assert "BEGIN PGP PRIVATE KEY BLOCK" in armored
 
@@ -2155,7 +2219,7 @@ def test_export_secret_key_with_no_passphrase_set(tmp_path):
         NewKeyRequest(name="Kian Example", email="kian@example.com", key_length=1024)
     )
 
-    armored = backend.export_secret_key(key.fingerprint, "")
+    armored = backend.export_secret_key(key.fingerprint, Passphrase(""))
 
     assert "BEGIN PGP PRIVATE KEY BLOCK" in armored
 
@@ -2167,19 +2231,19 @@ def test_export_secret_key_wrong_passphrase_raises(tmp_path):
             name="Liam Example",
             email="liam@example.com",
             key_length=1024,
-            passphrase="correct-horse",
+            passphrase=Passphrase("correct-horse"),
         )
     )
 
     with pytest.raises(BadPassphraseError):
-        backend.export_secret_key(key.fingerprint, "wrong-passphrase")
+        backend.export_secret_key(key.fingerprint, Passphrase("wrong-passphrase"))
 
 
 def test_export_secret_key_raises_for_unknown_fingerprint(tmp_path):
     backend = GPGBackend(tmp_path / "home")
 
     with pytest.raises(GPGBackendError):
-        backend.export_secret_key("0" * 40, "")
+        backend.export_secret_key("0" * 40, Passphrase(""))
 
 
 def test_export_secret_key_retries_once_after_agent_version_mismatch(
@@ -2208,7 +2272,7 @@ def test_export_secret_key_retries_once_after_agent_version_mismatch(
 
     monkeypatch.setattr(gpg_backend_module.subprocess, "run", _fake_run)
 
-    armored = backend.export_secret_key(key.fingerprint, "")
+    armored = backend.export_secret_key(key.fingerprint, Passphrase(""))
 
     assert len(calls) == 2
     assert "BEGIN PGP PRIVATE KEY BLOCK" in armored
@@ -2234,7 +2298,7 @@ def test_export_secret_key_does_not_retry_on_unrelated_failure(tmp_path, monkeyp
     )
 
     with pytest.raises(GPGBackendError, match="some other error"):
-        backend.export_secret_key(key.fingerprint, "")
+        backend.export_secret_key(key.fingerprint, Passphrase(""))
 
     assert restart_calls == []
 
@@ -2348,7 +2412,7 @@ def test_add_subkey_retries_once_after_agent_version_mismatch(tmp_path, monkeypa
     monkeypatch.setattr(gnupg.GPG, "add_subkey", _fake_add_subkey)
 
     updated = backend.add_subkey(
-        key.fingerprint, "", usage="auth", algorithm="RSA", key_length=1024
+        key.fingerprint, Passphrase(""), usage="auth", algorithm="RSA", key_length=1024
     )
 
     assert len(calls) == 2
@@ -2383,7 +2447,7 @@ def test_revoke_subkey_retries_once_after_agent_version_mismatch(tmp_path, monke
 
     monkeypatch.setattr(gpg_backend_module.subprocess, "run", _fake_run)
 
-    updated = backend.revoke_subkey(key.fingerprint, subkey.keyid, "")
+    updated = backend.revoke_subkey(key.fingerprint, subkey.keyid, Passphrase(""))
 
     assert len(calls) == 2
     revoked = next(s for s in updated.subkeys if s.keyid == subkey.keyid)
@@ -2410,7 +2474,7 @@ def test_revoke_subkey_does_not_retry_on_unrelated_failure(tmp_path, monkeypatch
     )
 
     with pytest.raises(GPGBackendError, match="some other error"):
-        backend.revoke_subkey(key.fingerprint, subkey.keyid, "")
+        backend.revoke_subkey(key.fingerprint, subkey.keyid, Passphrase(""))
 
     assert restart_calls == []
 
@@ -2438,7 +2502,7 @@ def test_revoke_key_retries_once_after_agent_version_mismatch(tmp_path, monkeypa
 
     monkeypatch.setattr(gpg_backend_module.subprocess, "run", _fake_run)
 
-    updated = backend.revoke_key(key.fingerprint, "")
+    updated = backend.revoke_key(key.fingerprint, Passphrase(""))
 
     assert len(calls) == 2
     assert updated.trust == "r"
@@ -2463,7 +2527,7 @@ def test_revoke_key_does_not_retry_on_unrelated_failure(tmp_path, monkeypatch):
     )
 
     with pytest.raises(GPGBackendError, match="some other error"):
-        backend.revoke_key(key.fingerprint, "")
+        backend.revoke_key(key.fingerprint, Passphrase(""))
 
     assert restart_calls == []
 
@@ -2477,7 +2541,7 @@ def test_change_passphrase_retries_once_after_agent_version_mismatch(
             name="Test User",
             email="test@example.com",
             key_length=1024,
-            passphrase="old-secret",
+            passphrase=Passphrase("old-secret"),
         )
     )
     monkeypatch.setattr(GPGBackend, "_restart_agent", lambda self: None)
@@ -2498,7 +2562,9 @@ def test_change_passphrase_retries_once_after_agent_version_mismatch(
 
     monkeypatch.setattr(gpg_backend_module.subprocess, "run", _fake_run)
 
-    updated = backend.change_passphrase(key.fingerprint, "old-secret", "new-secret")
+    updated = backend.change_passphrase(
+        key.fingerprint, Passphrase("old-secret"), Passphrase("new-secret")
+    )
 
     assert len(calls) == 2
     assert updated.fingerprint == key.fingerprint
@@ -2523,7 +2589,9 @@ def test_change_passphrase_does_not_retry_on_unrelated_failure(tmp_path, monkeyp
     )
 
     with pytest.raises(GPGBackendError, match="some other error"):
-        backend.change_passphrase(key.fingerprint, "", "new-secret")
+        backend.change_passphrase(
+            key.fingerprint, Passphrase(""), Passphrase("new-secret")
+        )
 
     assert restart_calls == []
 
@@ -2584,7 +2652,7 @@ def test_add_photo_uid_retries_once_after_agent_version_mismatch(tmp_path, monke
 
     monkeypatch.setattr(gpg_backend_module.subprocess, "Popen", _fake_popen)
 
-    updated = backend.add_photo_uid(key.fingerprint, "", jpeg)
+    updated = backend.add_photo_uid(key.fingerprint, Passphrase(""), jpeg)
 
     assert len(calls) == 2
     assert len(updated.photos) == 1
@@ -2598,7 +2666,7 @@ def test_revoke_photo_uid_retries_once_after_agent_version_mismatch(
         NewKeyRequest(name="Test User", email="test@example.com", key_length=1024)
     )
     jpeg = make_test_jpeg(tmp_path / "photo.jpg")
-    key = backend.add_photo_uid(key.fingerprint, "", jpeg)
+    key = backend.add_photo_uid(key.fingerprint, Passphrase(""), jpeg)
     monkeypatch.setattr(GPGBackend, "_restart_agent", lambda self: None)
 
     real_run = gpg_backend_module.subprocess.run
@@ -2617,7 +2685,7 @@ def test_revoke_photo_uid_retries_once_after_agent_version_mismatch(
 
     monkeypatch.setattr(gpg_backend_module.subprocess, "run", _fake_run)
 
-    updated = backend.revoke_photo_uid(key.fingerprint, "", photo_index=1)
+    updated = backend.revoke_photo_uid(key.fingerprint, Passphrase(""), photo_index=1)
 
     assert len(calls) == 2
     assert updated.photos[0].revoked is True
@@ -2629,7 +2697,7 @@ def test_revoke_photo_uid_does_not_retry_on_unrelated_failure(tmp_path, monkeypa
         NewKeyRequest(name="Test User", email="test@example.com", key_length=1024)
     )
     jpeg = make_test_jpeg(tmp_path / "photo.jpg")
-    key = backend.add_photo_uid(key.fingerprint, "", jpeg)
+    key = backend.add_photo_uid(key.fingerprint, Passphrase(""), jpeg)
     restart_calls = []
     monkeypatch.setattr(
         GPGBackend, "_restart_agent", lambda self: restart_calls.append(1)
@@ -2649,6 +2717,189 @@ def test_revoke_photo_uid_does_not_retry_on_unrelated_failure(tmp_path, monkeypa
     monkeypatch.setattr(gpg_backend_module.subprocess, "run", _fake_run)
 
     with pytest.raises(GPGBackendError, match="some other error"):
-        backend.revoke_photo_uid(key.fingerprint, "", photo_index=1)
+        backend.revoke_photo_uid(key.fingerprint, Passphrase(""), photo_index=1)
 
     assert restart_calls == []
+
+
+class TestDebugTracing:
+    """External-program calls are traced at DEBUG, with secrets redacted."""
+
+    def test_redact_replaces_every_secret_occurrence(self):
+        text = gpg_backend_module._redact("old\nnew\nold\n", ("old", "new", "", None))
+
+        assert text == "**********\n**********\n**********\n"
+
+    def test_redact_leaves_text_alone_without_secrets(self):
+        assert gpg_backend_module._redact("list\nquit\n", ()) == "list\nquit\n"
+
+    def test_traced_run_logs_command_and_redacts_stdin(self, caplog):
+        caplog.set_level("DEBUG", logger=gpg_backend_module.__name__)
+
+        result = gpg_backend_module._traced_run(
+            ["true"],
+            input="hunter2\n",
+            secrets=("hunter2",),
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 0
+        assert "hunter2" not in caplog.text
+        assert "**********" in caplog.text
+        assert "true" in caplog.text
+
+    def test_traced_run_silent_below_debug_level(self, caplog):
+        caplog.set_level("INFO", logger=gpg_backend_module.__name__)
+
+        gpg_backend_module._traced_run(
+            ["true"],
+            input="hunter2\n",
+            secrets=("hunter2",),
+            capture_output=True,
+            text=True,
+        )
+
+        assert caplog.text == ""
+
+    def test_traced_popen_logs_command_only(self, caplog):
+        caplog.set_level("DEBUG", logger=gpg_backend_module.__name__)
+
+        process = gpg_backend_module._traced_popen(
+            ["true"], stdout=gpg_backend_module.subprocess.DEVNULL
+        )
+        process.wait()
+
+        assert "true" in caplog.text
+
+    def test_change_passphrase_never_logs_passphrases_in_debug(self, tmp_path, caplog):
+        caplog.set_level("DEBUG", logger=gpg_backend_module.__name__)
+        backend = GPGBackend(tmp_path / "home")
+        key = backend.generate_key(
+            NewKeyRequest(name="Test User", email="test@example.com", key_length=1024)
+        )
+        backend.change_passphrase(
+            key.fingerprint, Passphrase(""), Passphrase("correct horse battery staple")
+        )
+
+        assert "correct horse battery staple" not in caplog.text
+        assert "--change-passphrase" in caplog.text
+
+
+class TestKeyExpiredNoiseFiltering:
+    """``[GNUPG:] KEYEXPIRED <ts>`` status lines never reach a raised message."""
+
+    def test_strip_gnupg_noise_removes_keyexpired_line(self):
+        stderr = (
+            "gpg: some real problem\n"
+            "[GNUPG:] KEYEXPIRED 1664870288\n"
+            "gpg: more diagnostic\n"
+        )
+
+        cleaned = gpg_backend_module._strip_gnupg_noise(stderr)
+
+        assert "KEYEXPIRED" not in cleaned
+        assert "some real problem" in cleaned
+        assert "more diagnostic" in cleaned
+
+    def test_strip_gnupg_noise_leaves_ordinary_text_alone(self):
+        text = "Could not delete key ABCD1234"
+
+        assert gpg_backend_module._strip_gnupg_noise(text) == text
+
+    def test_gpg_backend_error_strips_keyexpired_from_message(self):
+        exc = GPGBackendError("gpg: signing failed\n[GNUPG:] KEYEXPIRED 1664870288\n")
+
+        assert "KEYEXPIRED" not in str(exc)
+        assert "signing failed" in str(exc)
+
+    def test_bad_passphrase_error_also_strips_keyexpired(self):
+        exc = BadPassphraseError("[GNUPG:] KEYEXPIRED 1664870288\nbad passphrase\n")
+
+        assert "KEYEXPIRED" not in str(exc)
+        assert "bad passphrase" in str(exc)
+
+    def test_delete_key_error_never_shows_keyexpired(self, tmp_path, monkeypatch):
+        backend = GPGBackend(tmp_path / "home")
+        key = backend.generate_key(
+            NewKeyRequest(name="Test User", email="test@example.com", key_length=1024)
+        )
+
+        class _FailedCompleted:
+            returncode = 2
+            stderr = "[GNUPG:] KEYEXPIRED 1664870288\ngpg: deletion failed\n"
+
+        monkeypatch.setattr(
+            gpg_backend_module, "_traced_run", lambda *a, **kw: _FailedCompleted()
+        )
+
+        with pytest.raises(GPGBackendError) as exc_info:
+            backend.delete_key(key.fingerprint, secret=False)
+
+        assert "KEYEXPIRED" not in str(exc_info.value)
+        assert "deletion failed" in str(exc_info.value)
+
+    def test_clean_stderr_mutates_in_place_and_returns_result(self):
+        class _Result:
+            stderr = "[GNUPG:] KEYEXPIRED 1664870288\ngpg: real error\n"
+
+        result = _Result()
+
+        returned = gpg_backend_module._clean_stderr(result)
+
+        assert returned is result
+        assert "KEYEXPIRED" not in result.stderr
+        assert "real error" in result.stderr
+
+    def test_clean_stderr_tolerates_missing_or_empty_stderr(self):
+        class _NoStderr:
+            pass
+
+        class _EmptyStderr:
+            stderr = ""
+
+        gpg_backend_module._clean_stderr(_NoStderr())  # must not raise
+        result = gpg_backend_module._clean_stderr(_EmptyStderr())
+        assert result.stderr == ""
+
+    def test_traced_run_cleans_stderr_at_the_source(self, monkeypatch):
+        class _Completed:
+            returncode = 0
+            stderr = "[GNUPG:] KEYEXPIRED 1664870288\nharmless diagnostic\n"
+            stdout = ""
+
+        monkeypatch.setattr(
+            gpg_backend_module.subprocess, "run", lambda *a, **kw: _Completed()
+        )
+
+        result = gpg_backend_module._traced_run(["gpg", "--version"])
+
+        assert "KEYEXPIRED" not in result.stderr
+        assert "harmless diagnostic" in result.stderr
+
+    def test_run_with_agent_retry_cleans_stderr_at_the_source(self, tmp_path):
+        backend = GPGBackend(tmp_path / "home")
+
+        class _Result:
+            fingerprint = "ABCD1234"
+            stderr = "[GNUPG:] KEYEXPIRED 1664870288\n"
+
+        cleaned = backend._run_with_agent_retry(lambda: _Result())
+
+        assert "KEYEXPIRED" not in cleaned.stderr
+
+    def test_search_keyserver_error_never_shows_keyexpired(self, tmp_path, monkeypatch):
+        backend = GPGBackend(tmp_path / "home")
+
+        class _EmptyResult(list):
+            stderr = "[GNUPG:] KEYEXPIRED 1664870288\ngpg: search failed\n"
+
+        monkeypatch.setattr(
+            backend._gpg, "search_keys", lambda *a, **kw: _EmptyResult()
+        )
+
+        with pytest.raises(GPGBackendError) as exc_info:
+            backend.search_keyserver("nobody@example.com")
+
+        assert "KEYEXPIRED" not in str(exc_info.value)
+        assert "search failed" in str(exc_info.value)

@@ -12,6 +12,7 @@ from pbnightingale.core.gpg_backend import (
     PhotoUid,
     Uid,
 )
+from pbnightingale.core.secret import Passphrase
 from pbnightingale.ui.revoke_photo_dialog import RevokePhotoDialog
 from tests.gpg_test_helpers import make_test_jpeg
 
@@ -79,7 +80,7 @@ def test_revoke_succeeds_with_mocked_backend(qtbot, monkeypatch, tmp_path):
     dialog._ui.buttonBox.accepted.emit()
 
     qtbot.waitUntil(lambda: dialog.updated_key is _FAKE_KEY)
-    assert calls[0] == (_FAKE_KEY.fingerprint, "", photo.index)
+    assert calls[0] == (_FAKE_KEY.fingerprint, Passphrase(""), photo.index)
 
 
 def test_successful_revoke_caches_the_passphrase(qtbot, monkeypatch, tmp_path):
@@ -98,7 +99,7 @@ def test_successful_revoke_caches_the_passphrase(qtbot, monkeypatch, tmp_path):
     dialog._ui.buttonBox.accepted.emit()
 
     qtbot.waitUntil(lambda: dialog.updated_key is _FAKE_KEY)
-    assert passphrase_cache.get(_FAKE_KEY.fingerprint) == "s3cret"
+    assert passphrase_cache.get(_FAKE_KEY.fingerprint) == Passphrase("s3cret")
 
 
 def test_revoke_reports_backend_failure_and_reenables_form(

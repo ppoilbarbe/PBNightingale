@@ -11,6 +11,7 @@ from PySide6.QtWidgets import QDialog, QDialogButtonBox
 
 from pbnightingale.core import gpg_backend
 from pbnightingale.core.gpg_backend import Uid
+from pbnightingale.core.secret import Passphrase
 from pbnightingale.ui.geometry_mixin import GeometryMixin
 from pbnightingale.ui.key_operation_dialog import KeyOperationDialog
 from pbnightingale.ui.set_primary_uid_dialog_ui import Ui_SetPrimaryUidDialog
@@ -62,7 +63,9 @@ class SetPrimaryUidDialog(GeometryMixin, KeyOperationDialog, QDialog):
         """Set the user ID as primary via the backend."""
         self._run_operation(
             lambda: gpg_backend.default_backend().set_primary_uid(
-                self._fingerprint, self._ui.txtPassphrase.text(), self._uid.value
+                self._fingerprint,
+                Passphrase(self._ui.txtPassphrase.text()),
+                self._uid.value,
             ),
             busy_text=_("Setting primary user ID…"),
             error_template=_("Could not set primary user ID: {error}"),

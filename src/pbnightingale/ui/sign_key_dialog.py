@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QDialog, QDialogButtonBox
 
 from pbnightingale.core import gpg_backend
 from pbnightingale.core.gpg_backend import Key
+from pbnightingale.core.secret import Passphrase
 from pbnightingale.ui.geometry_mixin import GeometryMixin
 from pbnightingale.ui.key_operation_dialog import KeyOperationDialog
 from pbnightingale.ui.sign_key_dialog_ui import Ui_SignKeyDialog
@@ -114,7 +115,7 @@ class SignKeyDialog(GeometryMixin, KeyOperationDialog, QDialog):
         signer: Key = self._ui.cmbSignAs.currentData()
         cert_level = self._ui.cmbCertLevel.currentData()
         local_only = self._ui.chkLocalOnly.isChecked()
-        passphrase = self._ui.txtPassphrase.text()
+        passphrase = Passphrase(self._ui.txtPassphrase.text())
 
         self._run_operation(
             lambda: gpg_backend.default_backend().sign_key(

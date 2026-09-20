@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QFileDialog
 
 from pbnightingale.core import gpg_backend, passphrase_cache
 from pbnightingale.core.gpg_backend import BadPassphraseError, GPGBackendError, Key, Uid
+from pbnightingale.core.secret import Passphrase
 from pbnightingale.ui.add_photo_dialog import AddPhotoDialog
 from pbnightingale.ui.add_photo_dialog_ui import MAX_PREVIEW_DIMENSION
 from tests.gpg_test_helpers import make_test_jpeg
@@ -153,7 +154,7 @@ def test_successful_add_caches_the_passphrase(qtbot, monkeypatch, tmp_path):
     dialog._ui.buttonBox.accepted.emit()
 
     qtbot.waitUntil(lambda: dialog.updated_key is _FAKE_KEY)
-    assert passphrase_cache.get(_FAKE_KEY.fingerprint) == "s3cret"
+    assert passphrase_cache.get(_FAKE_KEY.fingerprint) == Passphrase("s3cret")
 
 
 def test_add_reports_backend_failure_and_reenables_form(qtbot, monkeypatch, tmp_path):

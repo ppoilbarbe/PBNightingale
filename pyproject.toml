@@ -21,7 +21,7 @@ classifiers = [
     "Topic :: Utilities",
 ]
 requires-python = ">=3.14"
-dependencies = ["PySide6>=6.11.0", "python-gnupg>=0.5", "zxcvbn>=4.4"]
+dependencies = ["PySide6>=6.11.0", "python-gnupg>=0.5", "zxcvbn>=4.4", "shtab>=1.7"]
 
 [project.optional-dependencies]
 dev = [
@@ -88,11 +88,13 @@ convention = "numpy"
 # assert is the pytest idiom (S101); tests set standard executable modes like
 # 0o755 on fixture files to simulate a real installed binary (S103); GPG
 # passphrase fixtures are literal strings passed to an isolated, disposable
-# test GNUPGHOME (S106) — none of these are a real security concern in tests.
-# The numpydoc docstring convention (CODING.md, "Coding conventions") never
-# extended to tests/ either — a test's own descriptive name is its
-# documentation, the near-universal pytest convention (D).
-"tests/*" = ["S101", "S103", "S106", "D"]
+# test GNUPGHOME, whether as a function argument (S106) or compared against
+# a Passphrase's unwrapped .passphrase property (S105) — none of these are
+# a real security concern in tests. The numpydoc docstring convention
+# (CODING.md, "Coding conventions") never extended to tests/ either — a
+# test's own descriptive name is its documentation, the near-universal
+# pytest convention (D).
+"tests/*" = ["S101", "S103", "S105", "S106", "D"]
 # Hand-written Qt layout boilerplate (setupUi()-style widget construction) —
 # CODING.md deliberately excludes these from the docstring convention: pure
 # declarative wiring, nothing a docstring would add.
@@ -118,6 +120,7 @@ python                 = "3.14.*"
 pyside6                = "*"
 python-gnupg           = "*"
 zxcvbn                 = "*"
+shtab                  = "*"
 fonts-conda-ecosystem  = "*"
 pytest                 = "*"
 pytest-qt              = "*"

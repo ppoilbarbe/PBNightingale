@@ -44,6 +44,7 @@ from PySide6.QtCore import QThreadPool
 from pbnightingale import preferences
 from pbnightingale.core import passphrase_cache
 from pbnightingale.core.gpg_backend import BadPassphraseError, Key
+from pbnightingale.core.secret import Passphrase
 from pbnightingale.ui.gpg_worker import run_async
 
 
@@ -55,7 +56,7 @@ class KeyOperationDialog:
         self._pool = QThreadPool(self)
         self.updated_key: Key | None = None
         self._pending_fingerprint: str | None = None
-        self._pending_passphrase: str = ""
+        self._pending_passphrase: Passphrase = Passphrase("")
         self._sync_cached_passphrase()
 
     def _passphrase_line_edit(self):
@@ -96,7 +97,7 @@ class KeyOperationDialog:
             return
         fingerprint = self._cache_fingerprint()
         cached = passphrase_cache.get(fingerprint) if fingerprint else None
-        field.setText(cached or "")
+        field.setText(cached.passphrase if cached else "")
 
     def _bad_passphrase_message(self) -> str:
         """Return the message shown for a wrong passphrase.
@@ -134,7 +135,9 @@ class KeyOperationDialog:
         self._error_template = error_template
         self._pending_fingerprint = self._cache_fingerprint()
         field = self._passphrase_line_edit()
-        self._pending_passphrase = field.text() if field is not None else ""
+        self._pending_passphrase = (
+            Passphrase(field.text()) if field is not None else Passphrase("")
+        )
         self._set_form_enabled(False)
         self._ui.progress.setVisible(True)
         self._ui.lblStatus.setText(busy_text)

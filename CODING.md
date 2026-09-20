@@ -161,7 +161,41 @@ entry carries `has_secret=True` when a matching secret key is also present
 (cross-referenced against the secret keyring), so the UI can tell "your
 keys" apart from keys you only hold the public part of. `GPGBackendError`
 wraps every `python-gnupg` failure (bad `gnupghome`, missing/broken `gpg`
-binary) into one exception type.
+binary) into one exception type. `GPGBackendError.__init__` also strips
+gpg's own `[GNUPG:] KEYEXPIRED <timestamp>` status lines from any message
+it's given (`_strip_gnupg_noise()`) — purely informational, but it shows
+up interleaved with genuine diagnostics often enough (see
+`refresh_from_keyserver()` below) to be worth filtering everywhere a
+message might end up shown, not just that one call site. The actual
+filtering happens even earlier, right where gpg's stderr is captured
+(`_traced_run()`, `_run_with_agent_retry()`, and every python-gnupg call
+whose result exposes `.stderr` go through `_clean_stderr()` first) so the
+exception-level strip is really just a last line of defense.
+
+**`core/secret.py::Passphrase`**: every passphrase in this codebase — a
+`GPGBackend` method parameter, `NewKeyRequest.passphrase`, what
+`core/passphrase_cache.py` stores, what a dialog reads off its
+`txtPassphrase` field — is one of these, a frozen dataclass wrapping the
+real string, never a bare `str`. `str()`/`repr()` on it always print
+`"**********"`, never the real value, closing off a leak that a bare
+`str` local variable doesn't: an enhanced traceback tool (or a debugger
+breaking on an unhandled exception) that dumps a frame's locals would
+otherwise print the passphrase in the clear at every stack frame it
+passed through, not just the one that failed. `bool(passphrase)` and `==`
+work directly on the wrapper exactly like they would on the underlying
+string (`__bool__`/the dataclass-generated `__eq__` compare the wrapped
+value), so an emptiness check or a cache-hit comparison never needs to
+unwrap one. The one place that must — `.passphrase`, the property named
+after the class itself so a call site reads as unwrapping the concept,
+not grabbing a random attribute — is right where gpg's own protocol
+genuinely needs the raw text: building a `--command-fd` script or
+`input=` payload, a python-gnupg keyword argument, or filling the widget
+that echoes it back to the user. Interpolating a `Passphrase` into an
+f-string *without* unwrapping it first is a real bug, not just a style
+nit: with no `__format__` override, `f"{passphrase}"` falls back to
+`str()` and sends the literal text `"**********"` to gpg instead of the
+actual passphrase — every script-building call site in `GPGBackend`
+unwraps explicitly for exactly this reason.
 
 `gpg`'s own `cap` field on a "pub" listing is a **whole-key aggregate**: it
 reports a capability as usable if *any* subkey provides it, not just the
@@ -1575,7 +1609,7 @@ the toggle but not the cache below) was switched from a plain
 `QLineEdit` to this.
 
 **Passphrase cache** (`core/passphrase_cache.py`): a module-level
-`{fingerprint: (passphrase, expires_at)}` dict, nothing more — no
+`{fingerprint: (Passphrase, expires_at)}` dict, nothing more — no
 encryption, no disk persistence, cleared automatically when the process
 exits along with everything else in memory. `store()` records a
 passphrase and a `time.monotonic()`-based expiry (deliberately monotonic,

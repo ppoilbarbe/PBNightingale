@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QDialog, QDialogButtonBox
 
 from pbnightingale.core import gpg_backend
 from pbnightingale.core.gpg_backend import Uid
+from pbnightingale.core.secret import Passphrase
 from pbnightingale.ui.geometry_mixin import GeometryMixin
 from pbnightingale.ui.key_operation_dialog import KeyOperationDialog
 from pbnightingale.ui.revoke_uid_dialog_ui import Ui_RevokeUidDialog
@@ -67,7 +68,9 @@ class RevokeUidDialog(GeometryMixin, KeyOperationDialog, QDialog):
         """Revoke the user ID via the backend."""
         self._run_operation(
             lambda: gpg_backend.default_backend().revoke_uid(
-                self._fingerprint, self._ui.txtPassphrase.text(), self._uid.value
+                self._fingerprint,
+                Passphrase(self._ui.txtPassphrase.text()),
+                self._uid.value,
             ),
             busy_text=_("Revoking user ID…"),
             error_template=_("Could not revoke user ID: {error}"),

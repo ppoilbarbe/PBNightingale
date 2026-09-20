@@ -11,6 +11,7 @@ from pbnightingale.core.gpg_backend import (
     Key,
     Uid,
 )
+from pbnightingale.core.secret import Passphrase
 from pbnightingale.ui.revoke_uid_dialog import RevokeUidDialog
 
 _UID = Uid("Alice Example <alice@example.com>", revoked=False)
@@ -71,7 +72,7 @@ def test_revoke_succeeds_with_mocked_backend(qtbot, monkeypatch):
     dialog._ui.buttonBox.accepted.emit()
 
     qtbot.waitUntil(lambda: dialog.updated_key is _FAKE_KEY)
-    assert calls[0] == (_FAKE_KEY.fingerprint, "", _UID.value)
+    assert calls[0] == (_FAKE_KEY.fingerprint, Passphrase(""), _UID.value)
 
 
 def test_successful_revoke_caches_the_passphrase(qtbot, monkeypatch):
@@ -88,7 +89,7 @@ def test_successful_revoke_caches_the_passphrase(qtbot, monkeypatch):
     dialog._ui.buttonBox.accepted.emit()
 
     qtbot.waitUntil(lambda: dialog.updated_key is _FAKE_KEY)
-    assert passphrase_cache.get(_FAKE_KEY.fingerprint) == "s3cret"
+    assert passphrase_cache.get(_FAKE_KEY.fingerprint) == Passphrase("s3cret")
 
 
 def test_revoke_reports_backend_failure_and_reenables_form(qtbot, monkeypatch):

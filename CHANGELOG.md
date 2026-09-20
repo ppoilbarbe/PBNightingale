@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `-d`/`--debug` and `-q`/`--quiet` CLI flags: `--debug` enables debug-level
+  logging, including a trace of every operation launched through an
+  external program (`gpg`, `gpg-connect-agent`, …); `--quiet` restricts
+  logging to warnings and errors
+- `--print-completion {bash,zsh,tcsh,fish,powershell}` (via `shtab`), in
+  the "tools" option group, to generate a shell completion script
+
+### Changed
+
+- A short program history note added to the README and the user manual
+
+### Fixed
+
+- gpg's purely informational `[GNUPG:] KEYEXPIRED <timestamp>` status
+  lines no longer appear in diagnostic/error messages
+
+### Security
+
+- Passphrases are now carried through the application as a dedicated
+  `Passphrase` wrapper (`core/secret.py`) instead of a bare string:
+  `str()`/`repr()` on it always show a fixed placeholder, so an enhanced
+  traceback tool or debugger dumping a stack frame's local variables can
+  no longer expose a passphrase in the clear
+- Debug-mode tracing of external `gpg` invocations redacts every
+  passphrase from the logged command input; the real value sent to gpg is
+  unaffected
+
 ## [0.2.0] - 2026-09-17
 
 ### Added

@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt
 
 from pbnightingale.core import gpg_backend
 from pbnightingale.core.gpg_backend import GPGBackendError, Key, NewKeyRequest, Uid
+from pbnightingale.core.secret import Passphrase
 from pbnightingale.ui.new_key_wizard import NewKeyWizard
 from tests.gpg_test_helpers import generate_test_key
 
@@ -88,7 +89,7 @@ def test_build_request_collects_fields_from_all_pages(qtbot):
         email="bob@example.com",
         comment="work",
         key_length=2048,
-        passphrase="s3cret",
+        passphrase=Passphrase("s3cret"),
         signing_subkey=True,
         encryption_subkey=False,
     )

@@ -13,6 +13,7 @@ from PySide6.QtWidgets import QDialog, QDialogButtonBox, QFileDialog
 
 from pbnightingale.core import gpg_backend
 from pbnightingale.core.gpg_backend import Key
+from pbnightingale.core.secret import Passphrase
 from pbnightingale.ui.backup_private_key_dialog_ui import Ui_BackupPrivateKeyDialog
 from pbnightingale.ui.geometry_mixin import GeometryMixin
 from pbnightingale.ui.key_operation_dialog import KeyOperationDialog
@@ -83,7 +84,7 @@ class BackupPrivateKeyDialog(GeometryMixin, KeyOperationDialog, QDialog):
         self._destination = path
         self._run_operation(
             lambda: gpg_backend.default_backend().export_secret_key(
-                self._fingerprint, self._ui.txtPassphrase.text()
+                self._fingerprint, Passphrase(self._ui.txtPassphrase.text())
             ),
             busy_text=_("Backing up private key…"),
             error_template=_("Could not back up private key: {error}"),

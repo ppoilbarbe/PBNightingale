@@ -12,6 +12,7 @@ from PySide6.QtWidgets import QDialog, QDialogButtonBox
 
 from pbnightingale.core import gpg_backend
 from pbnightingale.core.gpg_backend import PhotoUid
+from pbnightingale.core.secret import Passphrase
 from pbnightingale.ui.geometry_mixin import GeometryMixin
 from pbnightingale.ui.key_operation_dialog import KeyOperationDialog
 from pbnightingale.ui.revoke_photo_dialog_ui import Ui_RevokePhotoDialog
@@ -76,7 +77,9 @@ class RevokePhotoDialog(GeometryMixin, KeyOperationDialog, QDialog):
         """Revoke the photo via the backend."""
         self._run_operation(
             lambda: gpg_backend.default_backend().revoke_photo_uid(
-                self._fingerprint, self._ui.txtPassphrase.text(), self._photo.index
+                self._fingerprint,
+                Passphrase(self._ui.txtPassphrase.text()),
+                self._photo.index,
             ),
             busy_text=_("Revoking photo…"),
             error_template=_("Could not revoke photo: {error}"),

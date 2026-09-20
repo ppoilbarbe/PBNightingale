@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QDialog, QDialogButtonBox
 
 from pbnightingale.core import gpg_backend
 from pbnightingale.core.gpg_backend import Subkey
+from pbnightingale.core.secret import Passphrase
 from pbnightingale.ui.geometry_mixin import GeometryMixin
 from pbnightingale.ui.key_operation_dialog import KeyOperationDialog
 from pbnightingale.ui.revoke_subkey_dialog_ui import Ui_RevokeSubkeyDialog
@@ -67,7 +68,9 @@ class RevokeSubkeyDialog(GeometryMixin, KeyOperationDialog, QDialog):
         """Revoke the subkey via the backend."""
         self._run_operation(
             lambda: gpg_backend.default_backend().revoke_subkey(
-                self._fingerprint, self._subkey.keyid, self._ui.txtPassphrase.text()
+                self._fingerprint,
+                self._subkey.keyid,
+                Passphrase(self._ui.txtPassphrase.text()),
             ),
             busy_text=_("Revoking subkey…"),
             error_template=_("Could not revoke subkey: {error}"),

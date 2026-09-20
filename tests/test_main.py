@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 import pytest
 
 from pbnightingale import __main__ as _main_mod
@@ -66,6 +68,65 @@ class TestAutoUpdateFlag:
         ns = parser.parse_args(["--auto-update"])
 
         assert ns.auto_update is True
+
+
+class TestVerbosityFlags:
+    """-d/--debug and -q/--quiet select the effective logging level."""
+
+    def test_defaults_to_info(self):
+        parser = _main_mod._build_parser(frozen=False)
+
+        ns = parser.parse_args([])
+
+        assert ns.loglevel == logging.INFO
+
+    def test_debug_sets_debug_level(self):
+        parser = _main_mod._build_parser(frozen=False)
+
+        ns = parser.parse_args(["-d"])
+
+        assert ns.loglevel == logging.DEBUG
+
+    def test_quiet_sets_warning_level(self):
+        parser = _main_mod._build_parser(frozen=False)
+
+        ns = parser.parse_args(["-q"])
+
+        assert ns.loglevel == logging.WARNING
+
+    def test_debug_and_quiet_are_mutually_exclusive(self):
+        parser = _main_mod._build_parser(frozen=False)
+
+        with pytest.raises(SystemExit):
+            parser.parse_args(["-d", "-q"])
+
+    def test_main_configures_root_logger_level(self, monkeypatch):
+        monkeypatch.setattr("sys.argv", ["pbnightingale", "--debug"])
+        monkeypatch.setattr(_main_mod, "_gui_main", lambda: None)
+        monkeypatch.setattr(logging.root, "handlers", [])
+
+        _main_mod.main()
+
+        assert logging.root.level == logging.DEBUG
+
+
+class TestPrintCompletionFlag:
+    """--print-completion prints a shtab-generated completion script and exits."""
+
+    def test_prints_bash_completion_and_exits_zero(self, capsys):
+        parser = _main_mod._build_parser(frozen=False)
+
+        with pytest.raises(SystemExit) as exc:
+            parser.parse_args(["--print-completion", "bash"])
+
+        assert exc.value.code == 0
+        assert "pbnightingale" in capsys.readouterr().out
+
+    def test_rejects_unknown_shell(self):
+        parser = _main_mod._build_parser(frozen=False)
+
+        with pytest.raises(SystemExit):
+            parser.parse_args(["--print-completion", "not-a-shell"])
 
 
 class TestMainAutoUpdateDispatch:

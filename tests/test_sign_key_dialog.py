@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt
 
 from pbnightingale.core import gpg_backend, passphrase_cache
 from pbnightingale.core.gpg_backend import BadPassphraseError, GPGBackendError, Key, Uid
+from pbnightingale.core.secret import Passphrase
 from pbnightingale.ui.sign_key_dialog import SignKeyDialog
 
 _TARGET_KEY = Key(
@@ -131,7 +132,7 @@ def test_sign_succeeds_with_mocked_backend(qtbot, monkeypatch):
     qtbot.waitUntil(lambda: dialog.updated_key is _TARGET_KEY)
     assert calls[0] == (
         _TARGET_KEY.fingerprint,
-        "s3cret",
+        Passphrase("s3cret"),
         _MY_KEY.fingerprint,
         0,
         True,
@@ -151,12 +152,12 @@ def test_successful_sign_caches_the_passphrase_under_the_signer(qtbot, monkeypat
     dialog._ui.buttonBox.accepted.emit()
 
     qtbot.waitUntil(lambda: dialog.updated_key is _TARGET_KEY)
-    assert passphrase_cache.get(_MY_KEY.fingerprint) == "s3cret"
+    assert passphrase_cache.get(_MY_KEY.fingerprint) == Passphrase("s3cret")
     assert passphrase_cache.get(_TARGET_KEY.fingerprint) is None
 
 
 def test_switching_signer_prefills_that_signers_cached_passphrase(qtbot):
-    passphrase_cache.store(_MY_OTHER_KEY.fingerprint, "other-pass", 60)
+    passphrase_cache.store(_MY_OTHER_KEY.fingerprint, Passphrase("other-pass"), 60)
     dialog = SignKeyDialog(_TARGET_KEY, [_MY_KEY, _MY_OTHER_KEY])
     qtbot.addWidget(dialog)
     assert dialog._ui.txtPassphrase.text() == ""

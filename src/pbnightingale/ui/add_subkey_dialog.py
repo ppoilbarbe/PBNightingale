@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QDialog, QDialogButtonBox
 
 from pbnightingale import preferences
 from pbnightingale.core import gpg_backend
+from pbnightingale.core.secret import Passphrase
 from pbnightingale.ui.add_subkey_dialog_ui import Ui_AddSubkeyDialog
 from pbnightingale.ui.geometry_mixin import GeometryMixin
 from pbnightingale.ui.key_operation_dialog import KeyOperationDialog
@@ -71,7 +72,7 @@ class AddSubkeyDialog(GeometryMixin, KeyOperationDialog, QDialog):
         self._run_operation(
             lambda: gpg_backend.default_backend().add_subkey(
                 self._fingerprint,
-                self._ui.txtPassphrase.text(),
+                Passphrase(self._ui.txtPassphrase.text()),
                 usage=self._ui.cmbPurpose.currentData(),
                 algorithm=self._ui.cmbAlgorithm.currentData(),
                 key_length=self._ui.cmbKeySize.currentData(),

@@ -54,6 +54,9 @@ src/pbnightingale/
 ├── core/
 │   ├── gpg_backend.py    GPGBackend (python-gnupg wrapper) + Key/Subkey model;
 │   │                     configure()/default_backend() override for tests
+│   ├── secret.py         Passphrase — frozen wrapper hiding a passphrase from
+│   │                     str()/repr() (e.g. in a traceback's local-var dump)
+│   ├── passphrase_cache.py  in-memory {fingerprint: Passphrase} cache, TTL-based
 │   └── password_strength.py  zxcvbn-based entropy/quality for a new passphrase
 ├── platform/
 │   ├── dirs.py           AppDirs factory: XdgDirs / _MacDirs / _WindowsDirs
@@ -189,3 +192,27 @@ asset repo (local checkout sibling, else GitHub) — see CODING.md.
   signatures for validity, but level 0 is always accepted — a signing
   dialog defaulting to cert level 0 is a real default, not a placebo. See
   CODING.md — "Key signing & web of trust".
+- Every passphrase in this codebase is a `core/secret.py::Passphrase`
+  (frozen dataclass), never a bare `str` — `GPGBackend` method parameters,
+  `NewKeyRequest.passphrase`, `passphrase_cache`'s stored values, what a
+  dialog reads off `txtPassphrase`. `str()`/`repr()` on it always print
+  `"**********"`, closing off a leak a bare `str` local doesn't: an
+  enhanced traceback tool or debugger dumping a frame's locals on an
+  unhandled exception would otherwise print the real value at every stack
+  frame it passed through. `bool(passphrase)`/`==` work on the wrapper
+  directly — only unwrap via `.passphrase` at the one point gpg's own
+  protocol needs the raw text (a `--command-fd` script, an `input=`
+  payload, a python-gnupg kwarg, or the widget echoing it back). Don't
+  interpolate a `Passphrase` into an f-string unwrapped — with no
+  `__format__` override it falls back to `str()` and sends the literal
+  `"**********"` to gpg instead of the real passphrase, a real protocol
+  bug, not just a leak. See CODING.md — "GPG backend".
+- New external-program calls in `core/gpg_backend.py` must go through
+  `_traced_run()`/`_traced_popen()`, never a bare `subprocess.run()`/
+  `Popen()` — that's what makes `-d`/`--debug` trace every gpg invocation,
+  and it's also where `_clean_stderr()` strips gpg's purely-informational
+  `[GNUPG:] KEYEXPIRED …` status lines from `result.stderr` before
+  anything (an exception message, a retry check) ever sees them. A
+  passphrase fed via `input=`/a script must be listed in `secrets=` so the
+  debug trace redacts it — the real value sent to gpg is never affected,
+  only what gets logged.

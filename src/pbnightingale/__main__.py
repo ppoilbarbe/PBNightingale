@@ -24,6 +24,8 @@ def _build_parser(*, frozen: bool | None = None) -> argparse.ArgumentParser:
     :
         The configured parser.
     """
+    import shtab
+
     from pbnightingale import __version__
 
     # --auto-update is only meaningful for the single-file PyInstaller
@@ -43,19 +45,48 @@ def _build_parser(*, frozen: bool | None = None) -> argparse.ArgumentParser:
         version=f"%(prog)s {__version__}",
     )
 
+    verbosity_group = parser.add_mutually_exclusive_group()
+    verbosity_group.add_argument(
+        "-d",
+        "--debug",
+        action="store_const",
+        const=logging.DEBUG,
+        default=logging.INFO,
+        dest="loglevel",
+        help=(
+            "enable debug logging, including every operation launched "
+            "through an external program (gpg, gpg-connect-agent, …); "
+            "passphrases are always redacted from this trace"
+        ),
+    )
+    verbosity_group.add_argument(
+        "-q",
+        "--quiet",
+        action="store_const",
+        const=logging.WARNING,
+        dest="loglevel",
+        help="quiet mode: only log warnings and errors",
+    )
+
+    tools_group = parser.add_argument_group(
+        "tools",
+        "Extra tools.",
+    )
+    shtab.add_argument_to(
+        tools_group,
+        ["--print-completion"],
+        parent=parser,
+        help="print shell completion script",
+    )
     if frozen:
-        update_group = parser.add_argument_group(
-            "self-update",
-            "Available only in PyInstaller-built executables — a source or "
-            "pip/PyPI install has no single running binary to replace.",
-        )
-        update_group.add_argument(
+        tools_group.add_argument(
             "--auto-update",
             action="store_true",
             default=False,
             help=(
                 "Download the latest release from GitHub and replace the "
-                "running executable, then exit"
+                "running executable, then exit."
+                "This option is available only within the self extracting executable."
             ),
         )
 
@@ -64,14 +95,14 @@ def _build_parser(*, frozen: bool | None = None) -> argparse.ArgumentParser:
 
 def main() -> None:
     """Parse CLI arguments and dispatch to ``--auto-update`` or the GUI."""
+    parser = _build_parser()
+    ns = parser.parse_args()
+
     logging.basicConfig(
         format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
         datefmt="%H:%M:%S",
-        level=logging.WARNING,
+        level=ns.loglevel,
     )
-
-    parser = _build_parser()
-    ns = parser.parse_args()
 
     if getattr(ns, "auto_update", False):
         from pbnightingale.platform.auto_update import perform_auto_update

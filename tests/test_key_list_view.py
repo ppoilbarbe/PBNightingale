@@ -7,6 +7,7 @@ from PySide6.QtGui import QAction
 
 from pbnightingale.core import passphrase_cache
 from pbnightingale.core.gpg_backend import Key, KeySignature, PhotoUid, Subkey, Uid
+from pbnightingale.core.secret import Passphrase
 from pbnightingale.ui.key_list_view import KeyListView, _lock_icon
 from tests.gpg_test_helpers import make_test_jpeg
 
@@ -737,7 +738,7 @@ def test_my_key_without_cached_passphrase_shows_locked_icon(qtbot):
 
 
 def test_my_key_with_cached_passphrase_shows_unlocked_icon(qtbot):
-    passphrase_cache.store(_MY_KEY.fingerprint, "s3cret", 60)
+    passphrase_cache.store(_MY_KEY.fingerprint, Passphrase("s3cret"), 60)
     view = KeyListView()
     qtbot.addWidget(view)
 
@@ -758,7 +759,7 @@ def test_other_key_has_no_lock_icon(qtbot):
 
 
 def test_double_clicking_lock_column_forgets_the_passphrase(qtbot):
-    passphrase_cache.store(_MY_KEY.fingerprint, "s3cret", 60)
+    passphrase_cache.store(_MY_KEY.fingerprint, Passphrase("s3cret"), 60)
     view = KeyListView()
     qtbot.addWidget(view)
     view.set_keys([_MY_KEY])
@@ -771,7 +772,7 @@ def test_double_clicking_lock_column_forgets_the_passphrase(qtbot):
 
 
 def test_double_clicking_a_different_column_does_not_forget_the_passphrase(qtbot):
-    passphrase_cache.store(_MY_KEY.fingerprint, "s3cret", 60)
+    passphrase_cache.store(_MY_KEY.fingerprint, Passphrase("s3cret"), 60)
     view = KeyListView()
     qtbot.addWidget(view)
     view.set_keys([_MY_KEY])
@@ -779,7 +780,7 @@ def test_double_clicking_a_different_column_does_not_forget_the_passphrase(qtbot
 
     view._on_key_item_double_clicked(item, 0)
 
-    assert passphrase_cache.get(_MY_KEY.fingerprint) == "s3cret"
+    assert passphrase_cache.get(_MY_KEY.fingerprint) == Passphrase("s3cret")
 
 
 def test_refresh_lock_icons_reflects_external_cache_changes(qtbot):
@@ -789,7 +790,7 @@ def test_refresh_lock_icons_reflects_external_cache_changes(qtbot):
     item = view._ui.treeKeys.topLevelItem(0).child(0)
     assert _icon_image(item.icon(1)) == _icon_image(_lock_icon(False))
 
-    passphrase_cache.store(_MY_KEY.fingerprint, "s3cret", 60)
+    passphrase_cache.store(_MY_KEY.fingerprint, Passphrase("s3cret"), 60)
     view._refresh_lock_icons()
 
     assert _icon_image(item.icon(1)) == _icon_image(_lock_icon(True))

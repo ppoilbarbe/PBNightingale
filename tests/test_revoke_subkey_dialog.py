@@ -12,6 +12,7 @@ from pbnightingale.core.gpg_backend import (
     Subkey,
     Uid,
 )
+from pbnightingale.core.secret import Passphrase
 from pbnightingale.ui.revoke_subkey_dialog import RevokeSubkeyDialog
 
 _SUBKEY = Subkey(
@@ -84,7 +85,7 @@ def test_revoke_succeeds_with_mocked_backend(qtbot, monkeypatch):
     dialog._ui.buttonBox.accepted.emit()
 
     qtbot.waitUntil(lambda: dialog.updated_key is _FAKE_KEY)
-    assert calls[0] == (_FAKE_KEY.fingerprint, _SUBKEY.keyid, "")
+    assert calls[0] == (_FAKE_KEY.fingerprint, _SUBKEY.keyid, Passphrase(""))
 
 
 def test_successful_revoke_caches_the_passphrase(qtbot, monkeypatch):
@@ -101,7 +102,7 @@ def test_successful_revoke_caches_the_passphrase(qtbot, monkeypatch):
     dialog._ui.buttonBox.accepted.emit()
 
     qtbot.waitUntil(lambda: dialog.updated_key is _FAKE_KEY)
-    assert passphrase_cache.get(_FAKE_KEY.fingerprint) == "s3cret"
+    assert passphrase_cache.get(_FAKE_KEY.fingerprint) == Passphrase("s3cret")
 
 
 def test_revoke_reports_backend_failure_and_reenables_form(qtbot, monkeypatch):

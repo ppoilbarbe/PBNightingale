@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt
 
 from pbnightingale.core import gpg_backend, passphrase_cache
 from pbnightingale.core.gpg_backend import BadPassphraseError, GPGBackendError, Key, Uid
+from pbnightingale.core.secret import Passphrase
 from pbnightingale.ui.add_uid_dialog import AddUidDialog
 
 _FAKE_KEY = Key(
@@ -64,7 +65,7 @@ def test_add_succeeds_with_mocked_backend(qtbot, monkeypatch):
     qtbot.waitUntil(lambda: dialog.updated_key is _FAKE_KEY)
     assert calls[0] == (
         _FAKE_KEY.fingerprint,
-        "",
+        Passphrase(""),
         "Bob Example",
         "bob@example.com",
         "",
@@ -86,11 +87,11 @@ def test_successful_add_caches_the_passphrase(qtbot, monkeypatch):
     dialog._ui.buttonBox.accepted.emit()
 
     qtbot.waitUntil(lambda: dialog.updated_key is _FAKE_KEY)
-    assert passphrase_cache.get(_FAKE_KEY.fingerprint) == "s3cret"
+    assert passphrase_cache.get(_FAKE_KEY.fingerprint) == Passphrase("s3cret")
 
 
 def test_prefills_passphrase_from_the_cache(qtbot):
-    passphrase_cache.store(_FAKE_KEY.fingerprint, "cached-pass", 60)
+    passphrase_cache.store(_FAKE_KEY.fingerprint, Passphrase("cached-pass"), 60)
 
     dialog = AddUidDialog(_FAKE_KEY.fingerprint)
     qtbot.addWidget(dialog)

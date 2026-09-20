@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 from pbnightingale import preferences
 from pbnightingale.core import passphrase_cache
 from pbnightingale.core.gpg_backend import BadPassphraseError, GPGBackendError, Key, Uid
+from pbnightingale.core.secret import Passphrase
 from pbnightingale.ui.key_operation_dialog import KeyOperationDialog
 
 _FAKE_KEY = Key(
@@ -147,7 +148,7 @@ def test_passphraseless_dialog_caches_nothing_on_success(qtbot):
 
 
 def test_prefills_passphrase_field_from_the_cache(qtbot):
-    passphrase_cache.store(_FAKE_KEY.fingerprint, "cached-pass", 60)
+    passphrase_cache.store(_FAKE_KEY.fingerprint, Passphrase("cached-pass"), 60)
 
     dialog = _DummyDialog(_FAKE_KEY.fingerprint, lambda: _FAKE_KEY)
     qtbot.addWidget(dialog)
@@ -170,7 +171,7 @@ def test_successful_operation_caches_the_passphrase(qtbot):
     dialog._ui.buttonBox.accepted.emit()
 
     qtbot.waitUntil(lambda: dialog.updated_key is _FAKE_KEY)
-    assert passphrase_cache.get(_FAKE_KEY.fingerprint) == "s3cret"
+    assert passphrase_cache.get(_FAKE_KEY.fingerprint) == Passphrase("s3cret")
 
 
 def test_failed_operation_does_not_cache_the_passphrase(qtbot):

@@ -9,6 +9,7 @@ from __future__ import annotations
 from PySide6.QtWidgets import QDialog, QDialogButtonBox
 
 from pbnightingale.core import gpg_backend
+from pbnightingale.core.secret import Passphrase
 from pbnightingale.ui.add_uid_dialog_ui import Ui_AddUidDialog
 from pbnightingale.ui.geometry_mixin import GeometryMixin
 from pbnightingale.ui.key_operation_dialog import KeyOperationDialog
@@ -85,7 +86,7 @@ class AddUidDialog(GeometryMixin, KeyOperationDialog, QDialog):
         self._run_operation(
             lambda: gpg_backend.default_backend().add_uid(
                 self._fingerprint,
-                self._ui.txtPassphrase.text(),
+                Passphrase(self._ui.txtPassphrase.text()),
                 name=self._ui.txtName.text().strip(),
                 email=self._ui.txtEmail.text().strip(),
                 comment=self._ui.txtComment.text().strip(),

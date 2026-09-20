@@ -12,6 +12,7 @@ from PySide6.QtWidgets import QDialog, QDialogButtonBox
 
 from pbnightingale import preferences
 from pbnightingale.core import gpg_backend, passphrase_cache
+from pbnightingale.core.secret import Passphrase
 from pbnightingale.ui.change_passphrase_dialog_ui import Ui_ChangePassphraseDialog
 from pbnightingale.ui.geometry_mixin import GeometryMixin
 from pbnightingale.ui.key_operation_dialog import KeyOperationDialog
@@ -32,7 +33,7 @@ class ChangePassphraseDialog(GeometryMixin, KeyOperationDialog, QDialog):
         """
         super().__init__(parent)
         self._fingerprint = fingerprint
-        self._new_passphrase = ""
+        self._new_passphrase = Passphrase("")
         self._ui = Ui_ChangePassphraseDialog()
         self._ui.setupUi(self)
         self._init_geometry("change_passphrase_dialog")
@@ -83,11 +84,11 @@ class ChangePassphraseDialog(GeometryMixin, KeyOperationDialog, QDialog):
 
     def _on_change(self) -> None:
         """Change the passphrase via the backend."""
-        self._new_passphrase = self._ui.txtNewPassphrase.text()
+        self._new_passphrase = Passphrase(self._ui.txtNewPassphrase.text())
         self._run_operation(
             lambda: gpg_backend.default_backend().change_passphrase(
                 self._fingerprint,
-                self._ui.txtPassphrase.text(),
+                Passphrase(self._ui.txtPassphrase.text()),
                 self._new_passphrase,
             ),
             busy_text=_("Changing passphrase…"),

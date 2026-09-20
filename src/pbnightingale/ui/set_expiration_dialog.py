@@ -16,6 +16,7 @@ from PySide6.QtWidgets import QDialog, QDialogButtonBox
 
 from pbnightingale.core import gpg_backend
 from pbnightingale.core.gpg_backend import Key, Subkey
+from pbnightingale.core.secret import Passphrase
 from pbnightingale.ui.geometry_mixin import GeometryMixin
 from pbnightingale.ui.key_operation_dialog import KeyOperationDialog
 from pbnightingale.ui.set_expiration_dialog_ui import Ui_SetExpirationDialog
@@ -113,7 +114,7 @@ class SetExpirationDialog(GeometryMixin, KeyOperationDialog, QDialog):
 
     def _on_set(self) -> None:
         """Apply the chosen expiration via the backend."""
-        passphrase = self._ui.txtPassphrase.text()
+        passphrase = Passphrase(self._ui.txtPassphrase.text())
         expire = self._expire_argument()
 
         def _call() -> Key:

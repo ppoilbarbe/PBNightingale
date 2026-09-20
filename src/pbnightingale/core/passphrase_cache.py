@@ -12,10 +12,12 @@ from __future__ import annotations
 
 import time
 
-_cache: dict[str, tuple[str, float]] = {}
+from pbnightingale.core.secret import Passphrase
+
+_cache: dict[str, tuple[Passphrase, float]] = {}
 
 
-def get(fingerprint: str) -> str | None:
+def get(fingerprint: str) -> Passphrase | None:
     """Return the passphrase cached for a key, if any.
 
     An expired entry is dropped here, the same as if it had never been
@@ -42,7 +44,7 @@ def get(fingerprint: str) -> str | None:
     return passphrase
 
 
-def store(fingerprint: str, passphrase: str, ttl_seconds: float) -> None:
+def store(fingerprint: str, passphrase: Passphrase, ttl_seconds: float) -> None:
     """Cache a passphrase for a key, expiring after a given duration.
 
     A non-positive ``ttl_seconds`` or an empty ``passphrase`` is a no-op:

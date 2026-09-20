@@ -8,19 +8,88 @@ thread is the Qt-side worker's job, not this module's — see ``ui/gpg_worker.py
 
 from __future__ import annotations
 
+import logging
 import re
+import shlex
 import shutil
 import subprocess
 import tempfile
 import urllib.parse
-from dataclasses import dataclass
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import gnupg
 
+from pbnightingale.core.secret import Passphrase
+
+# gpg emits a `[GNUPG:] KEYEXPIRED <timestamp>` status line whenever a key
+# involved in the operation (e.g. a signature's signing key) has expired —
+# purely informational, never itself the cause of a failure, but it shows
+# up interleaved with the actual diagnostic often enough to be worth
+# stripping systematically. Filtered at the source — the moment gpg's raw
+# stderr is captured, in `_traced_run()`/`_run_with_agent_retry()`/every
+# python-gnupg-mediated call site that reads a result's `.stderr` — rather
+# than only where it happens to surface (an exception message, say): every
+# consumer downstream (exceptions, logs, a future diagnostic display)
+# sees already-clean text without having to remember to sanitize it
+# itself.
+_KEYEXPIRED_LINE_RE = re.compile(r"^\[GNUPG:\] KEYEXPIRED \S*\n?", re.MULTILINE)
+
+
+def _strip_gnupg_noise(text: str) -> str:
+    """Remove purely informational gpg status lines from *text*.
+
+    Applied to gpg's raw stderr as soon as it's captured — before it
+    reaches status-code detection (``_is_bad_passphrase_error()`` and
+    friends), an exception message, or anything else. Safe there: every
+    marker those functions look for (``[GNUPG:] ERROR ...``,
+    ``server_version_mismatch``, ``[GNUPG:] ATTRIBUTE ...``) is a
+    different status line, never ``KEYEXPIRED`` itself.
+    """
+    return _KEYEXPIRED_LINE_RE.sub("", text)
+
+
+def _clean_stderr(result):
+    """Strip informational gpg noise from *result*'s ``stderr``, in place.
+
+    Works for both a ``subprocess.CompletedProcess`` and a python-gnupg
+    result object — both expose a plain, freely-assignable ``stderr``
+    string attribute.
+
+    Parameters
+    ----------
+    result
+        Anything with a ``stderr`` attribute holding gpg's raw stderr.
+
+    Returns
+    -------
+    :
+        *result*, for chaining at the call site.
+    """
+    stderr = getattr(result, "stderr", None)
+    if stderr:
+        result.stderr = _strip_gnupg_noise(stderr)
+    return result
+
 
 class GPGBackendError(RuntimeError):
     """Raised when the GPG backend cannot be initialized or invoked."""
+
+    def __init__(self, message: str = "") -> None:
+        """Build the error, stripping purely informational gpg noise.
+
+        A last line of defense on top of ``_clean_stderr()``: every
+        genuine gpg-stderr source is already sanitized well before it
+        gets here, but this keeps the guarantee even for a message built
+        some other way.
+
+        Parameters
+        ----------
+        message
+            The diagnostic text — often gpg's raw stderr.
+        """
+        super().__init__(_strip_gnupg_noise(message))
 
 
 class BadPassphraseError(GPGBackendError):
@@ -269,7 +338,7 @@ class NewKeyRequest:
     #: The RSA key length in bits; unused for ED25519.
     key_length: int = 4096
     #: The new key's passphrase; empty for an unprotected key.
-    passphrase: str = ""
+    passphrase: Passphrase = field(default_factory=lambda: Passphrase(""))
     #: Add a dedicated signing subkey (default ``True``). When turned off,
     #: the primary key itself takes on signing usage instead — the primary
     #: key is otherwise certify-only, per current best practice.
@@ -695,6 +764,65 @@ def _algo_spec(algorithm: str, key_length: int) -> tuple[dict, str, str, bool]:
     )
 
 
+_log = logging.getLogger(__name__)
+_REDACTED = "**********"
+
+
+def _redact(text: str, secrets: Iterable[Passphrase | str | None]) -> str:
+    """Replace every occurrence of each non-empty secret in *text*.
+
+    Used to sanitize a debug trace before it is logged — never to sanitize
+    anything actually sent to gpg. *secrets* takes ``Passphrase`` wrappers
+    directly (unwrapped here, the one legitimate place this module reads
+    ``.passphrase`` purely to redact it) so call sites never need to
+    unwrap one just to build this list.
+    """
+    for secret in secrets:
+        value = secret.passphrase if isinstance(secret, Passphrase) else secret
+        if value:
+            text = text.replace(value, _REDACTED)
+    return text
+
+
+def _traced_run(
+    args: Sequence[str], *, secrets: Iterable[Passphrase | str | None] = (), **kwargs
+) -> subprocess.CompletedProcess:
+    """``subprocess.run()``, tracing the call at DEBUG level.
+
+    gpg's ``--command-fd``/``--passphrase-fd`` scripting protocols feed
+    passphrases over stdin (``kwargs["input"]``), never as an argv element,
+    so only *that* needs redacting — *secrets* lists every passphrase that
+    may appear in it, each replaced with a fixed placeholder before the
+    trace is logged. The real, unredacted input is still what's sent to
+    gpg; only the log line is sanitized.
+
+    The returned result's ``stderr`` has gpg's own informational noise
+    (``KEYEXPIRED`` — see ``_strip_gnupg_noise()``) already stripped, so
+    every caller sees clean text without doing it itself.
+    """
+    if _log.isEnabledFor(logging.DEBUG):
+        _log.debug("Running: %s", shlex.join(str(a) for a in args))
+        stdin = kwargs.get("input")
+        if stdin is not None:
+            _log.debug("stdin:\n%s", _redact(stdin, secrets))
+    result = subprocess.run(  # noqa: S603, PLW1510 — every caller passes check=False
+        args, **kwargs
+    )
+    return _clean_stderr(result)
+
+
+def _traced_popen(args: Sequence[str], **kwargs) -> subprocess.Popen:
+    """``subprocess.Popen()``, tracing the invocation (argv only) at DEBUG level.
+
+    Unlike ``_traced_run()``, there is no single ``input`` to trace here —
+    callers scripting an interactive exchange over ``process.stdin`` must
+    log each line they send themselves, redacting any secret first.
+    """
+    if _log.isEnabledFor(logging.DEBUG):
+        _log.debug("Running: %s", shlex.join(str(a) for a in args))
+    return subprocess.Popen(args, **kwargs)  # noqa: S603
+
+
 class GPGBackend:
     """Wraps a single GNUPGHOME and exposes the key operations the GUI needs."""
 
@@ -764,8 +892,8 @@ class GPGBackend:
 
         The next call needing it starts a fresh one.
         """
-        subprocess.run(  # noqa: S603
-            ["gpgconf", *self._homedir_args(), "--kill", "gpg-agent"],  # noqa: S607
+        _traced_run(
+            ["gpgconf", *self._homedir_args(), "--kill", "gpg-agent"],
             capture_output=True,
             text=True,
             check=False,
@@ -781,8 +909,8 @@ class GPGBackend:
         every other secret-key operation here is unaffected by (or
         actively benefits from) an already-unlocked key.
         """
-        subprocess.run(  # noqa: S603
-            ["gpg-connect-agent", *self._homedir_args(), "RELOADAGENT", "/bye"],  # noqa: S607
+        _traced_run(
+            ["gpg-connect-agent", *self._homedir_args(), "RELOADAGENT", "/bye"],
             capture_output=True,
             text=True,
             check=False,
@@ -810,7 +938,7 @@ class GPGBackend:
         ):
             self._restart_agent()
             result = call()
-        return result
+        return _clean_stderr(result)
 
     @property
     def version(self) -> tuple[int, ...]:
@@ -869,7 +997,7 @@ class GPGBackend:
         """
         with tempfile.TemporaryDirectory() as tmp_dir:
             attribute_path = Path(tmp_dir) / "attributes"
-            result = subprocess.run(  # noqa: S603
+            result = _traced_run(
                 [
                     self._gpg.gpgbinary,
                     *self._homedir_args(),
@@ -920,7 +1048,7 @@ class GPGBackend:
         undocumented in gpg's own doc/DETAILS, which only spells out the
         plain ``--list-keys`` colon format, not ``--edit-key``'s).
         """
-        result = subprocess.run(  # noqa: S603
+        result = _traced_run(
             [
                 self._gpg.gpgbinary,
                 *self._homedir_args(),
@@ -991,7 +1119,7 @@ class GPGBackend:
             name_comment=request.comment,
             name_email=request.email,
             expire_date="0",
-            passphrase=request.passphrase,
+            passphrase=request.passphrase.passphrase,
             no_protection=not request.passphrase,
             **primary_kwargs,
         )
@@ -1011,7 +1139,7 @@ class GPGBackend:
     def add_subkey(
         self,
         fingerprint: str,
-        passphrase: str,
+        passphrase: Passphrase,
         *,
         usage: str,
         algorithm: str = "RSA",
@@ -1047,7 +1175,7 @@ class GPGBackend:
         return self._find_key(fingerprint)
 
     def _add_subkey(
-        self, fingerprint: str, passphrase: str, algorithm: str, usage: str
+        self, fingerprint: str, passphrase: Passphrase, algorithm: str, usage: str
     ) -> None:
         """Add a subkey to *fingerprint*, in gpg's own raw algorithm/usage form.
 
@@ -1077,7 +1205,7 @@ class GPGBackend:
         result = self._run_with_agent_retry(
             lambda: self._gpg.add_subkey(
                 master_key=fingerprint,
-                master_passphrase=passphrase,
+                master_passphrase=passphrase.passphrase,
                 algorithm=algorithm,
                 usage=usage,
                 expire="0",
@@ -1090,7 +1218,7 @@ class GPGBackend:
             raise GPGBackendError(stderr)
 
     def change_passphrase(
-        self, fingerprint: str, old_passphrase: str, new_passphrase: str
+        self, fingerprint: str, old_passphrase: Passphrase, new_passphrase: Passphrase
     ) -> Key:
         """Change the passphrase protecting *fingerprint*'s secret key.
 
@@ -1169,11 +1297,13 @@ class GPGBackend:
             On any other failure.
         """
         self._clear_agent_passphrase_cache()
-        retries = f"{old_passphrase}\n" * _MAX_SECRET_KEY_PARTS
-        script = f"{old_passphrase}\n{new_passphrase}\n{retries}save\n"
+        old_value = old_passphrase.passphrase
+        new_value = new_passphrase.passphrase
+        retries = f"{old_value}\n" * _MAX_SECRET_KEY_PARTS
+        script = f"{old_value}\n{new_value}\n{retries}save\n"
 
         def _run() -> subprocess.CompletedProcess:
-            return subprocess.run(  # noqa: S603
+            return _traced_run(
                 [
                     self._gpg.gpgbinary,
                     *self._homedir_args(),
@@ -1189,6 +1319,7 @@ class GPGBackend:
                     fingerprint,
                 ],
                 input=script,
+                secrets=(old_passphrase, new_passphrase),
                 capture_output=True,
                 text=True,
                 check=False,
@@ -1205,7 +1336,7 @@ class GPGBackend:
         return self._find_key(fingerprint)
 
     def revoke_subkey(
-        self, fingerprint: str, subkey_keyid: str, passphrase: str
+        self, fingerprint: str, subkey_keyid: str, passphrase: Passphrase
     ) -> Key:
         """Revoke one subkey of a key.
 
@@ -1236,7 +1367,9 @@ class GPGBackend:
         GPGBackendError
             On any other failure.
         """
-        script = f"key {subkey_keyid}\nrevkey\ny\n0\n\ny\n{passphrase}\nsave\n"
+        script = (
+            f"key {subkey_keyid}\nrevkey\ny\n0\n\ny\n{passphrase.passphrase}\nsave\n"
+        )
 
         def _run() -> subprocess.CompletedProcess:
             # --status-fd 2 (stderr), matching python-gnupg's own
@@ -1244,7 +1377,7 @@ class GPGBackend:
             # lines and the machine-readable "[GNUPG:] …" status lines) in
             # one stream, since both the agent-mismatch and bad-passphrase
             # detection below read result.stderr.
-            return subprocess.run(  # noqa: S603
+            return _traced_run(
                 [
                     self._gpg.gpgbinary,
                     *self._homedir_args(),
@@ -1260,6 +1393,7 @@ class GPGBackend:
                     fingerprint,
                 ],
                 input=script,
+                secrets=(passphrase,),
                 capture_output=True,
                 text=True,
                 check=False,
@@ -1275,7 +1409,7 @@ class GPGBackend:
             raise GPGBackendError(result.stderr)
         return self._find_key(fingerprint)
 
-    def revoke_key(self, fingerprint: str, passphrase: str) -> Key:
+    def revoke_key(self, fingerprint: str, passphrase: Passphrase) -> Key:
         """Revoke a primary key itself — not one of its subkeys.
 
         See ``revoke_subkey()`` for the latter. Irreversible — the caller
@@ -1304,10 +1438,10 @@ class GPGBackend:
         GPGBackendError
             On any other failure.
         """
-        script = f"revkey\ny\n0\n\ny\n{passphrase}\nsave\n"
+        script = f"revkey\ny\n0\n\ny\n{passphrase.passphrase}\nsave\n"
 
         def _run() -> subprocess.CompletedProcess:
-            return subprocess.run(  # noqa: S603
+            return _traced_run(
                 [
                     self._gpg.gpgbinary,
                     *self._homedir_args(),
@@ -1323,6 +1457,7 @@ class GPGBackend:
                     fingerprint,
                 ],
                 input=script,
+                secrets=(passphrase,),
                 capture_output=True,
                 text=True,
                 check=False,
@@ -1365,7 +1500,7 @@ class GPGBackend:
             If gpg failed to delete the key.
         """
         command = "--delete-secret-and-public-key" if secret else "--delete-keys"
-        result = subprocess.run(  # noqa: S603
+        result = _traced_run(
             [
                 self._gpg.gpgbinary,
                 *self._homedir_args(),
@@ -1386,7 +1521,7 @@ class GPGBackend:
     def add_uid(
         self,
         fingerprint: str,
-        passphrase: str,
+        passphrase: Passphrase,
         *,
         name: str,
         email: str,
@@ -1416,7 +1551,9 @@ class GPGBackend:
         self._run_quick_command("--quick-add-uid", fingerprint, passphrase, uid)
         return self._find_key(fingerprint)
 
-    def set_primary_uid(self, fingerprint: str, passphrase: str, uid: str) -> Key:
+    def set_primary_uid(
+        self, fingerprint: str, passphrase: Passphrase, uid: str
+    ) -> Key:
         """Flag an existing user ID as a key's primary identity.
 
         Parameters
@@ -1436,7 +1573,7 @@ class GPGBackend:
         self._run_quick_command("--quick-set-primary-uid", fingerprint, passphrase, uid)
         return self._find_key(fingerprint)
 
-    def revoke_uid(self, fingerprint: str, passphrase: str, uid: str) -> Key:
+    def revoke_uid(self, fingerprint: str, passphrase: Passphrase, uid: str) -> Key:
         """Revoke a user ID on a key.
 
         Irreversible — the caller must already have obtained a strong
@@ -1466,7 +1603,9 @@ class GPGBackend:
         self._run_quick_command("--quick-revoke-uid", fingerprint, passphrase, uid)
         return self._find_key(fingerprint)
 
-    def set_key_expiration(self, fingerprint: str, passphrase: str, expire: str) -> Key:
+    def set_key_expiration(
+        self, fingerprint: str, passphrase: Passphrase, expire: str
+    ) -> Key:
         """Set the primary key's own expiration.
 
         Leaves every subkey's own expiration untouched — verified
@@ -1493,7 +1632,11 @@ class GPGBackend:
         return self._find_key(fingerprint)
 
     def set_subkey_expiration(
-        self, fingerprint: str, passphrase: str, subkey_fingerprint: str, expire: str
+        self,
+        fingerprint: str,
+        passphrase: Passphrase,
+        subkey_fingerprint: str,
+        expire: str,
     ) -> Key:
         """Set one subkey's expiration.
 
@@ -1526,7 +1669,7 @@ class GPGBackend:
     def sign_key(
         self,
         fingerprint: str,
-        passphrase: str,
+        passphrase: Passphrase,
         *,
         signing_key_fingerprint: str,
         cert_level: int = 0,
@@ -1600,7 +1743,7 @@ class GPGBackend:
         GPGBackendError
             If gpg failed to set the owner trust.
         """
-        result = subprocess.run(  # noqa: S603
+        result = _traced_run(
             [
                 self._gpg.gpgbinary,
                 *self._homedir_args(),
@@ -1627,7 +1770,7 @@ class GPGBackend:
         skips keys with a not-yet-defined ownertrust rather than asking
         about them.
         """
-        result = subprocess.run(  # noqa: S603
+        result = _traced_run(
             [
                 self._gpg.gpgbinary,
                 *self._homedir_args(),
@@ -1648,7 +1791,7 @@ class GPGBackend:
         self,
         command: str,
         fingerprint: str,
-        passphrase: str,
+        passphrase: Passphrase,
         *args: str,
         extra_options: tuple[str, ...] = (),
     ) -> None:
@@ -1687,7 +1830,7 @@ class GPGBackend:
         """
 
         def _run() -> subprocess.CompletedProcess:
-            return subprocess.run(  # noqa: S603
+            return _traced_run(
                 [
                     self._gpg.gpgbinary,
                     *self._homedir_args(),
@@ -1704,7 +1847,8 @@ class GPGBackend:
                     fingerprint,
                     *args,
                 ],
-                input=passphrase,
+                input=passphrase.passphrase,
+                secrets=(passphrase,),
                 capture_output=True,
                 text=True,
                 check=False,
@@ -1720,7 +1864,7 @@ class GPGBackend:
             raise GPGBackendError(result.stderr)
 
     def add_photo_uid(
-        self, fingerprint: str, passphrase: str, jpeg_path: str | Path
+        self, fingerprint: str, passphrase: Passphrase, jpeg_path: str | Path
     ) -> Key:
         """Add a photo user ID from the JPEG file at *jpeg_path*.
 
@@ -1775,7 +1919,7 @@ class GPGBackend:
         """
 
         def _run() -> subprocess.CompletedProcess:
-            process = subprocess.Popen(  # noqa: S603
+            process = _traced_popen(
                 [
                     self._gpg.gpgbinary,
                     *self._homedir_args(),
@@ -1815,6 +1959,8 @@ class GPGBackend:
             output: list[str] = []
 
             def _send(line: str) -> None:
+                if _log.isEnabledFor(logging.DEBUG):
+                    _log.debug("stdin: %s", _redact(line, (passphrase,)))
                 process.stdin.write(line + "\n")
                 process.stdin.flush()
 
@@ -1855,15 +2001,18 @@ class GPGBackend:
                     # flow with no size prompt already expects next.
                     break
 
-            remaining_stdout, remaining_stderr = process.communicate(
-                f"{passphrase}\nsave\n"
-            )
+            final_input = f"{passphrase.passphrase}\nsave\n"
+            if _log.isEnabledFor(logging.DEBUG):
+                _log.debug("stdin:\n%s", _redact(final_input, (passphrase,)))
+            remaining_stdout, remaining_stderr = process.communicate(final_input)
             output.append(remaining_stderr)
-            return subprocess.CompletedProcess(
-                process.args,
-                process.returncode,
-                stdout=remaining_stdout,
-                stderr="".join(output),
+            return _clean_stderr(
+                subprocess.CompletedProcess(
+                    process.args,
+                    process.returncode,
+                    stdout=remaining_stdout,
+                    stderr="".join(output),
+                )
             )
 
         result = _run()
@@ -1877,7 +2026,7 @@ class GPGBackend:
         return self._find_key(fingerprint)
 
     def revoke_photo_uid(
-        self, fingerprint: str, passphrase: str, photo_index: int
+        self, fingerprint: str, passphrase: Passphrase, photo_index: int
     ) -> Key:
         """Revoke a photo on a key.
 
@@ -1910,10 +2059,10 @@ class GPGBackend:
             On any other failure.
         """
         edit_index = self._resolve_photo_edit_index(fingerprint, photo_index)
-        script = f"uid {edit_index}\nrevuid\ny\n0\n\ny\n{passphrase}\nsave\n"
+        script = f"uid {edit_index}\nrevuid\ny\n0\n\ny\n{passphrase.passphrase}\nsave\n"
 
         def _run() -> subprocess.CompletedProcess:
-            return subprocess.run(  # noqa: S603
+            return _traced_run(
                 [
                     self._gpg.gpgbinary,
                     *self._homedir_args(),
@@ -1930,6 +2079,7 @@ class GPGBackend:
                     fingerprint,
                 ],
                 input=script,
+                secrets=(passphrase,),
                 capture_output=True,
                 text=True,
                 check=False,
@@ -1969,7 +2119,7 @@ class GPGBackend:
             If the listing itself failed, or *photo_index* is out of
             range for *fingerprint*.
         """
-        result = subprocess.run(  # noqa: S603
+        result = _traced_run(
             [
                 self._gpg.gpgbinary,
                 *self._homedir_args(),
@@ -2027,7 +2177,7 @@ class GPGBackend:
             If no key was found in the file.
         """
         existing = {e["fingerprint"] for e in self._gpg.list_keys(False)}
-        result = self._gpg.import_keys_file(str(path))
+        result = _clean_stderr(self._gpg.import_keys_file(str(path)))
         if not result.fingerprints:
             raise GPGBackendError(str(result.stderr) or f"No key found in {path}")
         return [
@@ -2071,7 +2221,7 @@ class GPGBackend:
             ``(fingerprint, stderr)`` — *fingerprint* is ``None`` if
             nothing was found.
         """
-        result = subprocess.run(  # noqa: S603
+        result = _traced_run(
             [
                 self._gpg.gpgbinary,
                 *self._homedir_args(),
@@ -2143,7 +2293,7 @@ class GPGBackend:
             return [
                 ImportedKey(self._find_key(fingerprint), fingerprint not in existing)
             ]
-        result = self._gpg.recv_keys(keyserver, query)
+        result = _clean_stderr(self._gpg.recv_keys(keyserver, query))
         if not result.fingerprints:
             if (
                 getattr(result, "count", 0)
@@ -2381,7 +2531,7 @@ class GPGBackend:
             If the search itself failed (as opposed to a normal empty
             result).
         """
-        result = self._gpg.search_keys(query, keyserver=keyserver)
+        result = _clean_stderr(self._gpg.search_keys(query, keyserver=keyserver))
         if not result:
             stderr = str(result.stderr)
             if _is_not_found_failure(stderr):
@@ -2467,7 +2617,7 @@ class GPGBackend:
         if not fingerprints:
             return []
         before = {key.fingerprint: key for key in self.list_keys()}
-        result = self._gpg.recv_keys(keyserver, *fingerprints)
+        result = _clean_stderr(self._gpg.recv_keys(keyserver, *fingerprints))
         stderr = str(result.stderr)
         if result.returncode != 0 and not _is_no_data_failure(stderr):
             raise GPGBackendError(stderr or "Could not refresh keys")
@@ -2499,7 +2649,7 @@ class GPGBackend:
         :
             Every certifying signature found, deduplicated by signer.
         """
-        result = subprocess.run(  # noqa: S603
+        result = _traced_run(
             [
                 self._gpg.gpgbinary,
                 *self._homedir_args(),
@@ -2591,7 +2741,7 @@ class GPGBackend:
             raise GPGBackendError(f"Could not export key {fingerprint}")
         return armored
 
-    def export_secret_key(self, fingerprint: str, passphrase: str) -> str:
+    def export_secret_key(self, fingerprint: str, passphrase: Passphrase) -> str:
         """Return the ASCII-armored *secret* key block for a key.
 
         A full backup of the private key material, unlike
@@ -2624,7 +2774,7 @@ class GPGBackend:
         """
 
         def _run() -> subprocess.CompletedProcess:
-            return subprocess.run(  # noqa: S603
+            return _traced_run(
                 [
                     self._gpg.gpgbinary,
                     *self._homedir_args(),
@@ -2640,7 +2790,8 @@ class GPGBackend:
                     "--export-secret-keys",
                     fingerprint,
                 ],
-                input=f"{passphrase}\n",
+                input=f"{passphrase.passphrase}\n",
+                secrets=(passphrase,),
                 capture_output=True,
                 text=True,
                 check=False,

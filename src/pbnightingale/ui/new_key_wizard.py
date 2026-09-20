@@ -13,6 +13,7 @@ from PySide6.QtWidgets import QWizard, QWizardPage
 from pbnightingale import preferences
 from pbnightingale.core import gpg_backend
 from pbnightingale.core.gpg_backend import Key, NewKeyRequest
+from pbnightingale.core.secret import Passphrase
 from pbnightingale.ui.geometry_mixin import GeometryMixin
 from pbnightingale.ui.gpg_worker import run_async
 from pbnightingale.ui.new_key_wizard_ui import (
@@ -156,9 +157,9 @@ class _PassphrasePage(QWizardPage):
         """
         return self._matches()
 
-    def passphrase(self) -> str:
-        """Return the entered passphrase, unmodified (``""`` for none)."""
-        return self._ui.txtPassphrase.text()
+    def passphrase(self) -> Passphrase:
+        """Return the entered passphrase, unmodified (empty for none)."""
+        return Passphrase(self._ui.txtPassphrase.text())
 
 
 class _GeneratePage(QWizardPage):
