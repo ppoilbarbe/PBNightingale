@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pbnightingale"
-version = "0.2.1"
+version = "0.2.2"
 description = "A graphical GPG key management utility"
 readme = "README.md"
 license = "GPL-3.0-only"
@@ -34,10 +34,17 @@ dev = [
     "sphinx-rtd-theme>=2",
     "sphinx-autobuild>=2024",
     "sphinx-intl>=2.2",
+    "build>=1.2",
+    "twine>=5",
 ]
 
 [project.scripts]
 pbnightingale = "pbnightingale.__main__:main"
+
+[project.urls]
+Homepage   = "https://github.com/ppoilbarbe/PBNightingale"
+Repository = "https://github.com/ppoilbarbe/PBNightingale"
+Issues     = "https://github.com/ppoilbarbe/PBNightingale/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pbnightingale"]
@@ -133,6 +140,8 @@ sphinx                 = "*"
 sphinx-rtd-theme       = "*"
 sphinx-autobuild       = "*"
 sphinx-intl            = "*"
+python-build           = "*"
+twine                  = "*"
 
 [tool.pixi.pypi-dependencies]
 pbnightingale = { path = ".", editable = true }

@@ -42,7 +42,8 @@ TRANSLATE_STAMP := .translate.stamp
 .PHONY: help venv venv-update install run test coverage hooks lint format ci \
         clean translate force-translate new-lang compile-translations \
         update-icons dist srcdist docs docs-live docs-translate docs-stats \
-        bump-major bump-minor bump-patch bump-set
+        bump-major bump-minor bump-patch bump-set \
+        pypi-build publish-pypi verify-pypi publish-testpypi verify-testpypi
 
 help: ## This help
 	@printf "$(B)$(C)PBNightingale — Development Tasks$(R)\n\n"
@@ -214,3 +215,78 @@ srcdist: ## Build a source archive (dist/pbnightingale-<ver>-src.tar.gz) via git
 	mkdir -p dist; \
 	git archive --format=tar.gz --prefix="pbnightingale-$$ver/" HEAD -o "$$out"; \
 	printf "$(G)Done.$(R) Archive: $(Y)$$out$(R)\n"
+
+# ── PyPI ──────────────────────────────────────────────────────────────────────
+
+# Built into dist/pypi/ (not dist/) to avoid mixing with the PyInstaller
+# executables and the git-archive source tarball, which also live in dist/.
+# Version is the static `project.version` from pyproject.toml (via
+# `make bump-*`) — unlike `dist`/`srcdist`, this must never fall back to
+# "dev": PyPI permanently reserves whatever version number is uploaded.
+pypi-build: ## Build wheel + sdist for PyPI (dist/pypi/*.whl, dist/pypi/*.tar.gz)
+	@rm -rf dist/pypi
+	@mkdir -p dist/pypi
+	@printf "$(C)Building wheel + sdist for PyPI...$(R)\n"
+	$(CONDA_RUN) python -m build --outdir dist/pypi
+	@printf "$(G)Done.$(R) Artifacts in $(Y)dist/pypi/$(R)\n"
+
+publish-pypi: pypi-build ## Upload wheel + sdist to the real PyPI — irreversible, asks for confirmation
+	@printf "$(Y)About to upload dist/pypi/* to the REAL PyPI. This cannot be undone.$(R)\n"
+	@read -p "Type 'yes' to continue: " confirm && [ "$$confirm" = "yes" ] || \
+	    { printf "$(Y)Aborted.$(R)\n"; exit 1; }
+	$(CONDA_RUN) twine upload dist/pypi/*
+	@printf "$(G)Done.$(R)\n"
+
+verify-pypi: ARGS ?= --version
+verify-pypi: ## Install the latest real-PyPI package into a throwaway venv, smoke-test, then remove the venv (usage: make verify-pypi ARGS="--help-search")
+	@venv_dir=$$(mktemp -d); \
+	status=0; \
+	printf "$(C)Creating throwaway venv: $$venv_dir$(R)\n"; \
+	$(CONDA_RUN) python -m venv "$$venv_dir" || status=$$?; \
+	if [ $$status -eq 0 ]; then \
+	    printf "$(C)Installing pbnightingale from PyPI...$(R)\n"; \
+	    "$$venv_dir/bin/pip" install pbnightingale || status=$$?; \
+	fi; \
+	if [ $$status -eq 0 ]; then \
+	    printf "$(C)Running pbnightingale $(ARGS)...$(R)\n"; \
+	    "$$venv_dir/bin/pbnightingale" $(ARGS) || status=$$?; \
+	fi; \
+	printf "$(C)Removing throwaway venv...$(R)\n"; \
+	rm -rf "$$venv_dir"; \
+	if [ $$status -eq 0 ]; then \
+	    printf "$(G)Done.$(R) PyPI package installs and runs.\n"; \
+	else \
+	    printf "$(Y)Failed$(R) (exit $$status) — see output above.\n"; \
+	    exit $$status; \
+	fi
+
+publish-testpypi: pypi-build ## Upload wheel + sdist to TestPyPI (requires TestPyPI credentials)
+	@printf "$(C)Uploading to TestPyPI...$(R)\n"
+	$(CONDA_RUN) twine upload --verbose --repository testpypi dist/pypi/*
+	@printf "$(G)Done.$(R)\n"
+
+verify-testpypi: ARGS ?= --version
+verify-testpypi: ## Install the latest TestPyPI package into a throwaway venv, smoke-test, then remove the venv (usage: make verify-testpypi ARGS="--help-search")
+	@venv_dir=$$(mktemp -d); \
+	status=0; \
+	printf "$(C)Creating throwaway venv: $$venv_dir$(R)\n"; \
+	$(CONDA_RUN) python -m venv "$$venv_dir" || status=$$?; \
+	if [ $$status -eq 0 ]; then \
+	    printf "$(C)Installing pbnightingale from TestPyPI...$(R)\n"; \
+	    "$$venv_dir/bin/pip" install \
+	        --index-url https://test.pypi.org/simple/ \
+	        --extra-index-url https://pypi.org/simple/ \
+	        pbnightingale || status=$$?; \
+	fi; \
+	if [ $$status -eq 0 ]; then \
+	    printf "$(C)Running pbnightingale $(ARGS)...$(R)\n"; \
+	    "$$venv_dir/bin/pbnightingale" $(ARGS) || status=$$?; \
+	fi; \
+	printf "$(C)Removing throwaway venv...$(R)\n"; \
+	rm -rf "$$venv_dir"; \
+	if [ $$status -eq 0 ]; then \
+	    printf "$(G)Done.$(R) TestPyPI package installs and runs.\n"; \
+	else \
+	    printf "$(Y)Failed$(R) (exit $$status) — see output above.\n"; \
+	    exit $$status; \
+	fi
