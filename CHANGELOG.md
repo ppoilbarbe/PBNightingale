@@ -4,6 +4,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Preferences → "Key Servers": a configurable, ordered keyserver list,
+  each entry independently checkable, with Add/Remove/Move Up/Move Down
+  and "Restore Default List"; the list can never be emptied, and at
+  least one server must stay checked to accept the dialog
+- Import Key dialog: the "from keyserver" tab is now first and no longer
+  takes a keyserver field — it queries every checked keyserver and merges
+  whatever each finds
+- Search Keyserver dialog: the keyserver is now picked from a combobox
+  listing every configured server (checked or not), instead of free text
+- Publish Key dialog: a picker listing every configured keyserver as a
+  checkbox list, replacing the old single-server confirmation prompt;
+  publishing fans out to every checked server
+- Keyserver Refresh and "Download Unknown Keys" now query every checked
+  keyserver and merge the results, instead of relying on a single
+  hardcoded default
+- View → "Activity (advanced)…" (also F12): a non-modal window listing
+  the most recent external commands PBNightingale has run (`gpg`,
+  `gpg-connect-agent`, …), each numbered sequentially. Select a row and
+  press Ctrl+C to copy its command; "Clear History" empties the list
+  without resetting the numbering. How many commands are kept is
+  configurable in Preferences → "Activity history" (default 50)
+
+### Changed
+
+- `GPGBackend.list_keys()` accepts an optional fingerprint filter;
+  `refresh_from_keyserver()` uses it, so refreshing one key no longer
+  recomputes the primary-UID lookup for every other multi-UID key in the
+  keyring
+- Every command run through python-gnupg's own API (`list_keys()`,
+  `search_keys()`, `recv_keys()`, `send_keys()`, `gen_key()`,
+  `import_keys_file()`, `export_keys()`, …), not just PBNightingale's own
+  direct subprocess calls, is now traced into the Activity log — a
+  keyserver search, for instance, used to be entirely invisible there
+- About dialog: the "Author:"/"License:" field labels are now bold
+
+### Fixed
+
+- The Search Keyserver dialog's hint text about keys.openpgp.org was
+  corrected: it does support searching by exact email address,
+  fingerprint or key ID, and shows identities the key owner has verified
+  there
+
+### Removed
+
+- The single hardcoded default keyserver constant — every keyserver
+  operation now sources its server list from Preferences
+
 ## [0.2.2] - 2026-09-20
 
 ### Added

@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFileDialog
+from PySide6.QtWidgets import QFileDialog, QSizePolicy
 
+from pbnightingale import preferences
 from pbnightingale.core import gpg_backend
 from pbnightingale.core.gpg_backend import (
-    DEFAULT_KEYSERVER,
     GPGBackendError,
     ImportedKey,
     ImportPreview,
@@ -58,16 +58,10 @@ def _tree_items(dialog):
     return [tree.topLevelItem(i) for i in range(tree.topLevelItemCount())]
 
 
-def test_keyserver_field_prefilled_with_the_default(qtbot):
-    dialog = ImportKeyDialog()
-    qtbot.addWidget(dialog)
-
-    assert dialog._ui.txtKeyserver.text() == DEFAULT_KEYSERVER
-
-
 def test_import_from_file_tab_requires_a_file_first(qtbot):
     dialog = ImportKeyDialog()
     qtbot.addWidget(dialog)
+    dialog._ui.tabs.setCurrentIndex(1)
 
     dialog._ui.btnCheck.click()
 
@@ -105,11 +99,42 @@ def test_cancelling_the_file_dialog_leaves_the_path_empty(qtbot, monkeypatch):
 def test_import_from_keyserver_tab_requires_a_query_first(qtbot):
     dialog = ImportKeyDialog()
     qtbot.addWidget(dialog)
-    dialog._ui.tabs.setCurrentIndex(1)
 
     dialog._ui.btnCheck.click()
 
     assert "Enter a fingerprint" in dialog._ui.lblStatus.text()
+
+
+def test_import_from_keyserver_tab_is_shown_first(qtbot):
+    dialog = ImportKeyDialog()
+    qtbot.addWidget(dialog)
+
+    assert dialog._ui.tabs.currentIndex() == 0
+    assert dialog._ui.tabs.tabText(0) == "From keyserver"
+    assert dialog._ui.tabs.tabText(1) == "From file"
+
+
+def test_tabs_have_a_fixed_vertical_size_policy(qtbot):
+    dialog = ImportKeyDialog()
+    qtbot.addWidget(dialog)
+
+    assert dialog._ui.tabs.sizePolicy().verticalPolicy() == QSizePolicy.Policy.Fixed
+
+
+def test_resizing_taller_grows_the_candidate_tree_not_the_tabs(qtbot):
+    dialog = ImportKeyDialog()
+    qtbot.addWidget(dialog)
+    dialog.resize(520, 420)
+    dialog.show()
+    qtbot.waitExposed(dialog)
+    tabs_height_before = dialog._ui.tabs.height()
+    tree_height_before = dialog._ui.treeCandidates.height()
+
+    dialog.resize(520, 800)
+    qtbot.wait(0)
+
+    assert dialog._ui.tabs.height() == tabs_height_before
+    assert dialog._ui.treeCandidates.height() > tree_height_before
 
 
 def test_check_from_file_populates_the_candidate_tree(qtbot, monkeypatch, tmp_path):
@@ -125,6 +150,7 @@ def test_check_from_file_populates_the_candidate_tree(qtbot, monkeypatch, tmp_pa
     monkeypatch.setattr(gpg_backend, "default_backend", _FakeBackend)
     dialog = ImportKeyDialog()
     qtbot.addWidget(dialog)
+    dialog._ui.tabs.setCurrentIndex(1)
     dialog._ui.txtFilePath.setText(str(key_file))
 
     dialog._ui.btnCheck.click()
@@ -152,6 +178,7 @@ def test_new_candidate_defaults_unchecked_existing_candidate_defaults_checked(
     monkeypatch.setattr(gpg_backend, "default_backend", _FakeBackend)
     dialog = ImportKeyDialog()
     qtbot.addWidget(dialog)
+    dialog._ui.tabs.setCurrentIndex(1)
     dialog._ui.txtFilePath.setText(str(key_file))
 
     dialog._ui.btnCheck.click()
@@ -176,6 +203,7 @@ def test_import_button_disabled_until_a_candidate_is_checked(
     monkeypatch.setattr(gpg_backend, "default_backend", _FakeBackend)
     dialog = ImportKeyDialog()
     qtbot.addWidget(dialog)
+    dialog._ui.tabs.setCurrentIndex(1)
     dialog._ui.txtFilePath.setText(str(key_file))
 
     dialog._ui.btnCheck.click()
@@ -210,6 +238,7 @@ def test_import_from_file_commits_only_checked_fingerprints(
     monkeypatch.setattr(gpg_backend, "default_backend", _FakeBackend)
     dialog = ImportKeyDialog()
     qtbot.addWidget(dialog)
+    dialog._ui.tabs.setCurrentIndex(1)
     dialog._ui.txtFilePath.setText(str(key_file))
     dialog._ui.btnCheck.click()
     qtbot.waitUntil(lambda: dialog._ui.treeCandidates.topLevelItemCount() == 2)
@@ -228,35 +257,54 @@ def test_import_from_file_commits_only_checked_fingerprints(
 def test_import_from_keyserver_check_then_commit(qtbot, monkeypatch):
     preview_calls = []
     commit_calls = []
+    preferences.set_keyservers([("hkps://a.example", True), ("hkps://b.example", True)])
 
     class _FakeBackend:
-        def preview_import_from_keyserver(self, query, keyserver):
-            preview_calls.append((query, keyserver))
+        def preview_import_from_keyservers(self, query, keyservers):
+            preview_calls.append((query, keyservers))
             return [_NEW_CANDIDATE]
 
-        def commit_import_from_keyserver(self, query, keyserver, approved):
-            commit_calls.append((query, keyserver, approved))
+        def commit_import_from_keyservers(self, query, keyservers, approved):
+            commit_calls.append((query, keyservers, approved))
             return [_IMPORTED_KEY]
 
     monkeypatch.setattr(gpg_backend, "default_backend", _FakeBackend)
     dialog = ImportKeyDialog()
     qtbot.addWidget(dialog)
-    dialog._ui.tabs.setCurrentIndex(1)
     dialog._ui.txtQuery.setText("alice@example.com")
-    dialog._ui.txtKeyserver.setText("hkps://example.org")
 
     dialog._ui.btnCheck.click()
 
     qtbot.waitUntil(lambda: dialog._ui.treeCandidates.topLevelItemCount() == 1)
-    assert preview_calls == [("alice@example.com", "hkps://example.org")]
+    assert preview_calls == [
+        ("alice@example.com", ["hkps://a.example", "hkps://b.example"])
+    ]
     _tree_items(dialog)[0].setCheckState(0, Qt.CheckState.Checked)
 
     dialog._ui.buttonBox.accepted.emit()
 
     qtbot.waitUntil(lambda: dialog.imported_keys == [_IMPORTED_KEY])
     assert commit_calls == [
-        ("alice@example.com", "hkps://example.org", {_NEW_CANDIDATE.fingerprint})
+        (
+            "alice@example.com",
+            ["hkps://a.example", "hkps://b.example"],
+            {_NEW_CANDIDATE.fingerprint},
+        )
     ]
+
+
+def test_import_from_keyserver_requires_at_least_one_checked_server(qtbot):
+    preferences.set_keyservers(
+        [("hkps://a.example", False), ("hkps://b.example", False)]
+    )
+    dialog = ImportKeyDialog()
+    qtbot.addWidget(dialog)
+    dialog._ui.txtQuery.setText("alice@example.com")
+
+    dialog._ui.btnCheck.click()
+
+    assert "No keyserver is checked" in dialog._ui.lblStatus.text()
+    assert dialog._ui.treeCandidates.topLevelItemCount() == 0
 
 
 def test_check_reports_backend_failure_and_resets_to_editing(
@@ -272,6 +320,7 @@ def test_check_reports_backend_failure_and_resets_to_editing(
     monkeypatch.setattr(gpg_backend, "default_backend", _FailingBackend)
     dialog = ImportKeyDialog()
     qtbot.addWidget(dialog)
+    dialog._ui.tabs.setCurrentIndex(1)
     dialog._ui.txtFilePath.setText(str(key_file))
 
     dialog._ui.btnCheck.click()
@@ -300,6 +349,7 @@ def test_import_reports_backend_failure_and_resets_to_editing(
     monkeypatch.setattr(gpg_backend, "default_backend", _FailingBackend)
     dialog = ImportKeyDialog()
     qtbot.addWidget(dialog)
+    dialog._ui.tabs.setCurrentIndex(1)
     dialog._ui.txtFilePath.setText(str(key_file))
     dialog._ui.btnCheck.click()
     qtbot.waitUntil(lambda: dialog._ui.treeCandidates.topLevelItemCount() == 1)

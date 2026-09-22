@@ -21,6 +21,7 @@ from pathlib import Path
 
 import gnupg
 
+from pbnightingale.core import activity_log
 from pbnightingale.core.secret import Passphrase
 
 # gpg emits a `[GNUPG:] KEYEXPIRED <timestamp>` status line whenever a key
@@ -356,12 +357,6 @@ class NewKeyRequest:
 #: empirically (its own error message on an invalid value doesn't list
 #: them).
 OWNER_TRUST_LEVELS = ("undefined", "never", "marginal", "full", "ultimate")
-
-#: GPGBackend.import_from_keyserver()'s default: a modern, privacy-respecting
-#: keyserver (no email search, doesn't propagate third-party signatures) run
-#: by the OpenPGP community — a sensible default for a fingerprint/key-ID
-#: fetch when the caller doesn't ask for a specific one.
-DEFAULT_KEYSERVER = "hkps://keys.openpgp.org"
 
 
 @dataclass(frozen=True)
@@ -798,17 +793,26 @@ def _traced_run(
 
     The returned result's ``stderr`` has gpg's own informational noise
     (``KEYEXPIRED`` — see ``_strip_gnupg_noise()``) already stripped, so
-    every caller sees clean text without doing it itself.
+    every caller sees clean text without doing it itself. The result also
+    carries the activity-log entry's sequence number as ``.activity_seq``
+    — ``CompletedProcess`` has no ``__slots__``, so this is a plain,
+    ordinary attribute, not a subclass or a wrapper — for a caller that
+    needs to attach a supplementary line to the same command afterward
+    (see ``activity_log.record_detail()`` and ``_load_photos()`` below).
     """
+    command = shlex.join(str(a) for a in args)
+    entry = activity_log.record(command)
     if _log.isEnabledFor(logging.DEBUG):
-        _log.debug("Running: %s", shlex.join(str(a) for a in args))
+        _log.debug("Running: %s", command)
         stdin = kwargs.get("input")
         if stdin is not None:
             _log.debug("stdin:\n%s", _redact(stdin, secrets))
     result = subprocess.run(  # noqa: S603, PLW1510 — every caller passes check=False
         args, **kwargs
     )
-    return _clean_stderr(result)
+    result = _clean_stderr(result)
+    result.activity_seq = entry.seq
+    return result
 
 
 def _traced_popen(args: Sequence[str], **kwargs) -> subprocess.Popen:
@@ -818,9 +822,44 @@ def _traced_popen(args: Sequence[str], **kwargs) -> subprocess.Popen:
     callers scripting an interactive exchange over ``process.stdin`` must
     log each line they send themselves, redacting any secret first.
     """
+    command = shlex.join(str(a) for a in args)
+    activity_log.record(command)
     if _log.isEnabledFor(logging.DEBUG):
-        _log.debug("Running: %s", shlex.join(str(a) for a in args))
+        _log.debug("Running: %s", command)
     return subprocess.Popen(args, **kwargs)  # noqa: S603
+
+
+class _TracedGPG(gnupg.GPG):
+    """python-gnupg's GPG, with every subprocess it spawns fed into activity_log.
+
+    python-gnupg's own high-level methods (``list_keys()``, ``search_keys()``,
+    ``recv_keys()``, ``send_keys()``, ``gen_key()``, ``import_keys_file()``,
+    ``export_keys()``, …) never go through ``_traced_run()``/``_traced_popen()``
+    above — each spawns its own subprocess internally, invisible to both the
+    Activity window and ``-d``/``--debug`` tracing (a real gap: searching a
+    keyserver, for instance, produced no activity-log entry at all). Every
+    one of them funnels through this one private method before running
+    anything (verified against python-gnupg's own source, not just
+    observed), so overriding it here is the one place that catches all of
+    them without touching each call site individually. Fragile in the
+    usual way any override of a leading-underscore method is — if a future
+    python-gnupg version renames or restructures it, this silently stops
+    tracing rather than breaking loudly; worth re-checking on a
+    python-gnupg version bump.
+
+    No passphrase redaction is needed here: python-gnupg's own
+    ``make_args()`` never puts a passphrase in argv, only
+    ``--passphrase-fd 0`` — the actual value is written to the
+    subprocess's stdin afterward, which this override never sees or logs
+    (unlike ``_traced_run()``'s own stdin trace, gated behind ``-d``/
+    ``--debug`` and explicitly redacted — activity_log never gets stdin
+    content from either tracing path).
+    """
+
+    def _open_subprocess(self, args, passphrase=False):
+        command = shlex.join(str(a) for a in self.make_args(args, passphrase))
+        activity_log.record(command)
+        return super()._open_subprocess(args, passphrase)
 
 
 class GPGBackend:
@@ -861,7 +900,7 @@ class GPGBackend:
         if gpgbinary is not None:
             kwargs["gpgbinary"] = gpgbinary
         try:
-            self._gpg = gnupg.GPG(**kwargs)
+            self._gpg = _TracedGPG(**kwargs)
         except (OSError, ValueError) as exc:
             raise GPGBackendError(str(exc)) from exc
         self._gpg.encoding = "utf-8"
@@ -945,15 +984,31 @@ class GPGBackend:
         """The version of the underlying ``gpg`` binary, e.g. ``(2, 4, 4)``."""
         return self._gpg.version
 
-    def list_keys(self, *, secret: bool = False) -> list[Key]:
+    def list_keys(
+        self, *, secret: bool = False, fingerprints: list[str] | None = None
+    ) -> list[Key]:
         """Return the public keyring, or the secret keyring if *secret*.
 
         Public entries carry ``has_secret=True`` when a matching secret key
         also exists, so the UI can tell "your keys" apart from keys you only
         hold the public part of.
+
+        Parameters
+        ----------
+        secret
+            List secret keys instead of public ones.
+        fingerprints
+            Restrict the listing to these keys instead of the whole
+            keyring. Also restricts ``_load_primary_uids()``'s per-key
+            ``--edit-key`` lookup to just these — the expensive part this
+            exists to avoid paying for keys the caller isn't asking
+            about; see ``refresh_from_keyserver()``, whose before/after
+            snapshots used to list (and pay that cost for) the entire
+            keyring even when refreshing a single key. ``None`` (the
+            default) lists everything, as before.
         """
         try:
-            raw = self._gpg.list_keys(secret)
+            raw = self._gpg.list_keys(secret, keys=fingerprints)
         except ValueError as exc:
             raise GPGBackendError(str(exc)) from exc
 
@@ -994,6 +1049,14 @@ class GPGBackend:
         to recover the image bytes and each photo's revoked flag instead —
         one subprocess call for the *whole* keyring, not one per key, since
         the ``ATTRIBUTE`` status line already names the fingerprint.
+
+        Unlike every other ``_traced_run()`` call in this module, the
+        interesting output here isn't on stdout/stderr at all — gpg
+        writes it to *attribute_path* instead, so the plain argv trace
+        alone wouldn't show what the command actually produced. A
+        supplementary activity-log line (same sequence number, via
+        ``result.activity_seq``) carries that file's raw bytes as hex
+        right underneath the command that produced them.
         """
         with tempfile.TemporaryDirectory() as tmp_dir:
             attribute_path = Path(tmp_dir) / "attributes"
@@ -1015,6 +1078,11 @@ class GPGBackend:
             attribute_data = (
                 attribute_path.read_bytes() if attribute_path.exists() else b""
             )
+        activity_log.record_detail(
+            result.activity_seq,
+            f"--attribute-file content ({len(attribute_data)} bytes, hex): "
+            f"{attribute_data.hex()}",
+        )
         return _parse_photos(result.stderr, attribute_data)
 
     def _load_primary_uids(self, raw) -> dict[str, str]:
@@ -2248,23 +2316,21 @@ class GPGBackend:
                     return fields[9], result.stderr
         return None, result.stderr
 
-    def import_from_keyserver(
-        self, query: str, keyserver: str = DEFAULT_KEYSERVER
-    ) -> list[ImportedKey]:
+    def import_from_keyserver(self, query: str, keyserver: str) -> list[ImportedKey]:
         """Import a key from a keyserver.
 
         An address containing "@" is resolved through gpg's own
         auto-key-locate (WKD first — a direct HTTPS lookup at the email
         domain's own well-known endpoint, no keyserver search involved —
-        falling back to *keyserver*), since public keyservers generally
-        don't support lookup by email at all: `--search-keys` (the one
-        keyserver operation that does) returns a numbered list for
-        *interactive* disambiguation, which has no non-interactive
-        equivalent to script against, and modern keyservers such as
-        keys.openpgp.org don't index email addresses at all for privacy
-        reasons. See CODING.md, "Key import". Anything else is treated as
-        a literal fingerprint or key ID and fetched directly with
-        `--recv-keys`, which needs an exact match.
+        falling back to *keyserver*), rather than `--search-keys`: that's
+        the one keyserver operation that supports email lookup on a
+        server such as keys.openpgp.org (exact match only, and only for
+        an address the key owner has verified there — see CODING.md,
+        "Keyserver management"), but it's inherently interactive (a
+        numbered list to disambiguate from), with no non-interactive
+        equivalent to script against. See CODING.md, "Key import".
+        Anything else is treated as a literal fingerprint or key ID and
+        fetched directly with `--recv-keys`, which needs an exact match.
 
         Parameters
         ----------
@@ -2363,7 +2429,7 @@ class GPGBackend:
         ]
 
     def preview_import_from_keyserver(
-        self, query: str, keyserver: str = DEFAULT_KEYSERVER
+        self, query: str, keyserver: str
     ) -> list[ImportPreview]:
         """Report what ``commit_import_from_keyserver()`` would import.
 
@@ -2495,9 +2561,138 @@ class GPGBackend:
             self.import_from_keyserver(query, keyserver), approved
         )
 
-    def search_keyserver(
-        self, query: str, keyserver: str = DEFAULT_KEYSERVER
-    ) -> list[SearchResult]:
+    def _import_from_every_keyserver(
+        self, query: str, keyservers: list[str]
+    ) -> tuple[set[str], list[str]]:
+        """Fetch *query* from every server in *keyservers*, merging into this keyring.
+
+        Each server's copy of the key merges straight into whatever is
+        already present in this keyring — gpg's own import behaviour, not
+        anything special done here — so a key that picked up different
+        signatures or UIDs on different servers comes back as their
+        union, satisfying the "search/fetch every instance and merge"
+        requirement behind ``preview_import_from_keyservers()``/
+        ``commit_import_from_keyservers()`` for free. A server with no
+        match for *query* (or one that's simply unreachable) is not
+        fatal on its own — only when *every* server fails does the
+        caller need to report something, which is what *errors* is for.
+
+        Parameters
+        ----------
+        query
+            A fingerprint, key ID, or email address identifying the key.
+        keyservers
+            The keyservers to try, in order.
+
+        Returns
+        -------
+        :
+            ``(fingerprints, errors)`` — every fingerprint actually
+            merged into this keyring, and every per-server failure
+            message (used by the caller only when *fingerprints* ends up
+            empty).
+        """
+        fingerprints: set[str] = set()
+        errors: list[str] = []
+        for keyserver in keyservers:
+            try:
+                for entry in self.import_from_keyserver(query, keyserver):
+                    fingerprints.add(entry.key.fingerprint)
+            except GPGBackendError as exc:
+                errors.append(str(exc))
+        return fingerprints, errors
+
+    def preview_import_from_keyservers(
+        self, query: str, keyservers: list[str]
+    ) -> list[ImportPreview]:
+        """Report what ``commit_import_from_keyservers()`` would import.
+
+        Without touching this keyring at all — same throwaway-scratch-
+        keyring approach as ``preview_import_from_keyserver()``, except
+        every server in *keyservers* is fetched into that *same* scratch
+        keyring in turn before anything is read back, so the merge across
+        servers this method previews is the real one
+        ``commit_import_from_keyservers()`` would later perform, not an
+        approximation of it.
+
+        Parameters
+        ----------
+        query
+            A fingerprint, key ID, or email address identifying the key.
+        keyservers
+            The keyservers to fetch from, in order.
+
+        Returns
+        -------
+        :
+            The key(s) that would be imported, merging every server's
+            copy.
+
+        Raises
+        ------
+        GPGBackendError
+            If no key was found for *query* on any of *keyservers*.
+        """
+        existing = {e["fingerprint"] for e in self._gpg.list_keys(False)}
+        scratch_dir = tempfile.mkdtemp()
+        try:
+            scratch = GPGBackend(scratch_dir, gpgbinary=self._gpg.gpgbinary)
+            fingerprints, errors = scratch._import_from_every_keyserver(
+                query, keyservers
+            )
+            if not fingerprints:
+                raise GPGBackendError("; ".join(errors) or f"No key found for {query}")
+            return [
+                ImportPreview(
+                    fingerprint=fp,
+                    keyid=(key := scratch._find_key(fp)).keyid,
+                    uids=[uid.value for uid in key.uids],
+                    is_new=fp not in existing,
+                )
+                for fp in fingerprints
+            ]
+        finally:
+            shutil.rmtree(scratch_dir, ignore_errors=True)
+
+    def commit_import_from_keyservers(
+        self, query: str, keyservers: list[str], approved: set[str]
+    ) -> list[ImportedKey]:
+        """Import from every checked keyserver for real, keeping only the approved keys.
+
+        Parameters
+        ----------
+        query
+            A fingerprint, key ID, or email address identifying the key
+            (see ``preview_import_from_keyservers()``).
+        keyservers
+            The keyservers to fetch from, in order.
+        approved
+            The fingerprints to actually keep. A no-op — no fetch at all —
+            if empty.
+
+        Returns
+        -------
+        :
+            The approved, newly-imported keys, merging every server's
+            copy.
+
+        Raises
+        ------
+        GPGBackendError
+            If no key was found for *query* on any of *keyservers*.
+        """
+        if not approved:
+            return []
+        existing = {e["fingerprint"] for e in self._gpg.list_keys(False)}
+        fingerprints, errors = self._import_from_every_keyserver(query, keyservers)
+        if not fingerprints:
+            raise GPGBackendError("; ".join(errors) or f"No key found for {query}")
+        imported = [
+            ImportedKey(self._find_key(fp), fp not in existing) for fp in fingerprints
+        ]
+        return self._commit_filtered(imported, approved)
+
+    def search_keyserver(self, query: str, keyserver: str) -> list[SearchResult]:
         """Search a keyserver, returning every match for the user to pick.
 
         Unlike ``import_from_keyserver()``, which needs an exact
@@ -2506,11 +2701,13 @@ class GPGBackend:
         ambiguous query with several possible matches, left for a human to
         disambiguate (see CODING.md, "Key import" for why
         ``import_from_keyserver()`` avoids it for email lookups instead).
-        Not every keyserver supports it: this app's own default,
-        `keys.openpgp.org`, deliberately doesn't — for the same privacy
-        reasons it doesn't index emails either — so this only returns
-        anything against a keyserver that still offers `op=index` (a
-        self-hosted one, for instance).
+        `keys.openpgp.org` does support it (`op=index`), but only for an
+        *exact* email address, fingerprint or long key ID — never a free-
+        text name — and only ever returns 0 or 1 result, with identities
+        (UIDs) included only for an address the key's owner has verified
+        there. A self-hosted keyserver may support a genuine, broader
+        `op=index` (free-text name matching, several results) instead —
+        see CODING.md, "Keyserver management".
 
         Parameters
         ----------
@@ -2552,9 +2749,7 @@ class GPGBackend:
             for entry in result
         ]
 
-    def publish_to_keyserver(
-        self, fingerprint: str, keyserver: str = DEFAULT_KEYSERVER
-    ) -> None:
+    def publish_to_keyserver(self, fingerprint: str, keyserver: str) -> None:
         """Publish a public key to a keyserver.
 
         Parameters
@@ -2575,53 +2770,114 @@ class GPGBackend:
                 str(result.stderr) or f"Could not publish {fingerprint} to {keyserver}"
             )
 
+    def publish_to_keyservers(
+        self, fingerprint: str, keyservers: list[str]
+    ) -> list[str]:
+        """Publish a public key to every server in *keyservers*.
+
+        Parameters
+        ----------
+        fingerprint
+            The key to publish.
+        keyservers
+            The keyservers to publish to, in order.
+
+        Returns
+        -------
+        :
+            The keyservers the key was actually published to.
+
+        Raises
+        ------
+        GPGBackendError
+            If publishing failed on every server in *keyservers* (the
+            per-server messages, joined). A partial failure — some
+            servers accepted the key, some didn't — isn't raised, since
+            the key is now public either way; the caller only needs to
+            know this wasn't a complete no-op.
+        """
+        published: list[str] = []
+        errors: list[str] = []
+        for keyserver in keyservers:
+            try:
+                self.publish_to_keyserver(fingerprint, keyserver)
+                published.append(keyserver)
+            except GPGBackendError as exc:
+                errors.append(str(exc))
+        if not published:
+            raise GPGBackendError(
+                "; ".join(errors) or f"Could not publish {fingerprint} to any keyserver"
+            )
+        return published
+
     def refresh_from_keyserver(
         self,
         fingerprints: list[str] | None = None,
-        keyserver: str = DEFAULT_KEYSERVER,
+        *,
+        keyservers: list[str],
     ) -> list[RefreshedKey]:
-        """Re-fetch keys already in the keyring from a keyserver.
+        """Re-fetch keys already in the keyring from every server in *keyservers*.
 
         The same effect as gpg's own ``--refresh-keys``, which
         python-gnupg doesn't wrap: fetching a key already present merges
         in any new signatures, revocations or expiry changes rather than
-        duplicating it.
+        duplicating it. Every server in *keyservers* is tried in turn,
+        merging in whatever each one finds — same "a server missing
+        something isn't fatal on its own" fan-out as
+        ``_import_from_every_keyserver()``, just at the level of one
+        batched ``recv_keys()`` call per server instead of one call per
+        key.
 
         Parameters
         ----------
         fingerprints
             Which keys to refresh; ``None`` (the default) refreshes every
             key in the keyring.
-        keyserver
-            The keyserver to refresh from.
+        keyservers
+            The keyservers to refresh from, in order. A no-op — no fetch
+            at all — if empty, same as an empty *fingerprints*.
 
         Returns
         -------
         :
             The refreshed keys, each flagged with whether anything about
             it actually changed. Empty when there is nothing to refresh —
-            either an empty keyring with *fingerprints* unset, or an
-            explicitly empty *fingerprints* list — since calling
-            ``recv_keys()`` with zero keyids would otherwise wait on
-            unexpected input.
+            either an empty keyring with *fingerprints* unset, an
+            explicitly empty *fingerprints* list, or no *keyservers* —
+            since calling ``recv_keys()`` with zero keyids would
+            otherwise wait on unexpected input.
 
         Raises
         ------
         GPGBackendError
-            If the refresh itself failed (as opposed to one requested key
-            no longer being available from the keyserver, which is
-            silently skipped).
+            If the refresh failed on every server in *keyservers* (as
+            opposed to one requested key no longer being available from a
+            particular server, which is silently skipped there).
         """
         if fingerprints is None:
             fingerprints = [key.fingerprint for key in self.list_keys()]
-        if not fingerprints:
+        if not fingerprints or not keyservers:
             return []
-        before = {key.fingerprint: key for key in self.list_keys()}
-        result = _clean_stderr(self._gpg.recv_keys(keyserver, *fingerprints))
-        stderr = str(result.stderr)
-        if result.returncode != 0 and not _is_no_data_failure(stderr):
-            raise GPGBackendError(stderr or "Could not refresh keys")
-        after = {key.fingerprint: key for key in self.list_keys()}
+        # Scoped to *fingerprints*, not a full-keyring list_keys(): refreshing
+        # one key out of a large keyring shouldn't pay _load_primary_uids()'s
+        # per-key --edit-key cost for every other multi-UID key too.
+        before = {
+            key.fingerprint: key for key in self.list_keys(fingerprints=fingerprints)
+        }
+        errors: list[str] = []
+        any_ok = False
+        for keyserver in keyservers:
+            result = _clean_stderr(self._gpg.recv_keys(keyserver, *fingerprints))
+            stderr = str(result.stderr)
+            if result.returncode != 0 and not _is_no_data_failure(stderr):
+                errors.append(stderr or f"Could not refresh keys from {keyserver}")
+            else:
+                any_ok = True
+        if not any_ok:
+            raise GPGBackendError("; ".join(errors) or "Could not refresh keys")
+        after = {
+            key.fingerprint: key for key in self.list_keys(fingerprints=fingerprints)
+        }
         return [
             RefreshedKey(key=after[fp], updated=before.get(fp) != after[fp])
             for fp in fingerprints
@@ -2695,7 +2951,7 @@ class GPGBackend:
         ]
 
     def download_unknown_signatures(
-        self, identifiers: list[str], keyserver: str = DEFAULT_KEYSERVER
+        self, identifiers: list[str], keyservers: list[str]
     ) -> list[DownloadedSignature]:
         """Fetch signer keys not already in the keyring, one at a time.
 
@@ -2703,28 +2959,34 @@ class GPGBackend:
         such a call can't tell a genuine per-key miss apart from another
         identifier in the same request merely failing for an unrelated
         reason (see ``refresh_from_keyserver()``'s own note on this) — the
-        caller needs to know exactly which ones were found.
+        caller needs to know exactly which ones were found. Each
+        identifier is tried against every server in *keyservers* in turn
+        (never stopping at the first hit), merging in whatever each one
+        finds — same fan-out as ``preview_import_from_keyservers()``, at
+        the single-identifier level.
 
         Parameters
         ----------
         identifiers
             A ``KeySignature``'s ``fingerprint``, or its bare ``keyid``
             when no fingerprint was available, for each signer to fetch.
-        keyserver
-            The keyserver to fetch from.
+        keyservers
+            The keyservers to try for each identifier, in order.
 
         Returns
         -------
         :
             One entry per identifier, in the same order, each with the
-            fetched key on success or ``None`` when not found.
+            fetched key on success (the merged result across every server
+            that had it) or ``None`` when no server in *keyservers* did.
         """
         results = []
         for identifier in identifiers:
-            result = self._gpg.recv_keys(keyserver, identifier)
-            key = (
-                self._find_key(result.fingerprints[0]) if result.fingerprints else None
-            )
+            key = None
+            for keyserver in keyservers:
+                result = self._gpg.recv_keys(keyserver, identifier)
+                if result.fingerprints:
+                    key = self._find_key(result.fingerprints[0])
             results.append(DownloadedSignature(identifier, key))
         return results
 

@@ -11,13 +11,15 @@ Importing a key
 
 |icon-key-import| **Import…** (Keys toolbar/menu) opens a two-tab dialog:
 
-- **From file** — for a key someone handed you directly (an exported
-  ``.asc``/``.gpg`` file), or a whole exported keyring containing several
-  keys at once.
 - **From keyserver** — fetch by exact **fingerprint** or **key ID**, or
   by **email address** (tried via Web Key Directory first — a lookup
   straight from the owner's own email domain, when their provider
-  supports it — falling back to the keyserver).
+  supports it). No keyserver picker here: every server checked in
+  :doc:`preferences` (**Key Servers**) is queried in turn, and whatever
+  any of them find is merged together.
+- **From file** — for a key someone handed you directly (an exported
+  ``.asc``/``.gpg`` file), or a whole exported keyring containing several
+  keys at once.
 
 Either way, importing is a **two-step, review-first** process:
 
@@ -42,36 +44,44 @@ Searching a keyserver
 
 |icon-server-search| **Search…** (Keyservers toolbar/menu) is for when
 you do not have an exact fingerprint or key ID — searching by name or
-email against a
-keyserver that supports it, and picking the right result from a list of
-matches. Not every keyserver indexes names or emails this way (this
-app's default, ``keys.openpgp.org``, deliberately does not, for privacy
-reasons — searching there only works by exact fingerprint or key ID, and
-even then without showing identities); point **Search…** at a different
-keyserver if you need this.
+email against a keyserver of your choice (a combobox lists every server
+configured in :doc:`preferences`, checked or not), and picking the right
+result from a list of matches.
+
+Not every keyserver supports the same kind of search. ``keys.openpgp.org``
+(this app's default) only matches an *exact* email address, fingerprint,
+or key ID — never a free-text name — and only ever returns a single
+result; it also only shows the identities (name/email) the key's owner
+has explicitly verified there, at upload time or afterward, so an
+unverified address will not turn up even if the key itself is on the
+server. A self-hosted or community keyserver may support a broader,
+free-text search instead — pick it from the combobox if you need that.
 
 Publishing your own key
 ---------------------------
 
 |icon-server-publish| **Publish…** (Keyservers toolbar/menu, needs a
-selected key) uploads the selected key to a keyserver, making it easy
-for people who have never met you to find it. This is worth doing once your key is in a state you are
-comfortable with (an email address you intend to keep using, for
-instance), since publishing is effectively one-way — a public key already
-picked up by a keyserver cannot be fully retracted, only revoked (see
+selected key) uploads the selected key to one or more keyservers, making
+it easy for people who have never met you to find it. A checkbox list of
+every server configured in :doc:`preferences` lets you pick which ones to
+publish to — at least one must be checked before the dialog will proceed.
+This is worth doing once your key is in a state you are comfortable with
+(an email address you intend to keep using, for instance), since
+publishing is effectively one-way — a public key already picked up by a
+keyserver cannot be fully retracted, only revoked (see
 :doc:`managing_keys`).
 
 Refreshing from keyservers
 ------------------------------
 
 |icon-server-refresh| **Refresh** (Keyservers toolbar/menu) re-fetches
-keys from their keyserver, picking up anything that has changed since you
-last imported them — new signatures from people who have since signed a
-key you hold, a since-added or since-revoked UID, or a revocation. A
-dialog first asks whether to refresh just the currently selected key or
-every key in your keyring; a progress indicator is shown while it runs
-(refreshing the whole keyring can take a while), and a report afterward
-lists exactly which keys actually picked up a change. Run this
-occasionally, and especially before relying on a key's current validity
-for something important — see :doc:`trust_and_signing`, "Seeing who
-signed a key".
+keys from every keyserver checked in :doc:`preferences`, merging in
+anything that has changed since you last imported them — new signatures
+from people who have since signed a key you hold, a since-added or
+since-revoked UID, or a revocation. A dialog first asks whether to
+refresh just the currently selected key or every key in your keyring; a
+progress indicator is shown while it runs (refreshing the whole keyring
+can take a while), and a report afterward lists exactly which keys
+actually picked up a change. Run this occasionally, and especially before
+relying on a key's current validity for something important — see
+:doc:`trust_and_signing`, "Seeing who signed a key".

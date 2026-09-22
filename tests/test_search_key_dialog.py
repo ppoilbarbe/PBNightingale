@@ -4,16 +4,16 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt
 
+from pbnightingale import preferences
 from pbnightingale.core import gpg_backend
 from pbnightingale.core.gpg_backend import (
-    DEFAULT_KEYSERVER,
     GPGBackendError,
     ImportedKey,
     Key,
     SearchResult,
     Uid,
 )
-from pbnightingale.ui.search_key_dialog import SearchKeyDialog
+from pbnightingale.ui.search_key_dialog import _KEYS_OPENPGP_ORG, SearchKeyDialog
 
 _FOUND_RESULT = SearchResult(
     fingerprint="AAAA111122223333444455556666777788889999",
@@ -46,27 +46,45 @@ _IMPORTED_KEY = ImportedKey(
 )
 
 
-def test_keyserver_field_prefilled_with_the_default(qtbot):
+def test_keyserver_combo_lists_every_configured_server_preselecting_the_first(qtbot):
     dialog = SearchKeyDialog()
     qtbot.addWidget(dialog)
 
-    assert dialog._ui.txtKeyserver.text() == DEFAULT_KEYSERVER
+    combo = dialog._ui.cmbKeyserver
+    urls = [combo.itemText(i) for i in range(combo.count())]
+    assert urls == [url for url, _checked in preferences.DEFAULT_KEYSERVERS]
+    assert combo.currentText() == _KEYS_OPENPGP_ORG
+
+
+def test_keyserver_combo_lists_unchecked_servers_too(qtbot):
+    preferences.set_keyservers(
+        [("hkps://a.example", True), ("hkps://b.example", False)]
+    )
+    dialog = SearchKeyDialog()
+    qtbot.addWidget(dialog)
+
+    combo = dialog._ui.cmbKeyserver
+    urls = [combo.itemText(i) for i in range(combo.count())]
+    assert urls == ["hkps://a.example", "hkps://b.example"]
 
 
 def test_keyserver_hint_shown_only_for_the_default_keyserver(qtbot):
     # isHidden() (not isVisible(), which also depends on the whole ancestor
     # chain being shown on screen) reflects this widget's own visibility
     # flag regardless of whether the dialog itself is shown.
+    preferences.set_keyservers(
+        [(_KEYS_OPENPGP_ORG, True), ("hkps://my-own-server.example", True)]
+    )
     dialog = SearchKeyDialog()
     qtbot.addWidget(dialog)
 
     assert dialog._ui.lblKeyserverHint.isHidden() is False
 
-    dialog._ui.txtKeyserver.setText("hkps://my-own-server.example")
+    dialog._ui.cmbKeyserver.setCurrentText("hkps://my-own-server.example")
 
     assert dialog._ui.lblKeyserverHint.isHidden() is True
 
-    dialog._ui.txtKeyserver.setText(DEFAULT_KEYSERVER)
+    dialog._ui.cmbKeyserver.setCurrentText(_KEYS_OPENPGP_ORG)
 
     assert dialog._ui.lblKeyserverHint.isHidden() is False
 
@@ -103,7 +121,7 @@ def test_search_populates_results_and_selecting_enables_import(qtbot, monkeypatc
     dialog._ui.btnSearch.click()
 
     qtbot.waitUntil(lambda: dialog._ui.resultsList.count() == 1)
-    assert calls == [("alice", DEFAULT_KEYSERVER)]
+    assert calls == [("alice", _KEYS_OPENPGP_ORG)]
     assert "alice@example.com" in dialog._ui.resultsList.item(0).text()
 
     dialog._ui.resultsList.setCurrentRow(0)
@@ -132,7 +150,7 @@ def test_pressing_enter_in_the_query_field_launches_the_search(qtbot, monkeypatc
     qtbot.keyClick(dialog._ui.txtQuery, Qt.Key.Key_Return)
 
     qtbot.waitUntil(lambda: dialog._ui.resultsList.count() == 1)
-    assert calls == [("alice", DEFAULT_KEYSERVER)]
+    assert calls == [("alice", _KEYS_OPENPGP_ORG)]
     # Return must trigger the search, not the "Cancel" button that
     # QDialogButtonBox promotes to default while "Import" is disabled.
     assert dialog.isVisible() is True
@@ -176,7 +194,7 @@ def test_import_succeeds_with_mocked_backend(qtbot, monkeypatch):
     dialog._ui.buttonBox.accepted.emit()
 
     qtbot.waitUntil(lambda: dialog.imported_keys == [_IMPORTED_KEY])
-    assert import_calls == [(_FOUND_RESULT.fingerprint, DEFAULT_KEYSERVER)]
+    assert import_calls == [(_FOUND_RESULT.fingerprint, _KEYS_OPENPGP_ORG)]
 
 
 def test_import_reports_backend_failure_and_reenables_form(qtbot, monkeypatch):

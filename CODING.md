@@ -172,6 +172,11 @@ filtering happens even earlier, right where gpg's stderr is captured
 whose result exposes `.stderr` go through `_clean_stderr()` first) so the
 exception-level strip is really just a last line of defense.
 
+`_traced_run()`/`_traced_popen()` also feed `core/activity_log.py`'s
+in-memory command history unconditionally, not just their existing
+`_log.debug()` trace, which only fires under `-d`/`--debug`. See
+"Activity (advanced) window" below.
+
 **`core/secret.py::Passphrase`**: every passphrase in this codebase — a
 `GPGBackend` method parameter, `NewKeyRequest.passphrase`, what
 `core/passphrase_cache.py` stores, what a dialog reads off its
@@ -694,7 +699,105 @@ than skipping the call — Qt has no "unset back to default" API for
 was set has to go through the style directly, the same value Qt itself
 would have used had `setIconSize()` never been called at all.
 
-## Subkey management
+## Activity (advanced) window
+
+`core/activity_log.py` keeps an in-memory, thread-safe ring buffer of
+every external command PBNightingale has run (`gpg`, `gpg-connect-agent`,
+…), recorded unconditionally, independently of `logging`'s own `-d`/
+`--debug` gate (see "GPG backend" above): the Activity window is meant to
+always have something to show, not just when debug logging happens to be
+enabled. Framework-agnostic by the same convention as the rest of
+`core/` — it notifies subscribers synchronously, on whichever thread
+called `record()` (normally a `QThreadPool` worker, via
+`ui/gpg_worker.py`), and leaves marshaling back to the GUI thread to its
+one real subscriber, `ui/activity_log_dialog.py::ActivityLogDialog`
+(re-emits through a `Signal(object)`, which Qt queues across threads
+automatically).
+
+Two independent tracing paths feed it, and both matter — a keyserver
+search used to be silently invisible here because only one of them
+existed at first:
+
+- `_traced_run()`/`_traced_popen()` — every call `core/gpg_backend.py`
+  makes by building a raw argv itself and shelling out directly (`gpg
+  --edit-key` scripting, `--attribute-file`, `gpg-connect-agent`, …).
+- `_TracedGPG._open_subprocess()` — every call made *through*
+  python-gnupg's own high-level API instead (`list_keys()`,
+  `search_keys()`, `recv_keys()`, `send_keys()`, `gen_key()`,
+  `import_keys_file()`, `export_keys()`, …). python-gnupg builds and runs
+  its own subprocess internally for these, entirely bypassing
+  `_traced_run()`/`_traced_popen()` — `GPGBackend.__init__` uses a
+  `_TracedGPG(gnupg.GPG)` subclass instead of `gnupg.GPG` directly
+  specifically to close this gap, overriding python-gnupg's own
+  `_open_subprocess()` (verified, by reading python-gnupg's source, to be
+  the one choke point every high-level method funnels through) to record
+  the command before delegating to the real implementation. No
+  passphrase redaction is needed there either: python-gnupg's
+  `make_args()` never puts a passphrase in argv, only
+  `--passphrase-fd 0` — the real value goes to the subprocess's stdin
+  afterward, which this override never sees. Relying on a
+  leading-underscore method is inherently fragile against a future
+  python-gnupg version restructuring it — worth re-checking on a
+  version bump, since a silent tracing gap is much harder to notice than
+  a loud break.
+
+`ActivityLogDialog` is deliberately non-modal (`setModal(False)`, shown
+via `show()` rather than `exec()`) so it never blocks the rest of the
+app — reachable via **View → Activity (advanced)** (after a separator, at
+the end of the menu) or F12. `MainWindow._on_activity_log()` keeps a
+single instance alive for the window's whole lifetime
+(`self._activity_log_dialog`) and just raises it on repeat activation,
+rather than creating a new one each time — matching how the window
+subscribes to `activity_log` once, in `__init__`, and never unsubscribes.
+Selecting a row and pressing Ctrl+C (`QShortcut(QKeySequence.StandardKey.
+Copy, ...)`) copies that row's raw command text to the clipboard; a
+**Clear History** button (`activity_log.clear()`) empties the table and
+the underlying ring buffer without dropping the dialog's own subscription
+— unlike `activity_log.reset()`, which also clears every subscriber and
+exists purely for test teardown (see `tests/conftest.py`'s autouse
+`_isolated_activity_log`, mirroring `_isolated_passphrase_cache`).
+
+How many commands are kept is `preferences.get_activity_log_max_entries()`/
+`set_activity_log_max_entries()` (default 50, edited from `SettingsDialog`'s
+"Activity history:" spin box), applied to the ring buffer via
+`activity_log.configure()` at startup and again whenever `SettingsDialog`
+is accepted — same pattern as toolbar icon size (see "Preferences" above),
+except it also calls the open `ActivityLogDialog.refresh()` (if one
+exists) so a just-shrunk buffer's table doesn't keep showing entries that
+no longer exist.
+
+The table's leading "#" column is `ActivityEntry.seq`, a counter that only
+ever goes up: assigned once, under `activity_log`'s own lock, the moment a
+command is recorded, and never reused or renumbered afterward. It
+survives **Clear History** on purpose — the next command recorded still
+gets the next number in line, not `1` again — so a sequence number stays
+a stable reference to one specific command's original run order even once
+older rows have aged out of the ring buffer or been cleared. Only
+`activity_log.reset()` (test-only teardown) restarts it at `1`, alongside
+wiping every entry and subscriber.
+
+A row's number doesn't always mean "one row per command", either: some
+commands write their real output to a side file rather than stdout/stderr
+(gpg's `--attribute-file`, used to read back photo user IDs — see "Photo
+user IDs" below), which the plain argv trace can't show. For those,
+`activity_log.record_detail(seq, text)` appends a follow-up line sharing
+the triggering command's own sequence number instead of allocating a new
+one, so the two rows stay visibly grouped in the table.
+
+**Why refreshing one key used to spam this window with unrelated
+`--edit-key` calls**: `GPGBackend.refresh_from_keyserver()`'s before/after
+change-detection snapshots used to call `self.list_keys()` with no
+filter, which — via `_load_primary_uids()` (see "Editable user IDs"
+above) — pays one `--edit-key` subprocess per *every* multi-UID key in
+the whole keyring, not just the one being refreshed. `list_keys()` now
+takes an optional `fingerprints` filter (threaded straight through to
+python-gnupg's own `list_keys(keys=...)`), and `refresh_from_keyserver()`
+passes the keys actually being refreshed — refreshing one key out of a
+keyring full of multi-UID keys now costs one `--edit-key` call (if that
+key itself has more than one UID), not one per multi-UID key in the whole
+keyring. `MainWindow.refresh_keys()`'s own full-keyring reload right after
+the report dialog closes is unaffected — it deliberately reloads
+everything, the same as pressing F5.
 
 Three actions on the Keys toolbar/menu, all reading `KeyListView.
 selected_key()`/`selected_subkey()` and enabled only when relevant
@@ -965,6 +1068,21 @@ the header length is read from the block rather than assumed to be a fixed
 round trip needed for that (unlike the "which UID is primary" question
 above, gpg *does* expose an attribute's revoked state in a plain listing).
 
+Unlike every other `_traced_run()` call, this one's interesting output
+isn't on stdout/stderr — it's the side file at `--attribute-file`'s path,
+read only after the command finishes. The plain argv trace in the
+Activity window (see "Activity (advanced) window" above) wouldn't show
+what the command actually produced, so `_load_photos()` follows it with
+`activity_log.record_detail(result.activity_seq, ...)` — a supplementary
+line, its command text the raw attribute-file bytes as hex, sharing the
+same sequence number as the `--attribute-file` command itself
+(`result.activity_seq`, an ordinary attribute `_traced_run()` sets on the
+`CompletedProcess` it returns — that class has no `__slots__`, so this
+needs no subclass or wrapper). `activity_log.record()` returning its
+`ActivityEntry` and the dedicated `record_detail(seq, text)` (append a
+line without allocating a new sequence number) exist specifically to
+support this.
+
 **Revoking one** (`GPGBackend.revoke_photo_uid()`) has the same problem as
 promoting a photo to primary would: `--quick-revoke-uid` needs literal
 text to match against, and a photo has none. There is no shortcut — this
@@ -1181,9 +1299,10 @@ itself.
 
 **From a keyserver** (`GPGBackend.import_from_keyserver()`) takes a single
 free-form *query* — a fingerprint, key ID, or email address — and a
-*keyserver* (defaulting to `DEFAULT_KEYSERVER`,
-`hkps://keys.openpgp.org`), and picks the underlying gpg operation based
-on which kind of query it looks like:
+*keyserver* (no built-in default; every caller supplies one explicitly,
+sourced from `preferences.get_checked_keyserver_urls()` — see "The
+configured keyserver list" below), and picks the underlying gpg operation
+based on which kind of query it looks like:
 
 - **Fingerprint or key ID** (no `@`): `self._gpg.recv_keys(keyserver,
   query)`, i.e. `--keyserver <server> --recv-keys <query>` — a direct,
@@ -1205,12 +1324,13 @@ on which kind of query it looks like:
   option — not just `--keyserver` — must come *before*
   `--auto-key-locate`/`--locate-keys`, which consumes every argument
   after it as a user ID to locate. This is also deliberately *not*
-  `--search-keys` (the one keyserver operation that does index email
-  addresses on some servers): its normal use is interactive, presenting a
-  numbered list of matches for the user to pick from, with no scriptable
-  non-interactive equivalent — and modern privacy-respecting keyservers
-  such as keys.openpgp.org don't index emails at all (a key's UIDs aren't
-  searchable there unless their address has been separately verified).
+  `--search-keys` (the one keyserver operation that supports email
+  lookup on some servers, `keys.openpgp.org` among them — see
+  "Keyserver management" below for what its `op=index` actually
+  supports, corrected there after initially being documented wrong):
+  its normal use is interactive, presenting a numbered list of matches
+  for the user to pick from, with no scriptable non-interactive
+  equivalent regardless of what any particular server indexes.
   WKD (Web Key Directory) sidesteps keyservers entirely: it fetches
   straight from the domain's own
   `https://<domain>/.well-known/openpgpkey/...` endpoint, which is what
@@ -1366,27 +1486,43 @@ length, created) for a picker list; selecting one and clicking **Import**
 imports it by exact fingerprint through the already-existing
 `import_from_keyserver()`, so the dialog is really two independent async
 steps (search, then import) sharing one window, `imported_keys` set only
-once the second step succeeds. Not every keyserver supports `op=index`:
-this app's own default, `keys.openpgp.org`, deliberately doesn't (same
-privacy stance as not indexing emails), so search only returns results
-against a keyserver that still offers it — a self-hosted one, for
-instance. Enabled unconditionally, like **Import…**. `txtQuery.
-returnPressed` is wired to the same `_on_search()` as the **Search**
-button, so pressing Enter in the query field searches immediately.
+once the second step succeeds. Enabled unconditionally, like **Import…**.
+`txtQuery.returnPressed` is wired to the same `_on_search()` as the
+**Search** button, so pressing Enter in the query field searches
+immediately.
 
-`keys.openpgp.org`'s search support was previously only assumed from its
-own documented privacy stance; verified directly (`gpg --keyserver
-hkps://keys.openpgp.org --search-keys ...`) instead: searching by an
-exact key ID or fingerprint does return a match, but with no `uid:`
-record at all — it just never exposes user IDs through search, exact-ID
-lookup included — while searching by name or email returns nothing
-whatsoever, not even a definitive "not found" beyond the generic one.
-`Ui_SearchKeyDialog.lblKeyserverHint` (shown only while `txtKeyserver`
-holds `DEFAULT_KEYSERVER` exactly, via `_update_keyserver_hint()`)
-surfaces this in the dialog itself rather than leaving it to
-`CODING.md`, since it's exactly what produces a confusing "(no user ID)"
-result for an otherwise-correct exact-ID search, and a plain "not found"
-for a name/email one — both real symptoms, not app bugs.
+`keys.openpgp.org`'s search support was previously documented here as
+"doesn't support `op=index`, never returns a `uid:` record" — wrong on
+both counts, corrected after a user directly disputed it. Verified
+against Hagrid's own published API docs
+(<https://keys.openpgp.org/about/api>) plus a live `op=index` request
+(`https://keys.openpgp.org/pks/lookup?op=index&options=mr&search=<email>`)
+against a real, verified address, which came back with several `uid:`
+lines, full email addresses included:
+
+- `op=index` *is* supported — but "Only exact matches by email address,
+  fingerprint or long key id are returned" (Hagrid's own wording): a
+  free-text name query (`search=Linus`, no `@`) gets a plain HTTP 400,
+  not a match list. `search_keyserver()`'s own `query` parameter doc
+  ("a name, email address, fingerprint, or key ID, depending on what
+  *keyserver* supports") still holds — keys.openpgp.org just isn't a
+  server that supports the "name" case, and a self-hosted keyserver with
+  a genuine `op=index` might return several matches (a real
+  disambiguation list) where keys.openpgp.org, true to Hagrid's "always
+  returns either one or no keys at all", never does.
+- UIDs *are* returned in the result — but only for an email address the
+  key's owner has verified there (at upload or afterward, via Hagrid's
+  own `/vks/v1/request-verify` confirmation-email flow); an unverified
+  address stays invisible to search, same as it does to a plain
+  `--recv-keys` fetch (see "Key import" above,
+  `preview_import_from_keyserver()`'s own "no user ID" case).
+
+`Ui_SearchKeyDialog.lblKeyserverHint` (shown only while `cmbKeyserver`
+holds `hkps://keys.openpgp.org` exactly, via `_update_keyserver_hint()`)
+surfaces the verification requirement in the dialog itself rather than
+leaving it to `CODING.md`, since an unverified address is the one real,
+recurring source of a confusing "not found" for an address the user
+knows is genuinely on the server.
 
 The HKP index format percent-encodes the `uid` field like a URL component
 (a space as `%20`, `<`/`>` as `%3C`/`%3E`) — gpg relays it as-is on its
@@ -1511,6 +1647,245 @@ concern python-gnupg's own test suite avoids for `send_keys()` (see its
 "not practical to test... without sending arbitrary data to live
 keyservers" comment): every test monkeypatches `gnupg.GPG.search_keys`/
 `send_keys`/`recv_keys` directly, same as the key-import tests above.
+
+### The configured keyserver list (Preferences → Key Servers)
+
+`preferences.get_keyservers()`/`set_keyservers()` persist an ordered
+`list[tuple[str, bool]]` (URL, checked) as a `QSettings` array
+(`beginReadArray()`/`beginWriteArray()`, group `keyservers/list`) — the
+first genuine array this app stores in `QSettings`, everything else here
+being scalars. Verified empirically before relying on it:
+`beginWriteArray()` does *not* clear entries left over from a longer
+previous array (a shrink from 4 items to 2 leaves items 3–4 sitting in the
+INI file), but `beginReadArray()` only ever reads back up to the `size`
+key it wrote, so the leftovers stay permanently, harmlessly orphaned
+rather than resurfacing on a later read.
+
+"Nothing saved yet" (→ fall back to `DEFAULT_KEYSERVERS`) is decided by
+`settings.contains("keyservers/list/size")`, not by the read size coming
+back `0` — those aren't the same state. A deliberately emptied list
+(every keyserver removed and saved, e.g. from the Publish Key dialog's
+"nothing configured" edge case) also reads back `size == 0`, and
+`get_keyservers()` used to conflate the two, silently resurrecting the
+built-in defaults on the very next read after a real "remove everything"
+save. `set_keyservers([])` still calls `beginWriteArray()`/`endArray()`
+with zero entries, which is enough for `contains()` to see the `size`
+key was actually written and tell that case apart from an array that was
+never touched at all.
+
+`preferences.DEFAULT_KEYSERVERS` is the fallback `get_keyservers()`
+returns before anything's ever been saved, and what `SettingsDialog`'s
+"Restore Default List" button resets the (not-yet-saved) in-dialog list
+back to: `keys.openpgp.org` and `keyserver.ubuntu.com` (both checked,
+both still actively maintained, general-purpose), plus `pgpkeys.eu`,
+`the.earth.li` and `keys.mailvelope.com` (unchecked). That third group
+was going to be "reliable SKS servers" as originally asked for, but the
+classic SKS pool has been dead since 2021 (shut down after GDPR takedown
+requests; no HKPS certificate has been issued for it since) and
+`pgp.mit.edu` — long the best-known SKS node, and the obvious first guess
+for this list — is decommissioned; shipping either as a default, even
+unchecked, would just be handing the user a dead URL. The three picked
+instead come from the still-synchronising Hockeypuck network documented
+at <https://blog.pgpkeys.eu/state-keyservers-2024.html>, and were each
+verified directly reachable (`curl .../pks/lookup?op=stats`) before being
+hardcoded — not merely because they were once part of SKS. Don't restore
+`pgp.mit.edu`/`pool.sks-keyservers.net` here without re-verifying they're
+actually back; last checked 2026-09.
+
+`SettingsDialog` only ever edits `Ui_SettingsDialog.lstKeyservers` (a
+`QListWidget` of checkable items) in memory — Add/Remove/Move Up/Move
+Down/Restore Default List all mutate the widget directly, same as every
+other field in this dialog, and only `preferences.set_keyservers()` on
+"OK" (`_save_and_accept()`) makes it stick; Cancel leaves the saved list
+untouched. `_on_keyserver_add()` reads a new URL via `QInputDialog.
+getText()` and always appends it *checked* (the user just asked for it,
+unlike the three unchecked entries in the built-in default list, which
+exist for reference more than immediate use).
+
+Two invariants this dialog enforces, both requested after the fact —
+`get_checked_keyserver_urls()`'s callers (Import, Publish) otherwise have
+nothing sane to fall back to:
+
+- The list can never be emptied out completely. `btnKeyserverRemove` is
+  disabled whenever `lstKeyservers.count() <= 1`, on top of the existing
+  "needs a selection" condition — `_update_keyserver_buttons_enabled()`
+  checks both. `_on_keyserver_remove()` re-checks the count itself too,
+  a defensive backstop rather than the real guard (the button being
+  disabled is what actually stops it in the UI).
+- The dialog's own Ok button — not just Ok *button box* — is disabled
+  whenever zero rows are checked, same "keeps a person from confirming a
+  broken state" spirit as `ImportKeyDialog`/`SearchKeyDialog`/
+  `PublishKeyDialog`'s own Ok-gating. `_update_ok_enabled()` re-evaluates
+  `any(checked for _url, checked in self._keyservers())` on
+  `lstKeyservers.itemChanged` (a checkbox toggle) and is also called
+  explicitly after Add/Remove/Restore Default List, none of which fire
+  `itemChanged` on their own (that signal only fires for a mutation to an
+  item already in the list, never for `addItem()`/`takeItem()`/`clear()`
+  themselves — verified against Qt's behavior, not assumed). This one
+  Ok button gates *every* field in the dialog, not just the keyserver
+  list — a real but accepted trade-off: unrelated changes (language,
+  passphrase cache, …) can't be saved either while the keyserver list is
+  in a state that would leave `get_checked_keyserver_urls()` empty.
+
+### From keyserver → multiple checked servers, not one field
+
+`ImportKeyDialog`'s "From keyserver" tab used to have its own `txtKeyserver`
+field; it's gone now; instead it queries `preferences.
+get_checked_keyserver_urls()` at Check-time and only checked servers
+matching zero of them is itself an editing-time error ("No keyserver is
+checked…"), same spot the empty-query check already lived. The actual
+fetch fans out across every checked server through two new
+`GPGBackend` methods, `preview_import_from_keyservers()`/
+`commit_import_from_keyservers()`, mirroring the existing singular
+`preview_import_from_keyserver()`/`commit_import_from_keyserver()` (which
+stay as they are — still directly useful, and still directly tested, as
+a one-server primitive) rather than replacing them.
+
+The "merge every instance of the key" requirement behind this is just
+gpg's own import behavior, used deliberately rather than reimplemented:
+`GPGBackend._import_from_every_keyserver()` calls the existing
+`import_from_keyserver()` once per server, always against the *same*
+keyring, so a key that picked up a signature or a UID revocation on one
+server but not another comes back as their union — no separate merge
+logic needed. A server with no match (or simply unreachable) isn't fatal
+on its own, only when every server in the list fails does the caller see
+an error (the collected per-server messages, joined) — otherwise a user
+with five checked servers would get an ugly failure the moment the first
+one happens to be flaky. `preview_import_from_keyservers()` runs that same
+fan-out against one throwaway scratch keyring (same pattern as
+`preview_import_from_keyserver()`'s own scratch keyring, just fed by every
+server instead of one) so the merge being previewed is the literal one
+`commit_import_from_keyservers()` would later perform against the real
+keyring, not an approximation of it.
+
+### Search Keyserver dialog: a combobox, not free text
+
+`SearchKeyDialog.txtKeyserver` is now `cmbKeyserver`, a non-editable
+`QComboBox` populated from `preferences.get_keyservers()` — every
+configured server, checked or not, since here a single explicit keyserver
+is the whole point (unlike Import's "use everything checked" fan-out) and
+an unchecked one someone kept around for occasional use is still a
+reasonable thing to search against by hand. The first entry is
+preselected, a "just works with no typing" default. `_update_keyserver_
+hint()` (the keys.openpgp.org identity-verification notice above) keys
+off `cmbKeyserver.currentText()` against `_KEYS_OPENPGP_ORG` (a private
+literal local to this dialog — see "No default keyserver" below) and
+fires on `currentTextChanged`. An empty combobox (every configured server
+removed) is handled the same way as Import's "no keyserver checked" case
+— a status-line error at Search-time, not a permanently disabled form.
+
+### Import Key dialog: keyserver tab first
+
+`Ui_ImportKeyDialog.tabs` now adds the "From keyserver" tab before "From
+file" (it used to be the other way round), so it's the one shown by
+default. `import_key_dialog.py`'s `_FILE_TAB` constant moved from `0` to
+`1` to match — the one place in that file that has to track the tab
+order, since `_on_check()` branches on `tabs.currentIndex() == _FILE_TAB`
+rather than a hardcoded index of its own.
+
+`self.tabs.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.
+Fixed)` pins the tab widget to its own `sizeHint()` height — without it, a
+vertical resize of the dialog grew the tabs as much as (or more than)
+`treeCandidates` below them, verified empirically before fixing it: a
+420→800px resize grew the tabs by 229px and the tree by only 151px, each
+tab page's own layout apparently reporting an expanding size hint by
+default. The one field (or field + Browse button) either tab page holds
+never needs more than its natural height, so a taller window should hand
+all the extra room to the candidate list instead. `file_tab`'s own
+trailing `addStretch()` was removed at the same time — with the tab
+widget now capped to its `sizeHint()`, that spacer never had space left
+to absorb anyway.
+
+### Publish Key dialog: a picker, not a `QMessageBox.question()`
+
+**Publish…**'s confirmation is `ui/publish_key_dialog.py::PublishKeyDialog`
+rather than a raw `QMessageBox`: publishing goes to every *checked*
+Preferences keyserver, so the confirmation needs to be an actual picker,
+built like `RefreshKeysDialog` on `KeyOperationDialogUiMixin.
+_build_button_box()` (Ok relabeled "Publish", starting disabled).
+
+`lstKeyservers` lists every keyserver from `preferences.get_keyservers()`
+— checked or not, same "show everything, let this one action's own
+checkboxes differ from the saved defaults" spirit as the list itself
+being non-reorderable, non-add/removable here (`QAbstractItemView.
+SelectionMode.NoSelection`, no drag/drop): only each row's own checkbox
+is interactive, never the row set or its order — that's Preferences'
+job, not this dialog's. Each row's initial check state mirrors what's
+checked in Preferences, letting the user turn some off (or on) for just
+this one publish without touching their saved defaults. "Publish" starts
+disabled and toggles on `lstKeyservers.itemChanged`, exactly the "Import"/
+"Check" button pattern already used in `ImportKeyDialog`/`SettingsDialog`
+— never enabled while `selected_keyservers()` (every checked row's URL,
+in display order) would be empty, including the edge case of zero
+keyservers configured at all (`lstKeyservers` itself then has zero rows).
+
+The fan-out is `GPGBackend.publish_to_keyservers(fingerprint,
+keyservers)`, same shape and the same "partial failure isn't fatal, total
+failure is" philosophy as `_import_from_every_keyserver()`: it calls the
+existing single-server `publish_to_keyserver()` once per server, collects
+which ones actually accepted the key, and only raises `GPGBackendError`
+(the joined per-server messages) when *none* did — a key already
+published to two servers out of three from one click shouldn't be
+reported as a failure. `MainWindow._on_server_published()`'s status-bar
+message lists every keyserver actually published to
+(`", ".join(keyservers)`).
+
+### No default keyserver
+
+No method in `GPGBackend` defaults a *keyserver*/*keyservers* parameter
+to any particular server — every one of them is a plain required
+parameter, forcing the caller to source it from somewhere real:
+`preferences.get_checked_keyserver_urls()` (Import, Refresh, Download
+Unknown Keys), `PublishKeyDialog.selected_keyservers()` (Publish), or
+`cmbKeyserver.currentText()` (Search). `import_from_keyserver()`,
+`preview_import_from_keyserver()`, `search_keyserver()`,
+`publish_to_keyserver()` and `commit_import_from_keyserver()` are
+single-server primitives, each directly tested with an explicit
+keyserver.
+
+**Refresh** and **Download Unknown Keys** follow the same "every checked
+Preferences keyserver, fan out and merge" pattern as Import:
+
+- `GPGBackend.refresh_from_keyserver(fingerprints=None, *, keyservers)`
+  — `keyservers` is keyword-only and required (every call site already
+  used keywords, so this was a free way to force it explicit without
+  breaking argument order). Still one batched `recv_keys(keyserver,
+  *fingerprints)` call per server rather than one call per key (that
+  choice predates this change, see the method's own docstring) — now
+  just repeated once per server in *keyservers*, each merging into the
+  same keyring. A server's batch failing outright (not just one key
+  being `_is_no_data_failure()`-missing from it) isn't fatal on its own;
+  `GPGBackendError` only raises when *every* server's batch genuinely
+  failed, same "collected per-server messages, joined" shape as
+  `_import_from_every_keyserver()`. Empty *keyservers* is a no-op
+  (returns `[]`), same treatment as empty *fingerprints*.
+- `GPGBackend.download_unknown_signatures(identifiers, keyservers)` —
+  each identifier is tried against every server in turn (never stopping
+  at the first hit, so a later server's extra signatures still merge
+  in), same fan-out as everything else here, just nested one level
+  deeper (per-identifier, per-server) since the method already
+  looped per-identifier for its own reasons (see its own docstring on
+  why "one at a time").
+
+Both call sites in `main_window.py` (`_on_server_refresh()`,
+`_on_download_unknown_signatures()`) now start with
+`MainWindow._checked_keyservers_or_warn(title)`: reads
+`preferences.get_checked_keyserver_urls()`, and if empty, shows a
+`QMessageBox.warning()` with the exact same string ImportKeyDialog's own
+"no keyserver checked" status line uses (translation reused, not
+duplicated) and returns `None`, which both callers treat as "abort
+before doing anything" — neither of these two actions has a servers-
+picker dialog of its own to embed the message in (unlike Publish's
+`PublishKeyDialog`), so a warning popup is the next best thing. Publish
+doesn't need this guard: `PublishKeyDialog`'s own Ok button already stays
+disabled while nothing's checked, checked or not gated by Preferences.
+
+`SearchKeyDialog`'s own `_KEYS_OPENPGP_ORG` (a private module-level
+literal, `"hkps://keys.openpgp.org"`) is what's left of the old constant
+there — it isn't "the app's default" anymore, just the one specific
+keyserver `_update_keyserver_hint()` needs to recognize for its
+identity-verification notice, regardless of where that server sits (or
+doesn't sit) in the user's configured list.
 
 ## Key signatures (who signed a key)
 

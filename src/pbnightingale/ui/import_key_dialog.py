@@ -3,7 +3,11 @@
 Never imports blindly: "Check…" first previews every candidate key
 (identities, full key ID, fingerprint, and whether it's already in the
 keyring) without touching the keyring, then only the ones the user checks
-are actually committed via "Import".
+are actually committed via "Import". The keyserver source no longer takes
+a keyserver of its own: it fetches from every keyserver checked in
+Preferences ("Key Servers"), merging every instance of the key it finds
+into the keyring — see ``gpg_backend.GPGBackend.
+preview_import_from_keyservers()``.
 """
 
 from __future__ import annotations
@@ -11,18 +15,15 @@ from __future__ import annotations
 from PySide6.QtCore import Qt, QThreadPool
 from PySide6.QtWidgets import QDialog, QDialogButtonBox, QFileDialog, QTreeWidgetItem
 
+from pbnightingale import preferences
 from pbnightingale.core import gpg_backend
-from pbnightingale.core.gpg_backend import (
-    DEFAULT_KEYSERVER,
-    ImportedKey,
-    ImportPreview,
-)
+from pbnightingale.core.gpg_backend import ImportedKey, ImportPreview
 from pbnightingale.ui.geometry_mixin import GeometryMixin
 from pbnightingale.ui.gpg_worker import run_async
 from pbnightingale.ui.import_key_dialog_ui import Ui_ImportKeyDialog
 from pbnightingale.ui.key_list_view import _format_fingerprint
 
-_FILE_TAB = 0
+_FILE_TAB = 1
 _CANDIDATE_ROLE = Qt.ItemDataRole.UserRole
 
 
@@ -39,7 +40,6 @@ class ImportKeyDialog(GeometryMixin, QDialog):
         self.imported_keys: list[ImportedKey] = []
         self._pending_commit = None
 
-        self._ui.txtKeyserver.setText(DEFAULT_KEYSERVER)
         self._ok_button = self._ui.buttonBox.button(QDialogButtonBox.StandardButton.Ok)
         self._ui.btnBrowse.clicked.connect(self._on_browse)
         self._ui.btnCheck.clicked.connect(self._on_check)
@@ -92,16 +92,24 @@ class ImportKeyDialog(GeometryMixin, QDialog):
                     _("Enter a fingerprint, key ID, or email address.")
                 )
                 return
-            keyserver = self._ui.txtKeyserver.text().strip() or DEFAULT_KEYSERVER
+            keyservers = preferences.get_checked_keyserver_urls()
+            if not keyservers:
+                self._ui.lblStatus.setText(
+                    _(
+                        "No keyserver is checked. Check at least one in "
+                        "Preferences → Key Servers."
+                    )
+                )
+                return
 
             def call():
-                return gpg_backend.default_backend().preview_import_from_keyserver(
-                    query, keyserver
+                return gpg_backend.default_backend().preview_import_from_keyservers(
+                    query, keyservers
                 )
 
             def commit(approved):
-                return gpg_backend.default_backend().commit_import_from_keyserver(
-                    query, keyserver, approved
+                return gpg_backend.default_backend().commit_import_from_keyservers(
+                    query, keyservers, approved
                 )
 
             self._pending_commit = commit

@@ -47,6 +47,16 @@ menu); **View → Reset toolbars** restores the default layout. Press
 button) and then click any control for a short explanation of what it
 does.
 
+|icon-history| **View → Activity (advanced)…** (or ``F12``) opens a
+non-blocking window listing the most recent external commands
+PBNightingale has run (``gpg``, ``gpg-connect-agent``, …) — a technical,
+advanced view, mainly useful for troubleshooting. Each command is
+numbered sequentially; select a row and press ``Ctrl+C`` to copy it to
+the clipboard. **Clear History** empties the list without resetting the
+numbering, so a number always identifies the same command even after
+clearing. How many commands are kept is configurable in
+:doc:`preferences`.
+
 .. _uids:
 
 Identities (user IDs)

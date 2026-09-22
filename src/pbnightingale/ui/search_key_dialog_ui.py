@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QComboBox,
     QDialog,
     QDialogButtonBox,
     QFormLayout,
@@ -28,8 +29,8 @@ class Ui_SearchKeyDialog:
         self.txtQuery = QLineEdit(dialog)
         self.txtQuery.setPlaceholderText(_("Name, email, fingerprint, or key ID"))
         form.addRow(_("Query:"), self.txtQuery)
-        self.txtKeyserver = QLineEdit(dialog)
-        form.addRow(_("Keyserver:"), self.txtKeyserver)
+        self.cmbKeyserver = QComboBox(dialog)
+        form.addRow(_("Keyserver:"), self.cmbKeyserver)
         layout.addLayout(form)
 
         self.lblKeyserverHint = QLabel(dialog)

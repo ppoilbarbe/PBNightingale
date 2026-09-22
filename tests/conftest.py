@@ -122,6 +122,18 @@ def _isolated_passphrase_cache():
 
 
 @pytest.fixture(autouse=True)
+def _isolated_activity_log():
+    """Ensure no recorded command or subscriber leaks between tests — this
+    module-level history otherwise persists across the whole test session.
+    """
+    from pbnightingale.core import activity_log
+
+    activity_log.reset()
+    yield
+    activity_log.reset()
+
+
+@pytest.fixture(autouse=True)
 def _restore_builtin_gettext():
     """Restore the global ``_()`` builtin after tests that call i18n.setup().
 

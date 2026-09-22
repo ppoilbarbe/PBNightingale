@@ -31,8 +31,28 @@ msgstr "Un utilitaire graphique de gestion de clefs GPG."
 msgid "Author:"
 msgstr "Auteur :"
 
-msgid "License:"
-msgstr "Licence :"
+msgid "<b>License:</b>"
+msgstr "<b>Licence :</b>"
+
+msgid "Activity (advanced)"
+msgstr "Activité (avancé)"
+
+msgid "#"
+msgstr "N°"
+
+msgid "Time"
+msgstr "Heure"
+
+msgid "Command"
+msgstr "Commande"
+
+msgid "Select a row and press Ctrl+C to copy its command to the clipboard."
+msgstr ""
+"Sélectionnez une ligne, puis appuyez sur Ctrl+C pour copier sa commande "
+"dans le presse-papier."
+
+msgid "Clear History"
+msgstr "Vider l'historique"
 
 #, python-brace-format
 msgid ""
@@ -245,6 +265,11 @@ msgstr "Choisissez un fichier à importer."
 msgid "Enter a fingerprint, key ID, or email address."
 msgstr "Saisissez une empreinte, un identifiant ou une adresse mail."
 
+msgid "No keyserver is checked. Check at least one in Preferences → Key Servers."
+msgstr ""
+"Aucun serveur de clefs n'est coché. Cochez-en au moins un dans "
+"Préférences → Serveurs de clefs."
+
 msgid "Checking…"
 msgstr "Vérification en cours…"
 
@@ -268,6 +293,15 @@ msgstr "Impossible d'importer la clef : {error}"
 msgid "Import Key"
 msgstr "Importer une clef"
 
+msgid "Fingerprint, key ID, or email address"
+msgstr "Empreinte, identifiant ou adresse mail"
+
+msgid "Key:"
+msgstr "Clef :"
+
+msgid "From keyserver"
+msgstr "Depuis un serveur de clefs"
+
 msgid "No file selected"
 msgstr "Aucun fichier sélectionné"
 
@@ -276,18 +310,6 @@ msgstr "Parcourir…"
 
 msgid "From file"
 msgstr "Depuis un fichier"
-
-msgid "Fingerprint, key ID, or email address"
-msgstr "Empreinte, identifiant ou adresse mail"
-
-msgid "Key:"
-msgstr "Clef :"
-
-msgid "Keyserver:"
-msgstr "Serveur de clefs :"
-
-msgid "From keyserver"
-msgstr "Depuis un serveur de clefs"
 
 msgid "Check…"
 msgstr "Vérifier…"
@@ -550,37 +572,22 @@ msgstr "Actualisation de la confiance…"
 msgid "Could not refresh trust: {error}"
 msgstr "Impossible d'actualiser la confiance : {error}"
 
-msgid "Publish Key"
-msgstr "Publier la clef"
-
-#, python-brace-format
-msgid ""
-"Publish {keyid} to {keyserver}?\n"
-"\n"
-"Once a key is on a public keyserver, it generally cannot be fully removed"
-" again, only revoked."
-msgstr ""
-"Publier {keyid} sur {keyserver} ?\n"
-"\n"
-"Une fois une clef publiée sur un serveur de clefs public, elle ne peut "
-"généralement plus être totalement retirée, seulement révoquée."
-
 msgid "Publishing…"
 msgstr "Publication en cours…"
 
 #, python-brace-format
-msgid "Key published to {keyserver}"
-msgstr "Clef publiée sur {keyserver}"
+msgid "Key published to {keyservers}"
+msgstr "Clef publiée sur {keyservers}"
 
 #, python-brace-format
 msgid "Could not publish key: {error}"
 msgstr "Impossible de publier la clef : {error}"
 
-msgid "Refreshing keys from keyserver…"
-msgstr "Actualisation des clefs depuis le serveur de clefs…"
-
 msgid "Refresh Keys"
 msgstr "Actualiser les clefs"
+
+msgid "Refreshing keys from keyserver…"
+msgstr "Actualisation des clefs depuis le serveur de clefs…"
 
 #, python-brace-format
 msgid "Could not refresh keys: {error}"
@@ -609,10 +616,10 @@ msgid "Key exported to {path}"
 msgstr "Clef exportée vers {path}"
 
 msgid "Settings…"
-msgstr "Paramètres…"
+msgstr "Préférences…"
 
 msgid "Open settings"
-msgstr "Ouvrir les paramètres"
+msgstr "Ouvrir les préférences"
 
 msgid "Configure the interface language"
 msgstr "Configurer la langue de l'interface"
@@ -688,6 +695,24 @@ msgstr ""
 "Remet chaque barre d'outils à sa position, son ordre et sa visibilité du "
 "tout premier lancement : pratique après en avoir déplacé ou masqué une "
 "par erreur."
+
+msgid "Activity (advanced)…"
+msgstr "Activité (avancé)…"
+
+msgid "Show the last external commands PBNightingale has run"
+msgstr "Afficher les dernières commandes externes exécutées par PBNightingale"
+
+msgid ""
+"Opens a non-blocking window listing the last external commands "
+"PBNightingale has run (gpg, gpg-connect-agent, …) — an advanced, "
+"technical view. Select a row and press Ctrl+C to copy its command. The "
+"number of commands kept is configurable in Settings."
+msgstr ""
+"Ouvre une fenêtre non bloquante qui liste les dernières commandes "
+"externes exécutées par PBNightingale (gpg, gpg-connect-agent, etc.), une "
+"vue technique avancée. Sélectionnez une ligne, puis appuyez sur Ctrl+C "
+"pour copier sa commande. Le nombre de commandes conservées est "
+"configurable dans les paramètres."
 
 msgid "Refresh"
 msgstr "Actualiser"
@@ -1192,6 +1217,23 @@ msgstr "Photo (révoquée)"
 msgid "Photo"
 msgstr "Photo"
 
+#, python-brace-format
+msgid "Publish {keyid} to:"
+msgstr "Publier {keyid} sur :"
+
+msgid ""
+"Once a key is on a public keyserver, it generally cannot be fully removed"
+" again, only revoked."
+msgstr ""
+"Une fois une clef publiée sur un serveur de clefs public, elle ne peut "
+"généralement plus être totalement supprimée, seulement révoquée."
+
+msgid "Publish Key"
+msgstr "Publier la clef"
+
+msgid "Publish"
+msgstr "Publier"
+
 msgid ""
 "Re-download keys from their keyserver, picking up any new signatures, "
 "identities or revocations."
@@ -1298,18 +1340,24 @@ msgid "Revoke User ID"
 msgstr "Révoquer une identité"
 
 msgid ""
-"keys.openpgp.org does not support searching by name or email, and never "
-"returns user IDs in search results (privacy by design). Search by exact "
-"key ID or fingerprint instead, or use Import… for a known email address."
+"keys.openpgp.org only shows identities (name/email) the key's owner has "
+"verified there — at upload time or afterward. An address that was never "
+"verified won't appear in search results even if the key itself is on the "
+"server."
 msgstr ""
-"keys.openpgp.org ne permet pas de rechercher par nom ou par courriel, et "
-"ne renvoie jamais les identifiants d'utilisateur dans les résultats de "
-"recherche (respect de la vie privée par conception). Recherchez plutôt "
-"par identifiant de clef ou empreinte exacte, ou utilisez Importer… pour "
-"un courriel connu."
+"keys.openpgp.org n'affiche que les identités (nom/courriel) que le "
+"propriétaire de la clef y a vérifiées, lors de la publication initiale ou"
+" par la suite. Une adresse jamais vérifiée n'apparaît pas dans les "
+"résultats de recherche, même si la clef elle-même est présente sur le "
+"serveur."
 
 msgid "Enter a search query."
 msgstr "Saisissez une recherche."
+
+msgid "No keyserver is defined. Add one in Preferences → Key Servers."
+msgstr ""
+"Aucun serveur de clefs n'est défini. Ajoutez-en un dans Préférences → "
+"Serveurs de clefs."
 
 msgid "Searching…"
 msgstr "Recherche en cours…"
@@ -1334,6 +1382,9 @@ msgstr "Nom, adresse mail, empreinte ou identifiant"
 
 msgid "Query:"
 msgstr "Recherche :"
+
+msgid "Keyserver:"
+msgstr "Serveur de clefs :"
 
 msgid "Search"
 msgstr "Rechercher"
@@ -1405,8 +1456,14 @@ msgstr "Définir comme identité principale"
 msgid "System default"
 msgstr "Système par défaut"
 
+msgid "Add Keyserver"
+msgstr "Ajouter un serveur de clefs"
+
+msgid "Keyserver URL:"
+msgstr "URL du serveur de clefs :"
+
 msgid "Settings"
-msgstr "Paramètres"
+msgstr "Préférences"
 
 msgid "Select the interface language"
 msgstr "Sélectionner la langue de l'interface"
@@ -1438,6 +1495,40 @@ msgstr ""
 
 msgid "Remember passphrases for:"
 msgstr "Mémoriser les phrases de passe pendant :"
+
+msgid " commands"
+msgstr " commandes"
+
+msgid "How many recent commands the Activity (advanced) window keeps"
+msgstr "Nombre de commandes récentes conservées par la fenêtre Activité (avancé)"
+
+msgid "Activity history:"
+msgstr "Historique d'activité :"
+
+msgid "Key Servers"
+msgstr "Serveurs de clefs"
+
+msgid ""
+"Checked servers are used to search for and fetch keys; unchecked ones are"
+" kept for reference only."
+msgstr ""
+"Les serveurs cochés sont utilisés pour rechercher et récupérer les clefs "
+"; les serveurs non cochés sont conservés pour référence uniquement."
+
+msgid "Add…"
+msgstr "Ajouter…"
+
+msgid "Remove"
+msgstr "Supprimer"
+
+msgid "Move Up"
+msgstr "Monter"
+
+msgid "Move Down"
+msgstr "Descendre"
+
+msgid "Restore Default List"
+msgstr "Restaurer la liste par défaut"
 
 msgid "A restart is required for the language change to take effect."
 msgstr ""

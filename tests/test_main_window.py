@@ -142,6 +142,7 @@ def test_toolbar_icons_are_svg_resources(qtbot):
 
 _ACTION_NAMES = [
     "actionAbout",
+    "actionActivityLog",
     "actionHelpManual",
     "actionKeyBackup",
     "actionKeyChangePassphrase",
@@ -197,6 +198,7 @@ _EXPECTED_SHORTCUTS = {
     "actionKeyDelete": "Del",
     "actionTrustRefresh": "Shift+F5",
     "actionServerRefresh": "Ctrl+F5",
+    "actionActivityLog": "F12",
 }
 
 
@@ -415,6 +417,50 @@ def test_on_about_opens_about_dialog(qtbot, monkeypatch):
     window._ui.actionAbout.trigger()
 
     assert called == [True]
+
+
+def test_on_activity_log_shows_a_non_modal_window(qtbot):
+    window = MainWindow()
+    qtbot.addWidget(window)
+
+    window._ui.actionActivityLog.trigger()
+
+    assert window._activity_log_dialog is not None
+    assert window._activity_log_dialog.isVisible()
+    assert window._activity_log_dialog.isModal() is False
+
+
+def test_on_activity_log_reuses_the_same_window_instance(qtbot):
+    window = MainWindow()
+    qtbot.addWidget(window)
+
+    window._ui.actionActivityLog.trigger()
+    first = window._activity_log_dialog
+    window._ui.actionActivityLog.trigger()
+
+    assert window._activity_log_dialog is first
+
+
+def test_accepting_settings_reconfigures_the_activity_log(qtbot, monkeypatch):
+    from pbnightingale import preferences
+    from pbnightingale.core import activity_log
+    from pbnightingale.ui.settings_dialog import SettingsDialog
+
+    window = MainWindow()
+    qtbot.addWidget(window)
+    window._ui.actionActivityLog.trigger()
+
+    preferences.set_activity_log_max_entries(2)
+    activity_log.record("first")
+    activity_log.record("second")
+    activity_log.record("third")
+    monkeypatch.setattr(
+        SettingsDialog, "exec", lambda self: SettingsDialog.DialogCode.Accepted
+    )
+
+    window._ui.actionSettings.trigger()
+
+    assert window._activity_log_dialog._ui.tblActivity.rowCount() == 2
 
 
 def test_on_help_manual_opens_the_online_manual(qtbot, monkeypatch):
@@ -1580,51 +1626,51 @@ def test_on_server_search_reports_the_imported_key_and_selects_it(qtbot, monkeyp
     ]
 
 
-def test_on_server_publish_asks_for_confirmation_and_calls_backend(qtbot, monkeypatch):
-    from PySide6.QtWidgets import QMessageBox
-
+def test_on_server_publish_calls_backend_with_the_dialogs_selected_keyservers(
+    qtbot, monkeypatch
+):
     from pbnightingale.core import gpg_backend
+    from pbnightingale.ui.publish_key_dialog import PublishKeyDialog
 
     window = _make_window_with_keys(qtbot, monkeypatch, [_PUBLIC_KEY])
     window._ui.keyListView._ui.treeKeys.topLevelItem(1).child(0).setSelected(True)
     calls = []
 
     class _FakeBackend:
-        def publish_to_keyserver(self, fingerprint):
-            calls.append(fingerprint)
+        def publish_to_keyservers(self, fingerprint, keyservers):
+            calls.append((fingerprint, keyservers))
+            return keyservers
 
     monkeypatch.setattr(gpg_backend, "default_backend", _FakeBackend)
     monkeypatch.setattr(
-        QMessageBox,
-        "question",
-        staticmethod(lambda *a, **k: QMessageBox.StandardButton.Yes),
+        PublishKeyDialog, "exec", lambda self: PublishKeyDialog.DialogCode.Accepted
+    )
+    monkeypatch.setattr(
+        PublishKeyDialog, "selected_keyservers", lambda self: ["hkps://a.example"]
     )
 
     window._ui.actionServerPublish.trigger()
 
-    qtbot.waitUntil(lambda: calls == [_PUBLIC_KEY.fingerprint])
+    qtbot.waitUntil(lambda: calls == [(_PUBLIC_KEY.fingerprint, ["hkps://a.example"])])
     qtbot.waitUntil(lambda: "published" in window.statusBar().currentMessage().lower())
     assert window._ui.actionServerPublish.isEnabled() is True
 
 
-def test_on_server_publish_does_nothing_without_confirmation(qtbot, monkeypatch):
-    from PySide6.QtWidgets import QMessageBox
-
+def test_on_server_publish_does_nothing_when_dialog_is_cancelled(qtbot, monkeypatch):
     from pbnightingale.core import gpg_backend
+    from pbnightingale.ui.publish_key_dialog import PublishKeyDialog
 
     window = _make_window_with_keys(qtbot, monkeypatch, [_PUBLIC_KEY])
     window._ui.keyListView._ui.treeKeys.topLevelItem(1).child(0).setSelected(True)
     calls = []
 
     class _FakeBackend:
-        def publish_to_keyserver(self, fingerprint):
-            calls.append(fingerprint)
+        def publish_to_keyservers(self, fingerprint, keyservers):
+            calls.append((fingerprint, keyservers))
 
     monkeypatch.setattr(gpg_backend, "default_backend", _FakeBackend)
     monkeypatch.setattr(
-        QMessageBox,
-        "question",
-        staticmethod(lambda *a, **k: QMessageBox.StandardButton.No),
+        PublishKeyDialog, "exec", lambda self: PublishKeyDialog.DialogCode.Rejected
     )
 
     window._ui.actionServerPublish.trigger()
@@ -1633,22 +1679,22 @@ def test_on_server_publish_does_nothing_without_confirmation(qtbot, monkeypatch)
 
 
 def test_on_server_publish_failure_shows_status_and_reenables(qtbot, monkeypatch):
-    from PySide6.QtWidgets import QMessageBox
-
     from pbnightingale.core import gpg_backend
+    from pbnightingale.ui.publish_key_dialog import PublishKeyDialog
 
     window = _make_window_with_keys(qtbot, monkeypatch, [_PUBLIC_KEY])
     window._ui.keyListView._ui.treeKeys.topLevelItem(1).child(0).setSelected(True)
 
     class _FailingBackend:
-        def publish_to_keyserver(self, fingerprint):
+        def publish_to_keyservers(self, fingerprint, keyservers):
             raise gpg_backend.GPGBackendError("boom")
 
     monkeypatch.setattr(gpg_backend, "default_backend", _FailingBackend)
     monkeypatch.setattr(
-        QMessageBox,
-        "question",
-        staticmethod(lambda *a, **k: QMessageBox.StandardButton.Yes),
+        PublishKeyDialog, "exec", lambda self: PublishKeyDialog.DialogCode.Accepted
+    )
+    monkeypatch.setattr(
+        PublishKeyDialog, "selected_keyservers", lambda self: ["hkps://a.example"]
     )
 
     window._ui.actionServerPublish.trigger()
@@ -1677,16 +1723,20 @@ def _accept_refresh_dialogs(monkeypatch):
     )
 
 
-def test_on_server_refresh_calls_backend_and_reloads_keys(qtbot, monkeypatch):
+def test_on_server_refresh_calls_backend_with_the_checked_keyservers(
+    qtbot, monkeypatch
+):
+    from pbnightingale import preferences
     from pbnightingale.core import gpg_backend
 
+    preferences.set_keyservers([("hkps://a.example", True)])
     window = _make_window_with_keys(qtbot, monkeypatch, [_PUBLIC_KEY])
     _accept_refresh_dialogs(monkeypatch)
     calls = []
 
     class _FakeBackend:
-        def refresh_from_keyserver(self, fingerprints=None):
-            calls.append(fingerprints)
+        def refresh_from_keyserver(self, fingerprints=None, *, keyservers):
+            calls.append((fingerprints, keyservers))
             return []
 
         def list_keys(self):
@@ -1697,9 +1747,41 @@ def test_on_server_refresh_calls_backend_and_reloads_keys(qtbot, monkeypatch):
     window._ui.actionServerRefresh.trigger()
 
     # No key selected — the confirm dialog defaults to "every key".
-    qtbot.waitUntil(lambda: calls == [None])
+    qtbot.waitUntil(lambda: calls == [(None, ["hkps://a.example"])])
     qtbot.waitUntil(lambda: window.statusBar().currentMessage() == "1 key(s) loaded")
     assert window._ui.actionServerRefresh.isEnabled() is True
+
+
+def test_on_server_refresh_warns_and_aborts_with_no_keyserver_checked(
+    qtbot, monkeypatch
+):
+    from PySide6.QtWidgets import QMessageBox
+
+    from pbnightingale import preferences
+    from pbnightingale.core import gpg_backend
+
+    preferences.set_keyservers([("hkps://a.example", False)])
+    window = _make_window_with_keys(qtbot, monkeypatch, [_PUBLIC_KEY])
+    warnings = []
+    monkeypatch.setattr(
+        QMessageBox,
+        "warning",
+        staticmethod(lambda *a, **k: warnings.append(a[1:])),
+    )
+    calls = []
+
+    class _FakeBackend:
+        def refresh_from_keyserver(self, fingerprints=None, *, keyservers):
+            calls.append((fingerprints, keyservers))
+            return []
+
+    monkeypatch.setattr(gpg_backend, "default_backend", _FakeBackend)
+
+    window._ui.actionServerRefresh.trigger()
+
+    assert calls == []
+    assert len(warnings) == 1
+    assert "No keyserver is checked" in warnings[0][1]
 
 
 def test_on_server_refresh_with_a_selection_refreshes_only_that_key(qtbot, monkeypatch):
@@ -1711,7 +1793,7 @@ def test_on_server_refresh_with_a_selection_refreshes_only_that_key(qtbot, monke
     calls = []
 
     class _FakeBackend:
-        def refresh_from_keyserver(self, fingerprints=None):
+        def refresh_from_keyserver(self, fingerprints=None, *, keyservers):
             calls.append(fingerprints)
             return []
 
@@ -1740,7 +1822,7 @@ def test_on_server_refresh_failure_shows_status_and_reenables(qtbot, monkeypatch
     )
 
     class _FailingBackend:
-        def refresh_from_keyserver(self, fingerprints=None):
+        def refresh_from_keyserver(self, fingerprints=None, *, keyservers):
             raise gpg_backend.GPGBackendError("boom")
 
     monkeypatch.setattr(gpg_backend, "default_backend", _FailingBackend)
@@ -1813,11 +1895,13 @@ def _accept_download_signatures_report_dialog(monkeypatch):
     )
 
 
-def test_on_download_unknown_signatures_calls_backend_and_reloads_keys(
+def test_on_download_unknown_signatures_calls_backend_with_the_checked_keyservers(
     qtbot, monkeypatch
 ):
+    from pbnightingale import preferences
     from pbnightingale.core import gpg_backend
 
+    preferences.set_keyservers([("hkps://a.example", True)])
     window = _make_window_with_keys(qtbot, monkeypatch, [_PERSONAL_KEY, _PUBLIC_KEY])
     key_view = window._ui.keyListView
     key_view._ui.treeKeys.topLevelItem(0).child(0).setSelected(True)
@@ -1830,8 +1914,8 @@ def test_on_download_unknown_signatures_calls_backend_and_reloads_keys(
     calls = []
 
     class _FakeBackend:
-        def download_unknown_signatures(self, identifiers):
-            calls.append(identifiers)
+        def download_unknown_signatures(self, identifiers, keyservers):
+            calls.append((identifiers, keyservers))
             return [DownloadedSignature("1234567890ABCDEF", _PUBLIC_KEY)]
 
         def list_keys(self):
@@ -1848,8 +1932,47 @@ def test_on_download_unknown_signatures_calls_backend_and_reloads_keys(
 
     key_view._ui.btnDownloadUnknownSignatures.click()
 
-    qtbot.waitUntil(lambda: calls == [["1234567890ABCDEF"]])
+    qtbot.waitUntil(lambda: calls == [(["1234567890ABCDEF"], ["hkps://a.example"])])
     qtbot.waitUntil(lambda: window.statusBar().currentMessage() == "2 key(s) loaded")
+
+
+def test_on_download_unknown_signatures_warns_and_aborts_with_no_keyserver_checked(
+    qtbot, monkeypatch
+):
+    from PySide6.QtWidgets import QMessageBox
+
+    from pbnightingale import preferences
+    from pbnightingale.core import gpg_backend
+
+    preferences.set_keyservers([("hkps://a.example", False)])
+    window = _make_window_with_keys(qtbot, monkeypatch, [_PERSONAL_KEY])
+    key_view = window._ui.keyListView
+    key_view._ui.treeKeys.topLevelItem(0).child(0).setSelected(True)
+    key_view._ui.tabDetail.setCurrentIndex(_SIGNATURES_TAB_INDEX)
+    key_view.set_key_signatures(
+        _PERSONAL_KEY.fingerprint,
+        [KeySignature(keyid="1234567890ABCDEF", fingerprint=None, key=None)],
+    )
+    warnings = []
+    monkeypatch.setattr(
+        QMessageBox,
+        "warning",
+        staticmethod(lambda *a, **k: warnings.append(a[1:])),
+    )
+    calls = []
+
+    class _FakeBackend:
+        def download_unknown_signatures(self, identifiers, keyservers):
+            calls.append((identifiers, keyservers))
+            return []
+
+    monkeypatch.setattr(gpg_backend, "default_backend", _FakeBackend)
+
+    key_view._ui.btnDownloadUnknownSignatures.click()
+
+    assert calls == []
+    assert len(warnings) == 1
+    assert "No keyserver is checked" in warnings[0][1]
 
 
 def test_on_download_unknown_signatures_failure_shows_warning(qtbot, monkeypatch):
@@ -1873,7 +1996,7 @@ def test_on_download_unknown_signatures_failure_shows_warning(qtbot, monkeypatch
     )
 
     class _FailingBackend:
-        def download_unknown_signatures(self, identifiers):
+        def download_unknown_signatures(self, identifiers, keyservers):
             raise gpg_backend.GPGBackendError("boom")
 
     monkeypatch.setattr(gpg_backend, "default_backend", _FailingBackend)

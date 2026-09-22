@@ -9,6 +9,7 @@ from datetime import date, datetime
 import gnupg
 import pytest
 
+from pbnightingale.core import activity_log
 from pbnightingale.core import gpg_backend as gpg_backend_module
 from pbnightingale.core.gpg_backend import (
     BadPassphraseError,
@@ -39,6 +40,62 @@ def test_list_keys_empty_on_fresh_keyring(tmp_path):
 
     assert backend.list_keys() == []
     assert backend.list_keys(secret=True) == []
+
+
+def test_running_a_command_records_it_in_the_activity_log(tmp_path):
+    backend = GPGBackend(tmp_path / "home")
+
+    backend.list_keys()
+
+    commands = [entry.command for entry in activity_log.entries()]
+    assert any("--list-keys" in command for command in commands)
+
+
+def test_python_gnupg_mediated_calls_are_recorded_too(tmp_path):
+    # Regression test: python-gnupg's own high-level methods (list_keys(),
+    # search_keys(), recv_keys(), send_keys(), gen_key(), ...) spawn their
+    # own subprocess internally, never through _traced_run()/_traced_popen()
+    # — a real gap that made e.g. a keyserver search invisible in the
+    # Activity window entirely. GPGBackend.list_keys() itself already goes
+    # through _traced_run() calls (_load_photos()/_load_primary_uids()), so
+    # this calls the underlying self._gpg.list_keys() directly to isolate
+    # just the python-gnupg-mediated path (see gpg_backend._TracedGPG).
+    backend = GPGBackend(tmp_path / "home")
+    activity_log.reset()
+
+    backend._gpg.list_keys()
+
+    commands = [entry.command for entry in activity_log.entries()]
+    assert any("--list-keys" in command for command in commands)
+
+
+def test_traced_gpg_open_subprocess_records_before_delegating(tmp_path, monkeypatch):
+    from pbnightingale.core.gpg_backend import _TracedGPG
+
+    home = tmp_path / "home"
+    home.mkdir()
+    # Construct first, with the real _open_subprocess() still in place —
+    # __init__ itself calls it once (to probe gpg's version), which a fake
+    # returning None would break.
+    gpg = _TracedGPG(gnupghome=str(home))
+
+    calls = []
+    monkeypatch.setattr(
+        gnupg.GPG,
+        "_open_subprocess",
+        lambda self, args, passphrase=False: calls.append(args),
+    )
+    activity_log.reset()
+
+    gpg._open_subprocess(
+        ["--search-keys", "alice", "--keyserver", "hkps://example.org"]
+    )
+
+    # The real (here, faked) subprocess still gets spawned — recording is
+    # additive, not a replacement for the actual call.
+    assert calls == [["--search-keys", "alice", "--keyserver", "hkps://example.org"]]
+    commands = [entry.command for entry in activity_log.entries()]
+    assert any("--search-keys" in command for command in commands)
 
 
 def test_list_keys_parses_generated_key(tmp_path):
@@ -1155,6 +1212,28 @@ def test_add_photo_uid_rejects_a_non_jpeg_file(tmp_path):
         backend.add_photo_uid(key.fingerprint, Passphrase(""), not_a_jpeg)
 
 
+def test_load_photos_records_the_attribute_file_content_in_the_activity_log(
+    tmp_path,
+):
+    backend = GPGBackend(tmp_path / "home")
+    key = backend.generate_key(
+        NewKeyRequest(name="Tia Example", email="tia@example.com", key_length=1024)
+    )
+    jpeg = make_test_jpeg(tmp_path / "photo.jpg")
+    backend.add_photo_uid(key.fingerprint, Passphrase(""), jpeg)
+    activity_log.reset()
+
+    backend.list_keys()
+
+    entries = activity_log.entries()
+    command_entry = next(e for e in entries if "--attribute-file" in e.command)
+    detail_entry = next(
+        e for e in entries if e.command.startswith("--attribute-file content")
+    )
+    assert detail_entry.seq == command_entry.seq
+    assert "ffd8" in detail_entry.command
+
+
 def test_revoke_photo_uid_marks_it_revoked(tmp_path):
     backend = GPGBackend(tmp_path / "home")
     key = backend.generate_key(
@@ -1495,7 +1574,7 @@ def test_import_from_keyserver_raises_when_not_found(tmp_path, monkeypatch):
     )
 
     with pytest.raises(GPGBackendError, match="No data"):
-        backend.import_from_keyserver("DEADBEEF")
+        backend.import_from_keyserver("DEADBEEF", "hkps://example.org")
 
 
 def test_import_from_keyserver_raises_a_friendly_error_for_a_key_with_no_user_id(
@@ -1524,7 +1603,7 @@ def test_import_from_keyserver_raises_a_friendly_error_for_a_key_with_no_user_id
     )
 
     with pytest.raises(GPGBackendError, match="no user ID"):
-        backend.import_from_keyserver("0xEAD8AABFDD999172")
+        backend.import_from_keyserver("0xEAD8AABFDD999172", "hkps://example.org")
 
 
 def test_import_from_keyserver_by_email_locates_via_gpg_with_keyserver_first(
@@ -1616,7 +1695,7 @@ def test_import_from_keyserver_raises_when_email_not_found(tmp_path, monkeypatch
     monkeypatch.setattr(gpg_backend_module.subprocess, "run", _fake_run)
 
     with pytest.raises(GPGBackendError, match="No data"):
-        backend.import_from_keyserver("unknown@example.com")
+        backend.import_from_keyserver("unknown@example.com", "hkps://example.org")
 
 
 def test_preview_import_from_keyserver_does_not_touch_the_real_keyring(
@@ -1717,6 +1796,151 @@ def test_commit_import_from_keyserver_imports_when_approved(tmp_path, monkeypatc
     assert {k.fingerprint for k in dest.list_keys()} == {key.fingerprint}
 
 
+def test_preview_import_from_keyservers_merges_every_server_without_touching_the_real_keyring(
+    tmp_path, monkeypatch
+):
+    source = GPGBackend(tmp_path / "source")
+    key = source.generate_key(
+        NewKeyRequest(name="Lior Example", email="lior@example.com", key_length=1024)
+    )
+    armored = source.export_public_key(key.fingerprint)
+
+    dest = GPGBackend(tmp_path / "dest")
+    calls = []
+
+    def _fake_recv_keys(self, keyserver, *keyids):
+        calls.append(keyserver)
+        self.import_keys(armored)
+        return type("_FakeImportResult", (), {"fingerprints": (key.fingerprint,)})()
+
+    monkeypatch.setattr(gnupg.GPG, "recv_keys", _fake_recv_keys)
+
+    preview = dest.preview_import_from_keyservers(
+        key.fingerprint, ["hkps://a.example", "hkps://b.example"]
+    )
+
+    assert calls == ["hkps://a.example", "hkps://b.example"]
+    assert [entry.fingerprint for entry in preview] == [key.fingerprint]
+    assert preview[0].is_new is True
+    assert dest.list_keys() == []
+
+
+def test_preview_import_from_keyservers_succeeds_when_only_one_server_has_the_key(
+    tmp_path, monkeypatch
+):
+    source = GPGBackend(tmp_path / "source")
+    key = source.generate_key(
+        NewKeyRequest(name="Mona Example", email="mona@example.com", key_length=1024)
+    )
+    armored = source.export_public_key(key.fingerprint)
+
+    dest = GPGBackend(tmp_path / "dest")
+
+    def _fake_recv_keys(self, keyserver, *keyids):
+        if keyserver == "hkps://empty.example":
+            return type(
+                "_FakeImportResult",
+                (),
+                {"fingerprints": (), "stderr": "No data"},
+            )()
+        self.import_keys(armored)
+        return type("_FakeImportResult", (), {"fingerprints": (key.fingerprint,)})()
+
+    monkeypatch.setattr(gnupg.GPG, "recv_keys", _fake_recv_keys)
+
+    preview = dest.preview_import_from_keyservers(
+        key.fingerprint, ["hkps://empty.example", "hkps://has-it.example"]
+    )
+
+    assert [entry.fingerprint for entry in preview] == [key.fingerprint]
+
+
+def test_preview_import_from_keyservers_raises_when_no_server_has_the_key(
+    tmp_path, monkeypatch
+):
+    backend = GPGBackend(tmp_path / "home")
+
+    class _FakeImportResult:
+        fingerprints = ()
+        stderr = "gpg: keyserver receive failed: No data"
+
+    monkeypatch.setattr(
+        gnupg.GPG, "recv_keys", lambda self, keyserver, *keyids: _FakeImportResult()
+    )
+
+    with pytest.raises(GPGBackendError, match="No data"):
+        backend.preview_import_from_keyservers(
+            "DEADBEEF", ["hkps://a.example", "hkps://b.example"]
+        )
+
+
+def test_commit_import_from_keyservers_returns_empty_when_nothing_approved(
+    tmp_path, monkeypatch
+):
+    backend = GPGBackend(tmp_path / "home")
+    calls = []
+
+    def _fake_recv_keys(self, keyserver, *keyids):
+        calls.append(keyserver)
+        raise AssertionError("recv_keys must not be called when nothing is approved")
+
+    monkeypatch.setattr(gnupg.GPG, "recv_keys", _fake_recv_keys)
+
+    imported = backend.commit_import_from_keyservers(
+        "DEADBEEF", ["hkps://a.example", "hkps://b.example"], set()
+    )
+
+    assert imported == []
+    assert calls == []
+
+
+def test_commit_import_from_keyservers_merges_every_server_into_the_real_keyring(
+    tmp_path, monkeypatch
+):
+    source = GPGBackend(tmp_path / "source")
+    key = source.generate_key(
+        NewKeyRequest(name="Nadia Example", email="nadia@example.com", key_length=1024)
+    )
+    armored = source.export_public_key(key.fingerprint)
+
+    dest = GPGBackend(tmp_path / "dest")
+    calls = []
+
+    def _fake_recv_keys(self, keyserver, *keyids):
+        calls.append(keyserver)
+        self.import_keys(armored)
+        return type("_FakeImportResult", (), {"fingerprints": (key.fingerprint,)})()
+
+    monkeypatch.setattr(gnupg.GPG, "recv_keys", _fake_recv_keys)
+
+    imported = dest.commit_import_from_keyservers(
+        key.fingerprint, ["hkps://a.example", "hkps://b.example"], {key.fingerprint}
+    )
+
+    assert calls == ["hkps://a.example", "hkps://b.example"]
+    assert [entry.key.fingerprint for entry in imported] == [key.fingerprint]
+    assert {k.fingerprint for k in dest.list_keys()} == {key.fingerprint}
+
+
+def test_commit_import_from_keyservers_raises_when_no_server_has_the_key(
+    tmp_path, monkeypatch
+):
+    backend = GPGBackend(tmp_path / "home")
+
+    class _FakeImportResult:
+        fingerprints = ()
+        stderr = "gpg: keyserver receive failed: No data"
+
+    monkeypatch.setattr(
+        gnupg.GPG, "recv_keys", lambda self, keyserver, *keyids: _FakeImportResult()
+    )
+
+    with pytest.raises(GPGBackendError, match="No data"):
+        backend.commit_import_from_keyservers(
+            "DEADBEEF", ["hkps://a.example", "hkps://b.example"], {"DEADBEEF"}
+        )
+
+
 def test_search_keyserver_returns_parsed_results(tmp_path, monkeypatch):
     backend = GPGBackend(tmp_path / "home")
     calls = []
@@ -1776,7 +2000,7 @@ def test_search_keyserver_decodes_percent_encoded_uids(tmp_path, monkeypatch):
 
     monkeypatch.setattr(gnupg.GPG, "search_keys", _fake_search_keys)
 
-    results = backend.search_keyserver("alice")
+    results = backend.search_keyserver("alice", "hkps://example.org")
 
     assert results[0].uids == ["Alice Example <alice@example.com>"]
 
@@ -1796,7 +2020,7 @@ def test_search_keyserver_raises_when_no_matches(tmp_path, monkeypatch):
     )
 
     with pytest.raises(GPGBackendError, match="No keys found"):
-        backend.search_keyserver("nobody")
+        backend.search_keyserver("nobody", "hkps://example.org")
 
 
 def test_search_keyserver_returns_empty_list_when_key_genuinely_not_found(
@@ -1828,7 +2052,7 @@ def test_search_keyserver_returns_empty_list_when_key_genuinely_not_found(
         ),
     )
 
-    assert backend.search_keyserver("coucou") == []
+    assert backend.search_keyserver("coucou", "hkps://example.org") == []
 
 
 def test_publish_to_keyserver_calls_send_keys(tmp_path, monkeypatch):
@@ -1865,7 +2089,81 @@ def test_publish_to_keyserver_raises_on_failure(tmp_path, monkeypatch):
     )
 
     with pytest.raises(GPGBackendError, match="No route to host"):
-        backend.publish_to_keyserver("DEADBEEF")
+        backend.publish_to_keyserver("DEADBEEF", "hkps://example.org")
+
+
+def test_publish_to_keyservers_publishes_to_every_server(tmp_path, monkeypatch):
+    backend = GPGBackend(tmp_path / "home")
+    key = backend.generate_key(
+        NewKeyRequest(name="Leo Two Example", email="leo2@example.com", key_length=1024)
+    )
+    calls = []
+
+    class _FakeSendResult:
+        returncode = 0
+        stderr = ""
+
+    def _fake_send_keys(self, keyserver, *keyids):
+        calls.append((keyserver, keyids))
+        return _FakeSendResult()
+
+    monkeypatch.setattr(gnupg.GPG, "send_keys", _fake_send_keys)
+
+    published = backend.publish_to_keyservers(
+        key.fingerprint, ["hkps://a.example", "hkps://b.example"]
+    )
+
+    assert calls == [
+        ("hkps://a.example", (key.fingerprint,)),
+        ("hkps://b.example", (key.fingerprint,)),
+    ]
+    assert published == ["hkps://a.example", "hkps://b.example"]
+
+
+def test_publish_to_keyservers_succeeds_when_only_one_server_accepts_it(
+    tmp_path, monkeypatch
+):
+    backend = GPGBackend(tmp_path / "home")
+    key = backend.generate_key(
+        NewKeyRequest(
+            name="Leo Three Example", email="leo3@example.com", key_length=1024
+        )
+    )
+
+    class _FakeSendResult:
+        def __init__(self, returncode, stderr=""):
+            self.returncode = returncode
+            self.stderr = stderr
+
+    def _fake_send_keys(self, keyserver, *keyids):
+        if keyserver == "hkps://down.example":
+            return _FakeSendResult(2, "gpg: keyserver send failed: No route to host")
+        return _FakeSendResult(0)
+
+    monkeypatch.setattr(gnupg.GPG, "send_keys", _fake_send_keys)
+
+    published = backend.publish_to_keyservers(
+        key.fingerprint, ["hkps://down.example", "hkps://up.example"]
+    )
+
+    assert published == ["hkps://up.example"]
+
+
+def test_publish_to_keyservers_raises_when_every_server_fails(tmp_path, monkeypatch):
+    backend = GPGBackend(tmp_path / "home")
+
+    class _FakeSendResult:
+        returncode = 2
+        stderr = "gpg: keyserver send failed: No route to host"
+
+    monkeypatch.setattr(
+        gnupg.GPG, "send_keys", lambda self, keyserver, *keyids: _FakeSendResult()
+    )
+
+    with pytest.raises(GPGBackendError, match="No route to host"):
+        backend.publish_to_keyservers(
+            "DEADBEEF", ["hkps://a.example", "hkps://b.example"]
+        )
 
 
 def test_refresh_from_keyserver_fetches_every_key_in_the_keyring(tmp_path, monkeypatch):
@@ -1888,7 +2186,7 @@ def test_refresh_from_keyserver_fetches_every_key_in_the_keyring(tmp_path, monke
 
     monkeypatch.setattr(gnupg.GPG, "recv_keys", _fake_recv_keys)
 
-    refreshed = backend.refresh_from_keyserver(keyserver="hkps://example.org")
+    refreshed = backend.refresh_from_keyserver(keyservers=["hkps://example.org"])
 
     assert len(calls) == 1
     keyserver, keyids = calls[0]
@@ -1925,11 +2223,63 @@ def test_refresh_from_keyserver_refreshes_only_the_given_fingerprints(
 
     monkeypatch.setattr(gnupg.GPG, "recv_keys", _fake_recv_keys)
 
-    refreshed = backend.refresh_from_keyserver(fingerprints=[first.fingerprint])
+    refreshed = backend.refresh_from_keyserver(
+        fingerprints=[first.fingerprint], keyservers=["hkps://example.org"]
+    )
 
     assert len(calls) == 1
     assert calls[0] == (first.fingerprint,)
     assert [r.key.fingerprint for r in refreshed] == [first.fingerprint]
+
+
+def test_refresh_from_keyserver_only_pays_the_primary_uid_lookup_for_the_refreshed_key(
+    tmp_path, monkeypatch
+):
+    # Regression test: before/after snapshots used to list() the whole
+    # keyring, so refreshing one key paid _load_primary_uids()'s per-key
+    # --edit-key cost for every *other* multi-UID key too.
+    backend = GPGBackend(tmp_path / "home")
+    refreshed_key = backend.generate_key(
+        NewKeyRequest(name="Uma Example", email="uma@example.com", key_length=1024)
+    )
+    backend.add_uid(
+        refreshed_key.fingerprint,
+        Passphrase(""),
+        name="Uma Example",
+        email="uma@work.example.com",
+    )
+    other_key = backend.generate_key(
+        NewKeyRequest(name="Vik Example", email="vik@example.com", key_length=1024)
+    )
+    backend.add_uid(
+        other_key.fingerprint,
+        Passphrase(""),
+        name="Vik Example",
+        email="vik@work.example.com",
+    )
+
+    class _FakeImportResult:
+        returncode = 0
+        stderr = ""
+
+    monkeypatch.setattr(
+        gnupg.GPG,
+        "recv_keys",
+        lambda self, keyserver, *keyids: _FakeImportResult(),
+    )
+    activity_log.reset()
+
+    backend.refresh_from_keyserver(
+        fingerprints=[refreshed_key.fingerprint], keyservers=["hkps://example.org"]
+    )
+
+    edit_key_commands = [
+        entry.command
+        for entry in activity_log.entries()
+        if "--edit-key" in entry.command
+    ]
+    assert all(refreshed_key.fingerprint in cmd for cmd in edit_key_commands)
+    assert not any(other_key.fingerprint in cmd for cmd in edit_key_commands)
 
 
 def test_refresh_from_keyserver_reports_updated_when_the_key_actually_changed(
@@ -1957,7 +2307,9 @@ def test_refresh_from_keyserver_reports_updated_when_the_key_actually_changed(
 
     monkeypatch.setattr(gnupg.GPG, "recv_keys", _fake_recv_keys)
 
-    (refreshed,) = backend.refresh_from_keyserver(fingerprints=[key.fingerprint])
+    (refreshed,) = backend.refresh_from_keyserver(
+        fingerprints=[key.fingerprint], keyservers=["hkps://example.org"]
+    )
 
     assert refreshed.updated is True
     assert len(refreshed.key.uids) == 2
@@ -1971,7 +2323,7 @@ def test_refresh_from_keyserver_is_a_noop_on_an_empty_keyring(tmp_path, monkeypa
 
     monkeypatch.setattr(gnupg.GPG, "recv_keys", _fail)
 
-    assert backend.refresh_from_keyserver() == []
+    assert backend.refresh_from_keyserver(keyservers=["hkps://example.org"]) == []
 
 
 def test_refresh_from_keyserver_is_a_noop_with_an_explicitly_empty_fingerprint_list(
@@ -1987,7 +2339,26 @@ def test_refresh_from_keyserver_is_a_noop_with_an_explicitly_empty_fingerprint_l
 
     monkeypatch.setattr(gnupg.GPG, "recv_keys", _fail)
 
-    assert backend.refresh_from_keyserver(fingerprints=[]) == []
+    assert (
+        backend.refresh_from_keyserver(
+            fingerprints=[], keyservers=["hkps://example.org"]
+        )
+        == []
+    )
+
+
+def test_refresh_from_keyserver_is_a_noop_with_no_keyservers(tmp_path, monkeypatch):
+    backend = GPGBackend(tmp_path / "home")
+    backend.generate_key(
+        NewKeyRequest(name="Sam Two Example", email="sam2@example.com", key_length=1024)
+    )
+
+    def _fail(self, keyserver, *keyids):
+        raise AssertionError("recv_keys should not be called with no keyservers")
+
+    monkeypatch.setattr(gnupg.GPG, "recv_keys", _fail)
+
+    assert backend.refresh_from_keyserver(keyservers=[]) == []
 
 
 def test_refresh_from_keyserver_raises_on_failure(tmp_path, monkeypatch):
@@ -2005,7 +2376,66 @@ def test_refresh_from_keyserver_raises_on_failure(tmp_path, monkeypatch):
     )
 
     with pytest.raises(GPGBackendError, match="Network is unreachable"):
-        backend.refresh_from_keyserver()
+        backend.refresh_from_keyserver(keyservers=["hkps://example.org"])
+
+
+def test_refresh_from_keyserver_succeeds_when_only_one_server_works(
+    tmp_path, monkeypatch
+):
+    backend = GPGBackend(tmp_path / "home")
+    key = backend.generate_key(
+        NewKeyRequest(
+            name="Oscar Two Example", email="oscar2@example.com", key_length=1024
+        )
+    )
+
+    class _FakeFailResult:
+        returncode = 2
+        stderr = "gpg: keyserver receive failed: Network is unreachable"
+
+    class _FakeOkResult:
+        returncode = 0
+        stderr = ""
+
+    calls = []
+
+    def _fake_recv_keys(self, keyserver, *keyids):
+        calls.append(keyserver)
+        if keyserver == "hkps://down.example":
+            return _FakeFailResult()
+        return _FakeOkResult()
+
+    monkeypatch.setattr(gnupg.GPG, "recv_keys", _fake_recv_keys)
+
+    refreshed = backend.refresh_from_keyserver(
+        fingerprints=[key.fingerprint],
+        keyservers=["hkps://down.example", "hkps://up.example"],
+    )
+
+    assert calls == ["hkps://down.example", "hkps://up.example"]
+    assert [r.key.fingerprint for r in refreshed] == [key.fingerprint]
+
+
+def test_refresh_from_keyserver_raises_when_every_server_fails(tmp_path, monkeypatch):
+    backend = GPGBackend(tmp_path / "home")
+    backend.generate_key(
+        NewKeyRequest(
+            name="Oscar Three Example", email="oscar3@example.com", key_length=1024
+        )
+    )
+
+    class _FakeImportResult:
+        returncode = 2
+        stderr = "gpg: keyserver receive failed: Network is unreachable"
+
+    monkeypatch.setattr(
+        gnupg.GPG, "recv_keys", lambda self, keyserver, *keyids: _FakeImportResult()
+    )
+
+    with pytest.raises(GPGBackendError, match="Network is unreachable"):
+        backend.refresh_from_keyserver(
+            keyservers=["hkps://a.example", "hkps://b.example"]
+        )
 
 
 def test_refresh_from_keyserver_ignores_a_no_data_failure_for_one_key(
@@ -2040,7 +2470,7 @@ def test_refresh_from_keyserver_ignores_a_no_data_failure_for_one_key(
         gnupg.GPG, "recv_keys", lambda self, keyserver, *keyids: _FakeImportResult()
     )
 
-    refreshed = backend.refresh_from_keyserver()
+    refreshed = backend.refresh_from_keyserver(keyservers=["hkps://example.org"])
 
     assert {r.key.fingerprint for r in refreshed} == {
         first.fingerprint,
@@ -2128,7 +2558,7 @@ def test_download_unknown_signatures_imports_a_found_key(tmp_path, monkeypatch):
     monkeypatch.setattr(gnupg.GPG, "recv_keys", _fake_recv_keys)
 
     (downloaded,) = backend.download_unknown_signatures(
-        [foreign.fingerprint], keyserver="hkps://example.org"
+        [foreign.fingerprint], ["hkps://example.org"]
     )
 
     assert calls == [("hkps://example.org", (foreign.fingerprint,))]
@@ -2151,7 +2581,9 @@ def test_download_unknown_signatures_reports_a_key_not_on_the_server(
         gnupg.GPG, "recv_keys", lambda self, keyserver, *keyids: _FakeImportResult()
     )
 
-    (downloaded,) = backend.download_unknown_signatures(["0" * 16])
+    (downloaded,) = backend.download_unknown_signatures(
+        ["0" * 16], ["hkps://example.org"]
+    )
 
     assert downloaded.identifier == "0" * 16
     assert downloaded.key is None
@@ -2174,9 +2606,60 @@ def test_download_unknown_signatures_fetches_one_identifier_at_a_time(
 
     monkeypatch.setattr(gnupg.GPG, "recv_keys", _fake_recv_keys)
 
-    backend.download_unknown_signatures(["A" * 16, "B" * 16])
+    backend.download_unknown_signatures(["A" * 16, "B" * 16], ["hkps://example.org"])
 
     assert calls == [("A" * 16,), ("B" * 16,)]
+
+
+def test_download_unknown_signatures_tries_every_server_for_each_identifier(
+    tmp_path, monkeypatch
+):
+    backend = GPGBackend(tmp_path / "home")
+    elsewhere = GPGBackend(tmp_path / "elsewhere")
+    foreign = elsewhere.generate_key(
+        NewKeyRequest(
+            name="Boaz Two Example", email="boaz2@example.com", key_length=1024
+        )
+    )
+    armored = elsewhere.export_public_key(foreign.fingerprint)
+    calls = []
+
+    def _fake_recv_keys(self, keyserver, *keyids):
+        calls.append(keyserver)
+        if keyserver == "hkps://empty.example":
+            return type("_FakeImportResult", (), {"fingerprints": ()})()
+        return self.import_keys(armored)
+
+    monkeypatch.setattr(gnupg.GPG, "recv_keys", _fake_recv_keys)
+
+    (downloaded,) = backend.download_unknown_signatures(
+        [foreign.fingerprint], ["hkps://empty.example", "hkps://has-it.example"]
+    )
+
+    assert calls == ["hkps://empty.example", "hkps://has-it.example"]
+    assert downloaded.key is not None
+    assert downloaded.key.fingerprint == foreign.fingerprint
+
+
+def test_download_unknown_signatures_stays_not_found_when_no_server_has_it(
+    tmp_path, monkeypatch
+):
+    backend = GPGBackend(tmp_path / "home")
+
+    class _FakeImportResult:
+        fingerprints = ()
+
+    monkeypatch.setattr(
+        gnupg.GPG,
+        "recv_keys",
+        lambda self, keyserver, *keyids: _FakeImportResult(),
+    )
+
+    (downloaded,) = backend.download_unknown_signatures(
+        ["0" * 16], ["hkps://a.example", "hkps://b.example"]
+    )
+
+    assert downloaded.key is None
 
 
 def test_export_public_key_returns_armored_text(tmp_path):
@@ -2899,7 +3382,7 @@ class TestKeyExpiredNoiseFiltering:
         )
 
         with pytest.raises(GPGBackendError) as exc_info:
-            backend.search_keyserver("nobody@example.com")
+            backend.search_keyserver("nobody@example.com", "hkps://example.org")
 
         assert "KEYEXPIRED" not in str(exc_info.value)
         assert "search failed" in str(exc_info.value)

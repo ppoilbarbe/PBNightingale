@@ -8,7 +8,11 @@ from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
     QLabel,
+    QListWidget,
+    QPushButton,
     QSpinBox,
     QVBoxLayout,
 )
@@ -16,7 +20,7 @@ from PySide6.QtWidgets import (
 
 class Ui_SettingsDialog:
     def setupUi(self, dialog: QDialog) -> None:
-        dialog.setMinimumWidth(360)
+        dialog.setMinimumSize(420, 480)
         dialog.setWindowTitle(_("Settings"))
 
         layout = QVBoxLayout(dialog)
@@ -44,7 +48,43 @@ class Ui_SettingsDialog:
             )
         )
         form.addRow(_("Remember passphrases for:"), self.spinPassphraseCache)
+        self.spinActivityLogMaxEntries = QSpinBox(dialog)
+        self.spinActivityLogMaxEntries.setRange(1, 1000)
+        self.spinActivityLogMaxEntries.setSuffix(_(" commands"))
+        self.spinActivityLogMaxEntries.setToolTip(
+            _("How many recent commands the Activity (advanced) window keeps")
+        )
+        form.addRow(_("Activity history:"), self.spinActivityLogMaxEntries)
         layout.addLayout(form)
+
+        keyservers_group = QGroupBox(_("Key Servers"), dialog)
+        keyservers_layout = QVBoxLayout(keyservers_group)
+        keyservers_row = QHBoxLayout()
+        self.lstKeyservers = QListWidget(keyservers_group)
+        self.lstKeyservers.setToolTip(
+            _(
+                "Checked servers are used to search for and fetch keys; "
+                "unchecked ones are kept for reference only."
+            )
+        )
+        keyservers_row.addWidget(self.lstKeyservers)
+        keyservers_buttons = QVBoxLayout()
+        self.btnKeyserverAdd = QPushButton(_("Add…"), keyservers_group)
+        self.btnKeyserverRemove = QPushButton(_("Remove"), keyservers_group)
+        self.btnKeyserverUp = QPushButton(_("Move Up"), keyservers_group)
+        self.btnKeyserverDown = QPushButton(_("Move Down"), keyservers_group)
+        keyservers_buttons.addWidget(self.btnKeyserverAdd)
+        keyservers_buttons.addWidget(self.btnKeyserverRemove)
+        keyservers_buttons.addWidget(self.btnKeyserverUp)
+        keyservers_buttons.addWidget(self.btnKeyserverDown)
+        keyservers_buttons.addStretch()
+        keyservers_row.addLayout(keyservers_buttons)
+        keyservers_layout.addLayout(keyservers_row)
+        self.btnKeyserverRestoreDefaults = QPushButton(
+            _("Restore Default List"), keyservers_group
+        )
+        keyservers_layout.addWidget(self.btnKeyserverRestoreDefaults)
+        layout.addWidget(keyservers_group)
 
         self.lblNotice = QLabel(
             _("A restart is required for the language change to take effect."),

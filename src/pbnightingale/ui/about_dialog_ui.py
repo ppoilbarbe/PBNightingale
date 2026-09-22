@@ -53,10 +53,10 @@ class Ui_AboutDialog:
         )
 
         self.lblAuthor = QLabel("Marcel Spock &lt;mrspock@cardolan.net&gt;", dialog)
-        form.addRow(_("Author:"), self.lblAuthor)
+        form.addRow("<b>" + _("Author:") + "</b>", self.lblAuthor)
 
         self.lblLicense = QLabel("GPLv3", dialog)
-        form.addRow(_("License:"), self.lblLicense)
+        form.addRow(_("<b>" + "License:" + "</b>"), self.lblLicense)
 
         layout.addLayout(form)
 

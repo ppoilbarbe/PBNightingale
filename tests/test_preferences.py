@@ -63,3 +63,70 @@ def test_passphrase_cache_minutes_negative_value_falls_back_to_default():
     preferences._settings().setValue(preferences._PASSPHRASE_CACHE_KEY, -5)
 
     assert preferences.get_passphrase_cache_minutes() == 10
+
+
+def test_keyservers_default_to_the_built_in_list():
+    assert preferences.get_keyservers() == list(preferences.DEFAULT_KEYSERVERS)
+
+
+def test_keyservers_round_trip():
+    servers = [("hkps://a.example", True), ("hkps://b.example", False)]
+
+    preferences.set_keyservers(servers)
+
+    assert preferences.get_keyservers() == servers
+
+
+def test_keyservers_saved_as_empty_stays_empty_rather_than_falling_back():
+    preferences.set_keyservers([("hkps://a.example", True)])
+
+    preferences.set_keyservers([])
+
+    assert preferences.get_keyservers() == []
+
+
+def test_keyservers_round_trip_shrinking_the_list():
+    preferences.set_keyservers(
+        [("hkps://a.example", True), ("hkps://b.example", False)]
+    )
+
+    preferences.set_keyservers([("hkps://c.example", True)])
+
+    assert preferences.get_keyservers() == [("hkps://c.example", True)]
+
+
+def test_activity_log_max_entries_defaults_to_fifty():
+    assert preferences.get_activity_log_max_entries() == 50
+
+
+def test_activity_log_max_entries_round_trips():
+    preferences.set_activity_log_max_entries(200)
+
+    assert preferences.get_activity_log_max_entries() == 200
+
+
+def test_activity_log_max_entries_corrupt_value_falls_back_to_default():
+    preferences._settings().setValue(preferences._ACTIVITY_LOG_MAX_ENTRIES_KEY, "lots")
+
+    assert preferences.get_activity_log_max_entries() == 50
+
+
+def test_activity_log_max_entries_zero_falls_back_to_default():
+    preferences._settings().setValue(preferences._ACTIVITY_LOG_MAX_ENTRIES_KEY, 0)
+
+    assert preferences.get_activity_log_max_entries() == 50
+
+
+def test_checked_keyserver_urls_returns_only_checked_ones_in_order():
+    preferences.set_keyservers(
+        [
+            ("hkps://a.example", False),
+            ("hkps://b.example", True),
+            ("hkps://c.example", True),
+        ]
+    )
+
+    assert preferences.get_checked_keyserver_urls() == [
+        "hkps://b.example",
+        "hkps://c.example",
+    ]

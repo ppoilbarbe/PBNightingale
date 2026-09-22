@@ -1,20 +1,31 @@
-"""Search Keyserver dialog — searches by name, email, fingerprint or key ID, and imports whichever match the user picks."""
+"""Search Keyserver dialog — searches by name, email, fingerprint or key ID, and imports whichever match the user picks.
+
+The keyserver field is a combobox listing every server defined in
+Preferences ("Key Servers"), checked or not — unlike the Import dialog,
+here a single, explicit keyserver is what "Search" and "Import" both act
+on, so the full list (not just the checked ones) stays available to pick
+from, with the first entry preselected.
+"""
 
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, QThreadPool
 from PySide6.QtWidgets import QDialog, QDialogButtonBox, QListWidgetItem
 
+from pbnightingale import preferences
 from pbnightingale.core import gpg_backend
-from pbnightingale.core.gpg_backend import (
-    DEFAULT_KEYSERVER,
-    ImportedKey,
-    SearchResult,
-)
+from pbnightingale.core.gpg_backend import ImportedKey, SearchResult
 from pbnightingale.ui.geometry_mixin import GeometryMixin
 from pbnightingale.ui.gpg_worker import run_async
 from pbnightingale.ui.key_list_view import _format_algo, _format_date
 from pbnightingale.ui.search_key_dialog_ui import Ui_SearchKeyDialog
+
+#: Not "the app's default keyserver" (there's no such single constant
+#: anymore — see preferences.get_checked_keyserver_urls()): this is
+#: specifically about keys.openpgp.org's own documented search
+#: limitations (see _update_keyserver_hint() below), which apply to that
+#: keyserver regardless of where it sits in the user's configured list.
+_KEYS_OPENPGP_ORG = "hkps://keys.openpgp.org"
 
 
 class SearchKeyDialog(GeometryMixin, QDialog):
@@ -29,8 +40,12 @@ class SearchKeyDialog(GeometryMixin, QDialog):
         self._pool = QThreadPool(self)
         self.imported_keys: list[ImportedKey] = []
 
-        self._ui.txtKeyserver.setText(DEFAULT_KEYSERVER)
-        self._ui.txtKeyserver.textChanged.connect(self._update_keyserver_hint)
+        self._ui.cmbKeyserver.addItems(
+            [url for url, _checked in preferences.get_keyservers()]
+        )
+        if self._ui.cmbKeyserver.count():
+            self._ui.cmbKeyserver.setCurrentIndex(0)
+        self._ui.cmbKeyserver.currentTextChanged.connect(self._update_keyserver_hint)
         self._update_keyserver_hint()
         self._ok_button = self._ui.buttonBox.button(QDialogButtonBox.StandardButton.Ok)
         cancel_button = self._ui.buttonBox.button(
@@ -54,19 +69,21 @@ class SearchKeyDialog(GeometryMixin, QDialog):
         self._ui.buttonBox.rejected.connect(self.reject)
 
     def _update_keyserver_hint(self) -> None:
-        """Show the keys.openpgp.org search-limitations hint when applicable."""
-        is_default = self._ui.txtKeyserver.text().strip() == DEFAULT_KEYSERVER
-        if is_default:
+        """Show the keys.openpgp.org identity-verification hint when applicable."""
+        is_keys_openpgp_org = (
+            self._ui.cmbKeyserver.currentText().strip() == _KEYS_OPENPGP_ORG
+        )
+        if is_keys_openpgp_org:
             self._ui.lblKeyserverHint.setText(
                 _(
-                    "keys.openpgp.org does not support searching by name or "
-                    "email, and never returns user IDs in search results "
-                    "(privacy by design). Search by exact key ID or "
-                    "fingerprint instead, or use Import… for a known email "
-                    "address."
+                    "keys.openpgp.org only shows identities (name/email) the "
+                    "key's owner has verified there — at upload time or "
+                    "afterward. An address that was never verified won't "
+                    "appear in search results even if the key itself is on "
+                    "the server."
                 )
             )
-        self._ui.lblKeyserverHint.setVisible(is_default)
+        self._ui.lblKeyserverHint.setVisible(is_keys_openpgp_org)
 
     def _set_form_enabled(self, enabled: bool) -> None:
         """Enable or disable the search form.
@@ -78,7 +95,7 @@ class SearchKeyDialog(GeometryMixin, QDialog):
             also requires a selected result, regardless of *enabled*.
         """
         self._ui.txtQuery.setEnabled(enabled)
-        self._ui.txtKeyserver.setEnabled(enabled)
+        self._ui.cmbKeyserver.setEnabled(enabled)
         self._ui.btnSearch.setEnabled(enabled)
         self._ui.resultsList.setEnabled(enabled)
         self._ok_button.setEnabled(enabled and self._ui.resultsList.currentRow() >= 0)
@@ -89,7 +106,12 @@ class SearchKeyDialog(GeometryMixin, QDialog):
         if not query:
             self._ui.lblStatus.setText(_("Enter a search query."))
             return
-        keyserver = self._ui.txtKeyserver.text().strip() or DEFAULT_KEYSERVER
+        keyserver = self._ui.cmbKeyserver.currentText().strip()
+        if not keyserver:
+            self._ui.lblStatus.setText(
+                _("No keyserver is defined. Add one in Preferences → Key Servers.")
+            )
+            return
 
         self._ui.resultsList.clear()
         self._set_form_enabled(False)
@@ -145,7 +167,7 @@ class SearchKeyDialog(GeometryMixin, QDialog):
         if item is None:
             return
         result: SearchResult = item.data(Qt.ItemDataRole.UserRole)
-        keyserver = self._ui.txtKeyserver.text().strip() or DEFAULT_KEYSERVER
+        keyserver = self._ui.cmbKeyserver.currentText().strip()
 
         self._set_form_enabled(False)
         self._ui.progress.setVisible(True)

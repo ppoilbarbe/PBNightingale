@@ -17,9 +17,8 @@ from PySide6.QtWidgets import (
 )
 
 from pbnightingale import i18n, preferences
-from pbnightingale.core import gpg_backend
+from pbnightingale.core import activity_log, gpg_backend
 from pbnightingale.core.gpg_backend import (
-    DEFAULT_KEYSERVER,
     DownloadedSignature,
     GPGBackendError,
     ImportedKey,
@@ -60,6 +59,7 @@ class MainWindow(GeometryMixin, QMainWindow):
         self._pending_status_message: str | None = None
         self._refresh_progress: QProgressDialog | None = None
         self._signatures_progress: QProgressDialog | None = None
+        self._activity_log_dialog = None
 
         self._connect_signals()
         self._wire_context_menu_actions()
@@ -70,6 +70,7 @@ class MainWindow(GeometryMixin, QMainWindow):
         self._ui.actionServerSearch.setEnabled(True)
         self._ui.actionServerRefresh.setEnabled(True)
         self._apply_toolbar_icon_size()
+        activity_log.configure(preferences.get_activity_log_max_entries())
         self.statusBar().showMessage(_("Ready"))
         self.refresh_keys()
 
@@ -159,6 +160,7 @@ class MainWindow(GeometryMixin, QMainWindow):
         self._ui.actionServerPublish.triggered.connect(self._on_server_publish)
         self._ui.actionServerRefresh.triggered.connect(self._on_server_refresh)
         self._ui.actionResetToolbars.triggered.connect(self._on_reset_toolbars)
+        self._ui.actionActivityLog.triggered.connect(self._on_activity_log)
         self._ui.keyListView.selectionChanged.connect(self._update_action_states)
         self._ui.keyListView.signaturesRequested.connect(self._on_signatures_requested)
         self._ui.keyListView.downloadUnknownSignaturesRequested.connect(
@@ -543,36 +545,66 @@ class MainWindow(GeometryMixin, QMainWindow):
             message, fingerprint = self._describe_import(dialog.imported_keys)
             self.refresh_keys(status_message=message, select_fingerprint=fingerprint)
 
+    def _checked_keyservers_or_warn(self, title: str) -> list[str] | None:
+        """Return the checked Preferences keyservers, or warn and return ``None``.
+
+        Parameters
+        ----------
+        title
+            The warning dialog's title, matching the action being blocked.
+
+        Returns
+        -------
+        :
+            The checked keyserver URLs, in display order — ``None`` if
+            none are checked, after already showing the warning.
+        """
+        keyservers = preferences.get_checked_keyserver_urls()
+        if not keyservers:
+            QMessageBox.warning(
+                self,
+                title,
+                _(
+                    "No keyserver is checked. Check at least one in "
+                    "Preferences → Key Servers."
+                ),
+            )
+            return None
+        return keyservers
+
     def _on_server_publish(self) -> None:
-        """Confirm, then publish the selected key to the default keyserver in the background."""
+        """Ask which keyservers to publish to, then publish the selected key in the background."""
         key = self._ui.keyListView.selected_key()
         if key is None:
             return
-        confirmed = QMessageBox.question(
-            self,
-            _("Publish Key"),
-            _(
-                "Publish {keyid} to {keyserver}?\n\n"
-                "Once a key is on a public keyserver, it generally cannot "
-                "be fully removed again, only revoked."
-            ).format(keyid=key.keyid, keyserver=DEFAULT_KEYSERVER),
-        )
-        if confirmed != QMessageBox.StandardButton.Yes:
+        from pbnightingale.ui.publish_key_dialog import PublishKeyDialog
+
+        dialog = PublishKeyDialog(key.keyid, self)
+        if dialog.exec() != PublishKeyDialog.DialogCode.Accepted:
             return
+        keyservers = dialog.selected_keyservers()
         self._ui.actionServerPublish.setEnabled(False)
         self.statusBar().showMessage(_("Publishing…"))
         run_async(
             self._pool,
-            lambda: gpg_backend.default_backend().publish_to_keyserver(key.fingerprint),
+            lambda: gpg_backend.default_backend().publish_to_keyservers(
+                key.fingerprint, keyservers
+            ),
             on_success=self._on_server_published,
             on_error=self._on_server_publish_failed,
         )
 
-    def _on_server_published(self, _result: None) -> None:
-        """Report a successful keyserver publish in the status bar."""
+    def _on_server_published(self, keyservers: list[str]) -> None:
+        """Report a successful keyserver publish in the status bar.
+
+        Parameters
+        ----------
+        keyservers
+            The keyservers the key was actually published to.
+        """
         self._ui.actionServerPublish.setEnabled(True)
         self.statusBar().showMessage(
-            _("Key published to {keyserver}").format(keyserver=DEFAULT_KEYSERVER)
+            _("Key published to {keyservers}").format(keyservers=", ".join(keyservers))
         )
 
     def _on_server_publish_failed(self, exc: Exception) -> None:
@@ -584,6 +616,9 @@ class MainWindow(GeometryMixin, QMainWindow):
 
     def _on_server_refresh(self) -> None:
         """Open the Refresh Keys dialog and refresh the chosen key(s) from the keyserver in the background, with a modal progress window."""
+        keyservers = self._checked_keyservers_or_warn(_("Refresh Keys"))
+        if keyservers is None:
+            return
         from pbnightingale.ui.refresh_keys_dialog import RefreshKeysDialog
 
         key = self._ui.keyListView.selected_key()
@@ -608,7 +643,7 @@ class MainWindow(GeometryMixin, QMainWindow):
         run_async(
             self._pool,
             lambda: gpg_backend.default_backend().refresh_from_keyserver(
-                fingerprints=fingerprints
+                fingerprints=fingerprints, keyservers=keyservers
             ),
             on_success=self._on_server_refreshed,
             on_error=self._on_server_refresh_failed,
@@ -677,6 +712,9 @@ class MainWindow(GeometryMixin, QMainWindow):
 
     def _on_download_unknown_signatures(self, identifiers: list[str]) -> None:
         """Fetch each of *identifiers* from the keyserver in the background, with a modal progress window."""
+        keyservers = self._checked_keyservers_or_warn(_("Download Unknown Keys"))
+        if keyservers is None:
+            return
         # Same modal-progress treatment as _on_server_refresh(): a keyserver
         # round-trip per identifier can take a while.
         self._signatures_progress = QProgressDialog(
@@ -691,7 +729,7 @@ class MainWindow(GeometryMixin, QMainWindow):
         run_async(
             self._pool,
             lambda: gpg_backend.default_backend().download_unknown_signatures(
-                identifiers
+                identifiers, keyservers
             ),
             on_success=self._on_signatures_downloaded,
             on_error=self._on_signatures_download_failed,
@@ -803,12 +841,30 @@ class MainWindow(GeometryMixin, QMainWindow):
             self.refresh_keys()
 
     def _on_settings(self) -> None:
-        """Open the Settings dialog and re-apply the toolbar icon size if settings were saved."""
+        """Open the Settings dialog and re-apply preferences if settings were saved."""
         from pbnightingale.ui.settings_dialog import SettingsDialog
 
         dialog = SettingsDialog(self)
         if dialog.exec() == SettingsDialog.DialogCode.Accepted:
             self._apply_toolbar_icon_size()
+            activity_log.configure(preferences.get_activity_log_max_entries())
+            if self._activity_log_dialog is not None:
+                self._activity_log_dialog.refresh()
+
+    def _on_activity_log(self) -> None:
+        """Show the Activity (advanced) window, creating it on first use.
+
+        Non-modal and kept as a single instance for the rest of the
+        window's lifetime — repeat activation (menu or F12) just raises
+        the existing one rather than creating another.
+        """
+        if self._activity_log_dialog is None:
+            from pbnightingale.ui.activity_log_dialog import ActivityLogDialog
+
+            self._activity_log_dialog = ActivityLogDialog(self)
+        self._activity_log_dialog.show()
+        self._activity_log_dialog.raise_()
+        self._activity_log_dialog.activateWindow()
 
     def _on_help_manual(self) -> None:
         """Open the online user manual in the interface's current language."""

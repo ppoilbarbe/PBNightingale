@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PBNightingale 0.1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-16 15:17+0200\n"
+"POT-Creation-Date: 2026-09-22 17:02+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: fr\n"
@@ -92,13 +92,13 @@ msgid ""
 "signature on your key, a since-revoked UID), see \"Refreshing from "
 "keyservers\" in :doc:`importing_keys`."
 msgstr ""
-"|icon-view-refresh| **Actualiser** (barre d'outils/menu Clefs, ou "
-"``F5``) recharge la liste depuis votre trousseau GPG local, utile si "
-"vous avez modifié quelque chose directement en ligne de commande avec "
-"``gpg``. Cela ne fait que relire ce qui est déjà sur le disque ; pour "
-"récupérer les changements faits par *d'autres personnes* (une nouvelle "
-"signature sur votre clef, un identifiant révoqué depuis), voir "
-"« Rafraîchir depuis les serveurs de clefs » dans :doc:`importing_keys`."
+"|icon-view-refresh| **Actualiser** (barre d'outils/menu Clefs, ou ``F5``)"
+" recharge la liste depuis votre trousseau GPG local, utile si vous avez "
+"modifié quelque chose directement en ligne de commande avec ``gpg``. Cela"
+" ne fait que relire ce qui est déjà sur le disque ; pour récupérer les "
+"changements faits par *d'autres personnes* (une nouvelle signature sur "
+"votre clef, un identifiant révoqué depuis), voir « Rafraîchir depuis les "
+"serveurs de clefs » dans :doc:`importing_keys`."
 
 #: ../../manual/managing_keys.rst:37
 msgid ""
@@ -128,15 +128,37 @@ msgstr ""
 "Les barres d'outils peuvent être déplacées, réorganisées ou masquées à "
 "votre convenance (menu **Affichage**) ; **Affichage → Réinitialiser les "
 "barres d'outils** restaure la disposition par défaut. Appuyez sur "
-"``Maj+F1`` (ou le bouton de barre d'outils |icon-help-contextual| "
-"**Qu'est-ce que c'est ?**) puis cliquez sur n'importe quel contrôle pour "
+"``Maj+F1`` (ou le bouton de barre d'outils |icon-help-contextual| **Qu"
+"'est-ce que c'est ?**) puis cliquez sur n'importe quel contrôle pour "
 "obtenir une courte explication de ce qu'il fait."
 
-#: ../../manual/managing_keys.rst:53
+#: ../../manual/managing_keys.rst:50
+msgid ""
+"|icon-history| **View → Activity (advanced)…** (or ``F12``) opens a non-"
+"blocking window listing the most recent external commands PBNightingale "
+"has run (``gpg``, ``gpg-connect-agent``, …) — a technical, advanced view,"
+" mainly useful for troubleshooting. Each command is numbered "
+"sequentially; select a row and press ``Ctrl+C`` to copy it to the "
+"clipboard. **Clear History** empties the list without resetting the "
+"numbering, so a number always identifies the same command even after "
+"clearing. How many commands are kept is configurable in "
+":doc:`preferences`."
+msgstr ""
+"|icon-history| **Affichage → Activité (avancé)…** (ou ``F12``) ouvre une"
+" fenêtre non bloquante listant les dernières commandes externes "
+"exécutées par PBNightingale (``gpg``, ``gpg-connect-agent``, etc.), une "
+"vue technique avancée, surtout utile pour le dépannage. Chaque commande "
+"est numérotée séquentiellement ; sélectionnez une ligne et appuyez sur "
+"``Ctrl+C`` pour la copier dans le presse-papier. **Vider l'historique** "
+"vide la liste sans réinitialiser la numérotation, si bien qu'un numéro "
+"identifie toujours la même commande, même après une vidange. Le nombre "
+"de commandes conservées est configurable dans :doc:`preferences`."
+
+#: ../../manual/managing_keys.rst:63
 msgid "Identities (user IDs)"
 msgstr "Identités (identifiants utilisateur)"
 
-#: ../../manual/managing_keys.rst:55
+#: ../../manual/managing_keys.rst:65
 msgid ""
 "A user ID binds a name and email address to your key (see "
 ":doc:`concepts`, \"Identities\"). A key can carry several — for instance "
@@ -151,7 +173,7 @@ msgstr ""
 "identités, et utilisé comme colonnes Nom/Email par défaut dans la liste "
 "des clefs)."
 
-#: ../../manual/managing_keys.rst:60
+#: ../../manual/managing_keys.rst:70
 msgid ""
 "|icon-user-add| **Add user ID…** — adds a new identity to a key you hold "
 "the private part of. Needs that key's passphrase, since the new UID has "
@@ -162,7 +184,7 @@ msgstr ""
 "Nécessite la phrase secrète de cette clef, puisque le nouvel identifiant "
 "doit être signé par la clef elle-même."
 
-#: ../../manual/managing_keys.rst:63
+#: ../../manual/managing_keys.rst:73
 msgid ""
 "|icon-user-default| **Set as primary…** — makes the selected identity the"
 " default one. Disabled when it already is the primary, or when it is "
@@ -172,7 +194,7 @@ msgstr ""
 "sélectionnée l'identité par défaut. Désactivé lorsqu'elle l'est déjà, ou "
 "lorsqu'elle est révoquée."
 
-#: ../../manual/managing_keys.rst:66
+#: ../../manual/managing_keys.rst:76
 msgid ""
 "|icon-user-delete| **Revoke user ID…** — permanently marks the selected "
 "identity as no longer valid (for instance, an email address you no longer"
@@ -188,11 +210,11 @@ msgstr ""
 "s'agit de la *dernière* identité valide restante sur la clef, une clef a "
 "besoin d'au moins une identité."
 
-#: ../../manual/managing_keys.rst:73
+#: ../../manual/managing_keys.rst:83
 msgid "Photo user IDs"
 msgstr "Photos (identifiants utilisateur)"
 
-#: ../../manual/managing_keys.rst:75
+#: ../../manual/managing_keys.rst:85
 msgid ""
 "A photo is a special kind of user ID: a small JPEG embedded in the key "
 "instead of a name and email. It is mostly a human sanity check (matching "
@@ -205,7 +227,7 @@ msgstr ""
 "visage à une clef lors d'une rencontre de signature de clefs en personne,"
 " par exemple) plutôt qu'un mécanisme de sécurité en soi."
 
-#: ../../manual/managing_keys.rst:80
+#: ../../manual/managing_keys.rst:90
 msgid ""
 "|icon-photo-add| **Add photo…** — attaches an image file to the selected "
 "key (needs its passphrase). PBNightingale handles the JPEG conversion for"
@@ -215,7 +237,7 @@ msgstr ""
 "clef sélectionnée (nécessite sa phrase secrète). PBNightingale se charge "
 "pour vous de la conversion en JPEG."
 
-#: ../../manual/managing_keys.rst:83
+#: ../../manual/managing_keys.rst:93
 msgid ""
 "|icon-photo-delete| **Revoke photo…** — permanently marks the selected "
 "photo as no longer valid, behind the same strong confirmation as revoking"
@@ -225,7 +247,7 @@ msgstr ""
 "photo sélectionnée comme n'étant plus valide, derrière la même "
 "confirmation forte que pour révoquer un identifiant utilisateur."
 
-#: ../../manual/managing_keys.rst:86
+#: ../../manual/managing_keys.rst:96
 msgid ""
 "|icon-view| **Show** (toolbar, Identities menu, context menu, or just "
 "double-clicking the photo) opens it at full, unscaled size."
@@ -234,11 +256,11 @@ msgstr ""
 "contextuel, ou simplement double-cliquer sur la photo) l'ouvre en taille "
 "réelle, sans mise à l'échelle."
 
-#: ../../manual/managing_keys.rst:90
+#: ../../manual/managing_keys.rst:100
 msgid "Subkeys"
 msgstr "Sous-clefs"
 
-#: ../../manual/managing_keys.rst:92
+#: ../../manual/managing_keys.rst:102
 msgid ""
 "Recall from :doc:`concepts` (\"Subkeys\") that your primary key normally "
 "delegates day-to-day signing and encryption to dedicated subkeys, so that"
@@ -251,7 +273,7 @@ msgstr ""
 "être remplacée sans toucher à votre identité ni aux signatures de toile "
 "de confiance que vous avez accumulées."
 
-#: ../../manual/managing_keys.rst:97
+#: ../../manual/managing_keys.rst:107
 msgid ""
 "|icon-subkey-add| **Add subkey…** — adds a signing, encryption, or "
 "authentication subkey to the selected key (needs its passphrase). Uses "
@@ -263,7 +285,7 @@ msgstr ""
 "(nécessite sa phrase secrète). Utilise le même choix d'algorithme que "
 "l'assistant de création de clef ; voir :doc:`first_key`."
 
-#: ../../manual/managing_keys.rst:101
+#: ../../manual/managing_keys.rst:111
 msgid ""
 "|icon-subkey-revoke| **Revoke subkey…** — permanently marks the selected "
 "subkey as no longer valid, behind the strong confirmation checkbox. Do "
@@ -283,11 +305,11 @@ msgstr ""
 "explique pourquoi :doc:`importing_keys` traite du rafraîchissement des "
 "clefs depuis un serveur de clefs."
 
-#: ../../manual/managing_keys.rst:111
+#: ../../manual/managing_keys.rst:121
 msgid "Expiration dates"
 msgstr "Dates d'expiration"
 
-#: ../../manual/managing_keys.rst:113
+#: ../../manual/managing_keys.rst:123
 msgid ""
 "|icon-key-expire| **Set key expiration…** — sets the *primary* key's own "
 "expiration date."
@@ -295,7 +317,7 @@ msgstr ""
 "|icon-key-expire| **Définir l'expiration de la clef…** : définit la date "
 "d'expiration propre à la clef *primaire*."
 
-#: ../../manual/managing_keys.rst:115
+#: ../../manual/managing_keys.rst:125
 msgid ""
 "|icon-subkey-expire| **Set subkey expiration…** — sets the *selected "
 "subkey's* expiration date."
@@ -303,7 +325,7 @@ msgstr ""
 "|icon-subkey-expire| **Définir l'expiration de la sous-clef…** : définit "
 "la date d'expiration de la *sous-clef sélectionnée*."
 
-#: ../../manual/managing_keys.rst:118
+#: ../../manual/managing_keys.rst:128
 msgid ""
 "Both open the same dialog: a \"Never expires\" checkbox, checked by "
 "default, gating a date picker. Setting an expiration is routine hygiene, "
@@ -321,11 +343,11 @@ msgstr ""
 "ne touche jamais ses sous-clefs, et inversement : chacune est "
 "indépendante."
 
-#: ../../manual/managing_keys.rst:126
+#: ../../manual/managing_keys.rst:136
 msgid "Changing a passphrase"
 msgstr "Changer une phrase secrète"
 
-#: ../../manual/managing_keys.rst:128
+#: ../../manual/managing_keys.rst:138
 msgid ""
 "|icon-password-change| **Change passphrase…** replaces the passphrase "
 "protecting a key's private material: enter the current passphrase once, "
@@ -340,11 +362,11 @@ msgstr ""
 "chaque partie de la clef privée, la clef primaire et chaque sous-clef, ce"
 " qui peut prendre un moment sur une clef comportant plusieurs sous-clefs."
 
-#: ../../manual/managing_keys.rst:136
+#: ../../manual/managing_keys.rst:146
 msgid "Backing up and exporting"
 msgstr "Sauvegarder et exporter"
 
-#: ../../manual/managing_keys.rst:138
+#: ../../manual/managing_keys.rst:148
 msgid ""
 "|icon-key-export| **Export…** saves the selected key's **public** part to"
 " a file — safe to share freely, and the normal way to hand your key to "
@@ -355,7 +377,7 @@ msgstr ""
 "la façon normale de remettre votre clef directement à quelqu'un plutôt "
 "que via un serveur de clefs."
 
-#: ../../manual/managing_keys.rst:141
+#: ../../manual/managing_keys.rst:151
 msgid ""
 "|icon-key-backup| **Back up private key…** saves the selected key's "
 "**private** material to a file, protected by its passphrase. Treat the "
@@ -375,15 +397,15 @@ msgstr ""
 "utiliser cette identité si votre ordinateur est perdu, cesse de "
 "fonctionner, ou est remplacé."
 
-#: ../../manual/managing_keys.rst:151
+#: ../../manual/managing_keys.rst:161
 msgid "Revoking and deleting"
 msgstr "Révoquer et supprimer"
 
-#: ../../manual/managing_keys.rst:153
+#: ../../manual/managing_keys.rst:163
 msgid "These are different operations, easy to confuse:"
 msgstr "Ce sont des opérations différentes, faciles à confondre :"
 
-#: ../../manual/managing_keys.rst:155
+#: ../../manual/managing_keys.rst:165
 msgid ""
 "|icon-key-revoke| **Revoke key…** announces, publicly and permanently, "
 "that your *primary* key itself should no longer be trusted — the "
@@ -400,7 +422,7 @@ msgstr ""
 "irréversible : une fois la clef révoquée publiée (voir "
 ":doc:`importing_keys`), il n'y a pas de retour en arrière possible."
 
-#: ../../manual/managing_keys.rst:161
+#: ../../manual/managing_keys.rst:171
 msgid ""
 "|icon-key-delete| **Delete…** removes a key from *your own local keyring*"
 " — public material, and private material too if present. This is purely "

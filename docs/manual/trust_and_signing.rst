@@ -62,10 +62,10 @@ list (name, email, key ID, expiry); one your keyring cannot resolve shows
 up as "Unknown locally" with only its identifier.
 
 **Download Unknown Keys**, below the list, fetches every unresolved
-signer from a keyserver in one go and reports which ones were found —
-useful after importing a key with signatures from people you don't have
-yet, since a signature from a signer you cannot even look up contributes
-nothing to that key's computed validity.
+signer from every keyserver checked in :doc:`preferences` and reports
+which ones were found — useful after importing a key with signatures
+from people you don't have yet, since a signature from a signer you
+cannot even look up contributes nothing to that key's computed validity.
 
 Setting owner trust
 -----------------------

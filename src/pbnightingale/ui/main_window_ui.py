@@ -115,6 +115,23 @@ class Ui_MainWindow:
         self.actionWhatsThis = QWhatsThis.createAction(window)
         self.actionWhatsThis.setIcon(QIcon(_resource("help-contextual.svg")))
 
+        self.actionActivityLog = QAction(
+            QIcon(_resource("history.svg")), _("Activity (advanced)…"), window
+        )
+        self.actionActivityLog.setShortcut(QKeySequence("F12"))
+        self.actionActivityLog.setStatusTip(
+            _("Show the last external commands PBNightingale has run")
+        )
+        self.actionActivityLog.setWhatsThis(
+            _(
+                "Opens a non-blocking window listing the last external "
+                "commands PBNightingale has run (gpg, gpg-connect-agent, "
+                "…) — an advanced, technical view. Select a row and press "
+                "Ctrl+C to copy its command. The number of commands kept "
+                "is configurable in Settings."
+            )
+        )
+
     def _setup_key_actions(self, window: QMainWindow) -> None:
         self.actionKeyRefresh = QAction(
             QIcon(_resource("view-refresh.svg")), _("Refresh"), window
@@ -589,6 +606,8 @@ class Ui_MainWindow:
         self.menuToolbars.addAction(self.toolbarServers.toggleViewAction())
         self.menuToolbars.addAction(self.toolbarHelp.toggleViewAction())
         menu_view.addAction(self.actionResetToolbars)
+        menu_view.addSeparator()
+        menu_view.addAction(self.actionActivityLog)
 
         menu_help = menubar.addMenu(_("Help"))
         menu_help.addAction(self.actionHelpManual)
