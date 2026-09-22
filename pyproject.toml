@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pbnightingale"
-version = "0.2.2"
+version = "0.3.0"
 description = "A graphical GPG key management utility"
 readme = "README.md"
 license = "GPL-3.0-only"

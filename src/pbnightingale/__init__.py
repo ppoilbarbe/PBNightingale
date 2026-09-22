@@ -3,7 +3,7 @@
 import builtins
 
 #: Current release version (semver).
-__version__ = "0.2.2"
+__version__ = "0.3.0"
 #: Upstream author's name.
 __author__ = "Marcel Spock"
 #: Upstream author's contact address.
