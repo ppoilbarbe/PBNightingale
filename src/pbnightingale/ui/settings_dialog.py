@@ -56,6 +56,10 @@ class SettingsDialog(GeometryMixin, QDialog):
             preferences.get_activity_log_max_entries()
         )
 
+        self._ui.chkThirdPartySignatures.setChecked(
+            preferences.get_keep_third_party_signatures()
+        )
+
         self._ok_button = self._ui.buttonBox.button(QDialogButtonBox.StandardButton.Ok)
         self._fill_keyservers(preferences.get_keyservers())
         self._ui.lstKeyservers.currentRowChanged.connect(
@@ -194,4 +198,7 @@ class SettingsDialog(GeometryMixin, QDialog):
             self._ui.spinActivityLogMaxEntries.value()
         )
         preferences.set_keyservers(self._keyservers())
+        preferences.set_keep_third_party_signatures(
+            self._ui.chkThirdPartySignatures.isChecked()
+        )
         self.accept()

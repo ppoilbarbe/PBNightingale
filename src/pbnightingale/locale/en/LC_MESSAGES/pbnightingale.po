@@ -227,6 +227,16 @@ msgstr ""
 " key material. Unlike revoking, the key will no longer exist at all "
 "afterwards."
 
+#, python-brace-format
+msgid ""
+"This permanently deletes these {n} keys from your keyring, including any "
+"private key material: {keyids}. Unlike revoking, the keys will no longer "
+"exist at all afterwards."
+msgstr ""
+"This permanently deletes these {n} keys from your keyring, including any "
+"private key material: {keyids}. Unlike revoking, the keys will no longer "
+"exist at all afterwards."
+
 msgid "Deleting key…"
 msgstr "Deleting key…"
 
@@ -381,6 +391,13 @@ msgstr "My keys ({n})"
 msgid "Other keys ({n})"
 msgstr "Other keys ({n})"
 
+#, python-brace-format
+msgid "{n} keys selected."
+msgstr "{n} keys selected."
+
+msgid "Select a key to see its details."
+msgstr "Select a key to see its details."
+
 msgid "Loading…"
 msgstr "Loading…"
 
@@ -416,7 +433,9 @@ msgid ""
 "currently remembered: unlocked if so, locked otherwise. Double-click that"
 " icon to forget a remembered passphrase. Click a column header to sort "
 "the keys within each group by that column; click it again to reverse the "
-"order."
+"order. Ctrl-click or Shift-click to select several keys at once: only the"
+" actions applying to all of them with the same options stay available "
+"then."
 msgstr ""
 "Lists every key in your keyring, grouped into \"My keys\" (a secret key "
 "is available) and \"Other keys\" (public only). The unlabeled column "
@@ -424,10 +443,9 @@ msgstr ""
 "currently remembered: unlocked if so, locked otherwise. Double-click that"
 " icon to forget a remembered passphrase. Click a column header to sort "
 "the keys within each group by that column; click it again to reverse the "
-"order."
-
-msgid "Select a key to see its details."
-msgstr "Select a key to see its details."
+"order. Ctrl-click or Shift-click to select several keys at once: only the"
+" actions applying to all of them with the same options stay available "
+"then."
 
 msgid "Details"
 msgstr "Details"
@@ -579,6 +597,10 @@ msgid "Key published to {keyservers}"
 msgstr "Key published to {keyservers}"
 
 #, python-brace-format
+msgid "{n} keys published to {keyservers}"
+msgstr "{n} keys published to {keyservers}"
+
+#, python-brace-format
 msgid "Could not publish key: {error}"
 msgstr "Could not publish key: {error}"
 
@@ -613,6 +635,10 @@ msgstr "Could not export key: {error}"
 #, python-brace-format
 msgid "Key exported to {path}"
 msgstr "Key exported to {path}"
+
+#, python-brace-format
+msgid "{n} keys exported to {path}"
+msgstr "{n} keys exported to {path}"
 
 msgid "Settings…"
 msgstr "Settings…"
@@ -1196,6 +1222,10 @@ msgstr "Photo"
 msgid "Publish {keyid} to:"
 msgstr "Publish {keyid} to:"
 
+#, python-brace-format
+msgid "Publish these {n} keys ({keyids}) to:"
+msgstr "Publish these {n} keys ({keyids}) to:"
+
 msgid ""
 "Once a key is on a public keyserver, it generally cannot be fully removed"
 " again, only revoked."
@@ -1215,6 +1245,10 @@ msgid ""
 msgstr ""
 "Re-download keys from their keyserver, picking up any new signatures, "
 "identities or revocations."
+
+#, python-brace-format
+msgid "Refresh the {n} selected keys only"
+msgstr "Refresh the {n} selected keys only"
 
 msgid "Refresh the selected key only"
 msgstr "Refresh the selected key only"
@@ -1397,6 +1431,14 @@ msgstr ""
 "How much do you trust {uid} to correctly verify other people's keys "
 "before signing them?"
 
+#, python-brace-format
+msgid ""
+"How much do you trust the owners of these {n} keys ({keyids}) to "
+"correctly verify other people's keys before signing them?"
+msgstr ""
+"How much do you trust the owners of these {n} keys ({keyids}) to "
+"correctly verify other people's keys before signing them?"
+
 msgid "Setting owner trust…"
 msgstr "Setting owner trust…"
 
@@ -1498,12 +1540,50 @@ msgstr "Move Down"
 msgid "Restore Default List"
 msgstr "Restore Default List"
 
+msgid "Import other people's signatures along with keys"
+msgstr "Import other people's signatures along with keys"
+
+msgid ""
+"Off by default: GnuPG then keeps only the owner's own signatures when "
+"fetching a key from a keyserver."
+msgstr ""
+"Off by default: GnuPG then keeps only the owner's own signatures when "
+"fetching a key from a keyserver."
+
+msgid ""
+"By default, GnuPG discards every signature made by other people when it "
+"fetches a key from a keyserver, keeping only the owner's own. This "
+"protects against an attack where someone attaches tens of thousands of "
+"bogus signatures to a key to make it unusable. Check this box to import "
+"those signatures anyway, so the web of trust can work from keyserver "
+"data: keys.openpgp.org never serves them, but keyserver.ubuntu.com does. "
+"Only do so if you rely on the web of trust."
+msgstr ""
+"By default, GnuPG discards every signature made by other people when it "
+"fetches a key from a keyserver, keeping only the owner's own. This "
+"protects against an attack where someone attaches tens of thousands of "
+"bogus signatures to a key to make it unusable. Check this box to import "
+"those signatures anyway, so the web of trust can work from keyserver "
+"data: keys.openpgp.org never serves them, but keyserver.ubuntu.com does. "
+"Only do so if you rely on the web of trust."
+
+msgid ""
+"Leave unchecked unless you rely on the web of trust: a key flooded with "
+"bogus signatures can then slow down or block GnuPG."
+msgstr ""
+"Leave unchecked unless you rely on the web of trust: a key flooded with "
+"bogus signatures can then slow down or block GnuPG."
+
 msgid "A restart is required for the language change to take effect."
 msgstr "A restart is required for the language change to take effect."
 
 #, python-brace-format
 msgid "Sign {uid} to vouch for it in the web of trust."
 msgstr "Sign {uid} to vouch for it in the web of trust."
+
+#, python-brace-format
+msgid "Sign these {n} keys to vouch for them in the web of trust: {keyids}."
+msgstr "Sign these {n} keys to vouch for them in the web of trust: {keyids}."
 
 msgid "You have no personal key available to sign with."
 msgstr "You have no personal key available to sign with."

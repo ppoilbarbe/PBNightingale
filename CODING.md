@@ -327,6 +327,25 @@ which runs `gpg_backend.default_backend().list_keys()` via
 (`GPGBackendError` and friends never crash the window — see
 `_on_keys_load_failed`). Also loaded once automatically on startup.
 
+The key tree uses `ExtendedSelection`: `selected_keys()` returns every
+selected key, while `selected_key()` only returns one when *exactly* one
+is selected (`None` for zero or several). That split is load-bearing:
+every single-key action (expire, revoke, backup, change passphrase, UIDs,
+photos, subkeys) keeps reading `selected_key()` and so disables itself on
+a multi-selection for free, and only the actions that apply to every key
+with the same options (copy ID, export, delete, sign, set owner trust,
+publish, keyserver refresh) read `selected_keys()`. With zero or several
+keys selected, `_clear_detail()` empties the detail panel's lists too,
+not just hides them behind `lblNoSelection` — otherwise a stale UID/
+photo/subkey selection would keep its actions enabled. `select_keys()`
+restores a multi-selection with signals blocked (one `selectionChanged`,
+not one per row); `MainWindow.refresh_keys()` uses it to keep a
+multi-selection across a reload. `DeleteKeyDialog`/`SignKeyDialog` take a
+list of keys and prune the ones already processed after a mid-batch
+failure, so a retry doesn't re-delete/re-sign them; `MainWindow` also
+reloads after a *cancelled* `DeleteKeyDialog` if
+`deleted_fingerprints` is non-empty.
+
 `KeyListView.selected_key()`/`selected_subkey()` (backed by a
 `selectionChanged` Qt signal, emitted on either tree's selection changing)
 let `MainWindow` read the current selection to enable/disable the
@@ -1727,6 +1746,39 @@ nothing sane to fall back to:
   passphrase cache, …) can't be saved either while the keyserver list is
   in a state that would leave `get_checked_keyserver_urls()` empty.
 
+### Third-party signatures from keyservers (`self-sigs-only`)
+
+GnuPG applies its `self-sigs-only` keyserver option to **every** keyserver
+fetch — verified empirically on 2.4.4 with no system `gpg.conf`, not taken
+from the docs (which suggest it's only a fallback for oversized keys):
+fetching Greg Kroah-Hartman's key (`647F2865…6092693E`) from
+`keyserver.ubuntu.com` kept its 4 self-signatures and dropped all 222
+third-party ones, whether through `gpg --recv-keys` or python-gnupg's
+`recv_keys()`, and even for a signer already in the keyring. It is
+`self-sigs-only` alone that does it: `--keyserver-options
+no-self-sigs-only` brings all 222 back, while `--import-options
+no-import-clean` on its own changes nothing. File imports are unaffected
+(a keyserver option only).
+
+That default is GnuPG's answer to certificate flooding (CVE-2019-13050),
+so turning it off is an opt-in preference, off by default:
+`preferences.get_keep_third_party_signatures()` (Preferences → Key
+Servers, `chkThirdPartySignatures`), pushed by `MainWindow` into
+`gpg_backend.set_keep_third_party_signatures()` at startup and after the
+Settings dialog is accepted. `_keyserver_fetch_args()` then adds
+`--keyserver-options no-self-sigs-only` to every keyserver fetch:
+`import_from_keyserver()`'s `recv_keys()` and its email lookup
+(`_locate_key_by_email()`, *before* `--locate-keys` like every other
+option there), `refresh_from_keyserver()` and
+`download_unknown_signatures()`. A module-level setting rather than a
+parameter, so the scratch-keyring backends
+`preview_import_from_keyserver*()` build internally honor it too without
+threading it through every call; `tests/conftest.py`'s autouse
+`_isolated_third_party_signatures` fixture resets it around each test.
+Real-server check with the option on: the same 222 signatures arrive via
+`download_unknown_signatures()`. `keys.openpgp.org` never serves
+third-party signatures regardless.
+
 ### From keyserver → multiple checked servers, not one field
 
 `ImportKeyDialog`'s "From keyserver" tab used to have its own `txtKeyserver`
@@ -2261,7 +2313,21 @@ reports per-file translated/fuzzy/untranslated counts. Both are genuinely
 separate from `make translate`/`tools/po_check.py` (the app's own UI
 string catalog, pybabel-based, single domain) — different toolchain,
 different files, no shared code between them despite both being ".po
-files for PBNightingale."
+files for PBNightingale." (Except the final `tools/fix_po_files.py` pass,
+run by both.)
+
+Line wrapping: sphinx-intl keeps an existing `msgstr` exactly as written,
+so a translation pasted in as one long line (some were 400+ characters)
+stays that way forever — unreadable, and a one-word fix shows up as a
+whole-paragraph diff. `tools/fix_po_files.py` therefore re-wraps any
+`msgid`/`msgstr` block with a line over 80 characters to pybabel's own
+76-column layout (`babel.messages.pofile.normalize()`), in both the app and
+the docs catalogs; blocks already within the limit are left byte-for-byte
+alone. A few single-line entries of up to ~84 characters remain: that's
+pybabel's own layout (a string fitting in 76 columns stays on the
+`msgid`/`msgstr` line), and `pybabel update` would restore it anyway.
+Babel never breaks a line on a no-break space, so French typography
+(`« texte »`, `mot : suite`) survives re-wrapping intact.
 
 Gotcha found empirically: `sphinx-build -b gettext <src> <out> <paths>`
 takes individual **files**, not a directory — passing `docs/manual` as a

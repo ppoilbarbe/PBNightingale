@@ -1309,7 +1309,7 @@ def test_on_key_delete_opens_dialog_for_the_selected_key(qtbot, monkeypatch):
 
     window._ui.actionKeyDelete.trigger()
 
-    assert opened_with == [_PERSONAL_KEY]
+    assert opened_with == [[_PERSONAL_KEY]]
 
 
 def test_on_key_delete_does_nothing_without_a_selection(qtbot, monkeypatch):
@@ -2069,3 +2069,269 @@ def test_key_list_sort_order_persists_across_instances(qtbot, monkeypatch):
     )
 
     assert second_key_view.save_sort_state() == (3, Qt.SortOrder.AscendingOrder.value)
+
+
+# ── Multi-key selection ─────────────────────────────────────────────────
+
+
+def _make_window_with_both_keys_selected(qtbot, monkeypatch):
+    window = _make_window_with_keys(qtbot, monkeypatch, [_PERSONAL_KEY, _PUBLIC_KEY])
+    tree = window._ui.keyListView._ui.treeKeys
+    tree.topLevelItem(0).child(0).setSelected(True)
+    tree.topLevelItem(1).child(0).setSelected(True)
+    return window
+
+
+def test_several_selected_keys_enable_only_multi_key_actions(qtbot, monkeypatch):
+    window = _make_window_with_both_keys_selected(qtbot, monkeypatch)
+    ui = window._ui
+
+    for action in (
+        ui.actionKeyCopyId,
+        ui.actionKeyExport,
+        ui.actionKeyDelete,
+        ui.actionKeySign,
+        ui.actionKeySetOwnerTrust,
+        ui.actionServerPublish,
+    ):
+        assert action.isEnabled() is True, action.text()
+    for action in (
+        ui.actionKeyExpire,
+        ui.actionKeyRevoke,
+        ui.actionKeyBackup,
+        ui.actionKeyChangePassphrase,
+        ui.actionKeySubkeyAdd,
+        ui.actionKeySubkeyCopyId,
+        ui.actionKeySubkeyExpire,
+        ui.actionKeySubkeyRevoke,
+        ui.actionKeyUidAdd,
+        ui.actionKeyUidCopyEmail,
+        ui.actionKeyUidSetPrimary,
+        ui.actionKeyUidRevoke,
+        ui.actionKeyPhotoAdd,
+        ui.actionKeyPhotoShow,
+        ui.actionKeyPhotoRevoke,
+    ):
+        assert action.isEnabled() is False, action.text()
+
+
+def test_on_key_copy_id_copies_every_selected_fingerprint(qtbot, monkeypatch):
+    from PySide6.QtWidgets import QApplication
+
+    window = _make_window_with_both_keys_selected(qtbot, monkeypatch)
+
+    window._ui.actionKeyCopyId.trigger()
+
+    assert QApplication.clipboard().text() == (
+        f"{_PERSONAL_KEY.fingerprint}\n{_PUBLIC_KEY.fingerprint}"
+    )
+
+
+def test_on_key_export_writes_every_selected_key_to_one_file(
+    qtbot, monkeypatch, tmp_path
+):
+    from PySide6.QtWidgets import QFileDialog
+
+    from pbnightingale.core import gpg_backend
+
+    window = _make_window_with_both_keys_selected(qtbot, monkeypatch)
+    out_path = tmp_path / "exported.asc"
+    suggested = []
+
+    def _fake_save(parent, title, name, filters):
+        suggested.append(name)
+        return str(out_path), ""
+
+    monkeypatch.setattr(QFileDialog, "getSaveFileName", staticmethod(_fake_save))
+
+    class _FakeBackend:
+        def export_public_key(self, fingerprint):
+            return f"[{fingerprint}]"
+
+    monkeypatch.setattr(gpg_backend, "default_backend", _FakeBackend)
+
+    window._ui.actionKeyExport.trigger()
+
+    assert suggested == ["keys.asc"]
+    assert out_path.read_text(encoding="utf-8") == (
+        f"[{_PERSONAL_KEY.fingerprint}][{_PUBLIC_KEY.fingerprint}]"
+    )
+    assert window.statusBar().currentMessage() == f"2 keys exported to {out_path}"
+
+
+def test_on_key_delete_opens_dialog_for_every_selected_key(qtbot, monkeypatch):
+    from pbnightingale.ui.delete_key_dialog import DeleteKeyDialog
+
+    window = _make_window_with_both_keys_selected(qtbot, monkeypatch)
+    opened_with = []
+    original_init = DeleteKeyDialog.__init__
+
+    def _fake_init(self, keys, parent=None):
+        opened_with.append(list(keys))
+        original_init(self, keys, parent)
+
+    monkeypatch.setattr(DeleteKeyDialog, "__init__", _fake_init)
+    monkeypatch.setattr(
+        DeleteKeyDialog, "exec", lambda self: DeleteKeyDialog.DialogCode.Rejected
+    )
+
+    window._ui.actionKeyDelete.trigger()
+
+    assert opened_with == [[_PERSONAL_KEY, _PUBLIC_KEY]]
+
+
+def test_on_key_delete_refreshes_after_a_partial_delete_even_if_cancelled(
+    qtbot, monkeypatch
+):
+    from pbnightingale.ui.delete_key_dialog import DeleteKeyDialog
+
+    window = _make_window_with_both_keys_selected(qtbot, monkeypatch)
+
+    def _fake_exec(self):
+        self.deleted_fingerprints.append(_PERSONAL_KEY.fingerprint)
+        return DeleteKeyDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(DeleteKeyDialog, "exec", _fake_exec)
+    calls = []
+    monkeypatch.setattr(window, "refresh_keys", lambda **kwargs: calls.append(kwargs))
+
+    window._ui.actionKeyDelete.trigger()
+
+    assert calls == [{}]
+
+
+def test_on_key_sign_and_owner_trust_open_dialogs_for_every_selected_key(
+    qtbot, monkeypatch
+):
+    from pbnightingale.ui.set_owner_trust_dialog import SetOwnerTrustDialog
+    from pbnightingale.ui.sign_key_dialog import SignKeyDialog
+
+    window = _make_window_with_both_keys_selected(qtbot, monkeypatch)
+    opened = []
+    monkeypatch.setattr(
+        SignKeyDialog,
+        "exec",
+        lambda self: (
+            opened.append(list(self._pending)) or SignKeyDialog.DialogCode.Rejected
+        ),
+    )
+    monkeypatch.setattr(
+        SetOwnerTrustDialog,
+        "exec",
+        lambda self: (
+            opened.append(list(self._fingerprints))
+            or SetOwnerTrustDialog.DialogCode.Rejected
+        ),
+    )
+
+    window._ui.actionKeySign.trigger()
+    window._ui.actionKeySetOwnerTrust.trigger()
+
+    both = [_PERSONAL_KEY.fingerprint, _PUBLIC_KEY.fingerprint]
+    assert opened == [both, both]
+
+
+def test_on_server_publish_publishes_every_selected_key(qtbot, monkeypatch):
+    from pbnightingale.core import gpg_backend
+    from pbnightingale.ui.publish_key_dialog import PublishKeyDialog
+
+    window = _make_window_with_both_keys_selected(qtbot, monkeypatch)
+    calls = []
+
+    class _FakeBackend:
+        def publish_to_keyservers(self, fingerprint, keyservers):
+            calls.append(fingerprint)
+            return keyservers
+
+    monkeypatch.setattr(gpg_backend, "default_backend", _FakeBackend)
+    monkeypatch.setattr(
+        PublishKeyDialog, "exec", lambda self: PublishKeyDialog.DialogCode.Accepted
+    )
+    monkeypatch.setattr(
+        PublishKeyDialog, "selected_keyservers", lambda self: ["hkps://a.example"]
+    )
+
+    window._ui.actionServerPublish.trigger()
+
+    qtbot.waitUntil(
+        lambda: (
+            window.statusBar().currentMessage()
+            == "2 keys published to hkps://a.example"
+        )
+    )
+    assert calls == [_PERSONAL_KEY.fingerprint, _PUBLIC_KEY.fingerprint]
+
+
+def test_on_server_refresh_refreshes_every_selected_key(qtbot, monkeypatch):
+    from pbnightingale import preferences
+    from pbnightingale.core import gpg_backend
+
+    preferences.set_keyservers([("hkps://a.example", True)])
+    window = _make_window_with_both_keys_selected(qtbot, monkeypatch)
+    _accept_refresh_dialogs(monkeypatch)
+    calls = []
+
+    class _FakeBackend:
+        def refresh_from_keyserver(self, fingerprints=None, *, keyservers):
+            calls.append(fingerprints)
+            return []
+
+        def list_keys(self):
+            return [_PERSONAL_KEY, _PUBLIC_KEY]
+
+    monkeypatch.setattr(gpg_backend, "default_backend", _FakeBackend)
+
+    window._ui.actionServerRefresh.trigger()
+
+    qtbot.waitUntil(lambda: calls != [])
+    assert calls == [[_PERSONAL_KEY.fingerprint, _PUBLIC_KEY.fingerprint]]
+
+
+def test_manual_refresh_keeps_a_multi_key_selection(qtbot, monkeypatch):
+    window = _make_window_with_both_keys_selected(qtbot, monkeypatch)
+    key_view = window._ui.keyListView
+
+    window.refresh_keys()
+
+    qtbot.waitUntil(lambda: window._ui.actionKeyRefresh.isEnabled())
+    assert [k.fingerprint for k in key_view.selected_keys()] == [
+        _PERSONAL_KEY.fingerprint,
+        _PUBLIC_KEY.fingerprint,
+    ]
+
+
+def test_startup_applies_the_third_party_signatures_preference(qtbot):
+    from pbnightingale import preferences
+    from pbnightingale.core import gpg_backend
+
+    preferences.set_keep_third_party_signatures(True)
+
+    window = MainWindow()
+    qtbot.addWidget(window)
+
+    assert gpg_backend._keyserver_fetch_args() == [
+        "--keyserver-options",
+        "no-self-sigs-only",
+    ]
+
+
+def test_accepting_settings_applies_the_third_party_signatures_preference(
+    qtbot, monkeypatch
+):
+    from pbnightingale import preferences
+    from pbnightingale.core import gpg_backend
+    from pbnightingale.ui.settings_dialog import SettingsDialog
+
+    window = MainWindow()
+    qtbot.addWidget(window)
+    assert gpg_backend._keyserver_fetch_args() == []
+
+    def _fake_exec(self):
+        preferences.set_keep_third_party_signatures(True)
+        return SettingsDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(SettingsDialog, "exec", _fake_exec)
+
+    window._ui.actionSettings.trigger()
+
+    assert gpg_backend._keyserver_fetch_args() != []

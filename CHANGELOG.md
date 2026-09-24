@@ -17,6 +17,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `docs/_build/html-<lang>/`), without having to set
   `READTHEDOCS_LANGUAGE` by hand; a plain `make docs` still builds
   English, whatever the user's own `LANG` locale
+- Key list: several keys can be selected at once (Ctrl/Shift-click). The
+  Details/Signatures panel is then emptied, as with no selection, and only
+  the actions applying to every selected key with the same options stay
+  enabled: Copy ID (one fingerprint per line), Export (all keys into one
+  file), Delete, Sign key (same signer, verification level and
+  passphrase), Set owner trust (same level), Publish and keyserver Refresh
+  ("the N selected keys only"); a right-click inside the selection keeps
+  it, and a keyring reload restores it. A mid-batch failure while deleting
+  or signing keeps track of the keys already processed, so a retry skips
+  them
+- Preferences → Key Servers: new "Import other people's signatures along
+  with keys" option, off by default. GnuPG keeps only a key's
+  self-signatures when fetching it from a keyserver (its protection
+  against certificate flooding, CVE-2019-13050), so third-party
+  signatures never arrived through Import, Search, Refresh or Download
+  Unknown Keys; checking the option passes
+  `--keyserver-options no-self-sigs-only` to every keyserver fetch. The
+  user manual explains the trade-off (Preferences, "Other people's
+  signatures") and how signatures travel otherwise
 
 ### Changed
 
@@ -26,11 +45,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `make docs-translate` now drops obsolete entries (old translations) from
   the documentation `.po` files, as `make translate` already did for the
   application's; they remain available in Git history
+- French translations (application and manual) now follow French
+  typography: a no-break space before `:` and inside « », a narrow
+  no-break space before `;`, `?` and `!`
+- `make translate` and `make docs-translate` now re-wrap any `.po` entry
+  with a line longer than 80 characters to pybabel's 76-column layout; the
+  manual's French catalogs, where some translations were single lines of
+  400+ characters, have been re-wrapped accordingly
 - README and manual: the "Why" section no longer suggests that only people
   migrating to Linux shy away from encryption keys
 
 ### Fixed
 
+- User manual: "Refreshing from keyservers" claimed a refresh picks up new
+  signatures from other people, which GnuPG's default keyserver settings
+  prevent; it now says when they do
+- French user manual: the Import, Search and Publish paragraphs were
+  missing their action icon, and "Refresh" was translated as
+  « Rafraîchir » instead of the interface's « Actualiser »
+- Key list: deselecting a key now empties the identities/photos/subkeys
+  lists too, so a stale identity, photo or subkey selection hidden behind
+  the placeholder no longer keeps its actions (e.g. Copy email) enabled
 - About dialog: the "License:" label's `<b>` markup was part of the
   translatable string; bold formatting is now applied outside translation,
   like every other label in the dialog

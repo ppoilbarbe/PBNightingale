@@ -18,6 +18,18 @@ available from a right-click context menu on the relevant list (or press
 ``c`` to open it from the keyboard), and from the corresponding menu bar
 entry.
 
+Several keys can be selected at once with ``Ctrl``-click or
+``Shift``-click. The details panel is then emptied, as when no key is
+selected, and only the actions applying to every selected key with the
+same options stay enabled: **Copy ID** (one fingerprint per line),
+**Export…** (all keys into a single file), **Delete…**, **Sign key…** (same
+signing key, verification level and passphrase), **Set owner trust…**
+(same level for all), **Publish…** and **Refresh** from keyservers.
+Actions needing a key's own passphrase or its details (expiration,
+revocation, backup, passphrase change, identities, photos, subkeys) are
+only available for a single key. Right-clicking inside the selection
+keeps it, so the context menu acts on every selected key.
+
 The unlabeled column next to each key's name shows a lock icon for any
 key you hold the private part of: unlocked while its passphrase is
 currently cached in memory (see :doc:`concepts`, "Your passphrase" — GPG

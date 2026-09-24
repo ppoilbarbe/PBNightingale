@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QDialog,
     QDialogButtonBox,
@@ -84,6 +85,39 @@ class Ui_SettingsDialog:
             _("Restore Default List"), keyservers_group
         )
         keyservers_layout.addWidget(self.btnKeyserverRestoreDefaults)
+        self.chkThirdPartySignatures = QCheckBox(
+            _("Import other people's signatures along with keys"), keyservers_group
+        )
+        self.chkThirdPartySignatures.setToolTip(
+            _(
+                "Off by default: GnuPG then keeps only the owner's own "
+                "signatures when fetching a key from a keyserver."
+            )
+        )
+        self.chkThirdPartySignatures.setWhatsThis(
+            _(
+                "By default, GnuPG discards every signature made by other "
+                "people when it fetches a key from a keyserver, keeping only "
+                "the owner's own. This protects against an attack where "
+                "someone attaches tens of thousands of bogus signatures to a "
+                "key to make it unusable. Check this box to import those "
+                "signatures anyway, so the web of trust can work from "
+                "keyserver data: keys.openpgp.org never serves them, but "
+                "keyserver.ubuntu.com does. Only do so if you rely on the web "
+                "of trust."
+            )
+        )
+        keyservers_layout.addWidget(self.chkThirdPartySignatures)
+        self.lblThirdPartySignaturesWarning = QLabel(
+            _(
+                "Leave unchecked unless you rely on the web of trust: a key "
+                "flooded with bogus signatures can then slow down or block "
+                "GnuPG."
+            ),
+            keyservers_group,
+        )
+        self.lblThirdPartySignaturesWarning.setWordWrap(True)
+        keyservers_layout.addWidget(self.lblThirdPartySignaturesWarning)
         layout.addWidget(keyservers_group)
 
         self.lblNotice = QLabel(

@@ -110,6 +110,18 @@ def _isolated_gnupghome(gnupg_home):
 
 
 @pytest.fixture(autouse=True)
+def _isolated_third_party_signatures():
+    """Reset gpg_backend's module-level keyserver signature setting, which
+    MainWindow (or a test) may flip and would otherwise leak into the next.
+    """
+    from pbnightingale.core import gpg_backend
+
+    gpg_backend.set_keep_third_party_signatures(False)
+    yield
+    gpg_backend.set_keep_third_party_signatures(False)
+
+
+@pytest.fixture(autouse=True)
 def _isolated_passphrase_cache():
     """Ensure no cached passphrase leaks between tests — this module-level
     cache otherwise persists across the whole test session.

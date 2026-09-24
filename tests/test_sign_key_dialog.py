@@ -69,14 +69,14 @@ _MY_OTHER_KEY = Key(
 
 
 def test_explanation_mentions_the_target_uid(qtbot):
-    dialog = SignKeyDialog(_TARGET_KEY, [_MY_KEY])
+    dialog = SignKeyDialog([_TARGET_KEY], [_MY_KEY])
     qtbot.addWidget(dialog)
 
     assert _TARGET_KEY.uids[0].value in dialog._ui.lblExplanation.text()
 
 
 def test_sign_as_combo_lists_certify_capable_own_keys(qtbot):
-    dialog = SignKeyDialog(_TARGET_KEY, [_MY_KEY])
+    dialog = SignKeyDialog([_TARGET_KEY], [_MY_KEY])
     qtbot.addWidget(dialog)
 
     assert dialog._ui.cmbSignAs.count() == 1
@@ -84,14 +84,14 @@ def test_sign_as_combo_lists_certify_capable_own_keys(qtbot):
 
 
 def test_local_only_is_checked_by_default(qtbot):
-    dialog = SignKeyDialog(_TARGET_KEY, [_MY_KEY])
+    dialog = SignKeyDialog([_TARGET_KEY], [_MY_KEY])
     qtbot.addWidget(dialog)
 
     assert dialog._ui.chkLocalOnly.isChecked() is True
 
 
 def test_ok_disabled_with_a_message_when_no_signing_key_available(qtbot):
-    dialog = SignKeyDialog(_TARGET_KEY, [])
+    dialog = SignKeyDialog([_TARGET_KEY], [])
     qtbot.addWidget(dialog)
 
     assert dialog._ok_button.isEnabled() is False
@@ -123,7 +123,7 @@ def test_sign_succeeds_with_mocked_backend(qtbot, monkeypatch):
             return _TARGET_KEY
 
     monkeypatch.setattr(gpg_backend, "default_backend", _FakeBackend)
-    dialog = SignKeyDialog(_TARGET_KEY, [_MY_KEY])
+    dialog = SignKeyDialog([_TARGET_KEY], [_MY_KEY])
     qtbot.addWidget(dialog)
     dialog._ui.txtPassphrase.setText("s3cret")
 
@@ -145,7 +145,7 @@ def test_successful_sign_caches_the_passphrase_under_the_signer(qtbot, monkeypat
             return _TARGET_KEY
 
     monkeypatch.setattr(gpg_backend, "default_backend", _FakeBackend)
-    dialog = SignKeyDialog(_TARGET_KEY, [_MY_KEY])
+    dialog = SignKeyDialog([_TARGET_KEY], [_MY_KEY])
     qtbot.addWidget(dialog)
     dialog._ui.txtPassphrase.setText("s3cret")
 
@@ -158,7 +158,7 @@ def test_successful_sign_caches_the_passphrase_under_the_signer(qtbot, monkeypat
 
 def test_switching_signer_prefills_that_signers_cached_passphrase(qtbot):
     passphrase_cache.store(_MY_OTHER_KEY.fingerprint, Passphrase("other-pass"), 60)
-    dialog = SignKeyDialog(_TARGET_KEY, [_MY_KEY, _MY_OTHER_KEY])
+    dialog = SignKeyDialog([_TARGET_KEY], [_MY_KEY, _MY_OTHER_KEY])
     qtbot.addWidget(dialog)
     assert dialog._ui.txtPassphrase.text() == ""
 
@@ -174,7 +174,7 @@ def test_sign_reports_backend_failure_and_reenables_form(qtbot, monkeypatch):
             raise GPGBackendError("boom")
 
     monkeypatch.setattr(gpg_backend, "default_backend", _FailingBackend)
-    dialog = SignKeyDialog(_TARGET_KEY, [_MY_KEY])
+    dialog = SignKeyDialog([_TARGET_KEY], [_MY_KEY])
     qtbot.addWidget(dialog)
 
     dialog._ui.buttonBox.accepted.emit()
@@ -190,7 +190,7 @@ def test_sign_bad_passphrase_shows_friendly_message(qtbot, monkeypatch):
             raise BadPassphraseError("[GNUPG:] ERROR keyedit.sign-key 67108875")
 
     monkeypatch.setattr(gpg_backend, "default_backend", _FailingBackend)
-    dialog = SignKeyDialog(_TARGET_KEY, [_MY_KEY])
+    dialog = SignKeyDialog([_TARGET_KEY], [_MY_KEY])
     qtbot.addWidget(dialog)
 
     dialog._ui.buttonBox.accepted.emit()
@@ -205,9 +205,84 @@ def test_sign_bad_passphrase_shows_friendly_message(qtbot, monkeypatch):
 
 
 def test_status_label_text_is_selectable(qtbot):
-    dialog = SignKeyDialog(_TARGET_KEY, [_MY_KEY])
+    dialog = SignKeyDialog([_TARGET_KEY], [_MY_KEY])
     qtbot.addWidget(dialog)
 
     flags = dialog._ui.lblStatus.textInteractionFlags()
 
     assert flags & Qt.TextInteractionFlag.TextSelectableByMouse
+
+
+_OTHER_TARGET_KEY = Key(
+    **{
+        **_TARGET_KEY.__dict__,
+        "fingerprint": "DDDD111122223333444455556666777788889999",
+        "keyid": "1212343456567878",
+    }
+)
+
+
+def test_explanation_lists_every_key_id_for_several_keys(qtbot):
+    dialog = SignKeyDialog([_TARGET_KEY, _OTHER_TARGET_KEY], [_MY_KEY])
+    qtbot.addWidget(dialog)
+
+    text = dialog._ui.lblExplanation.text()
+    assert "2 keys" in text
+    assert _TARGET_KEY.keyid in text
+    assert _OTHER_TARGET_KEY.keyid in text
+
+
+def test_sign_several_keys_with_the_same_options(qtbot, monkeypatch):
+    calls = []
+
+    class _FakeBackend:
+        def sign_key(self, fingerprint, passphrase, **kwargs):
+            calls.append((fingerprint, passphrase, kwargs))
+            return _TARGET_KEY
+
+    monkeypatch.setattr(gpg_backend, "default_backend", _FakeBackend)
+    dialog = SignKeyDialog([_TARGET_KEY, _OTHER_TARGET_KEY], [_MY_KEY])
+    qtbot.addWidget(dialog)
+    dialog._ui.txtPassphrase.setText("s3cret")
+    dialog._ui.cmbCertLevel.setCurrentIndex(dialog._ui.cmbCertLevel.findData(2))
+
+    dialog._ui.buttonBox.accepted.emit()
+
+    qtbot.waitUntil(lambda: dialog.updated_key is _TARGET_KEY)
+    options = {
+        "signing_key_fingerprint": _MY_KEY.fingerprint,
+        "cert_level": 2,
+        "local_only": True,
+    }
+    assert calls == [
+        (_TARGET_KEY.fingerprint, Passphrase("s3cret"), options),
+        (_OTHER_TARGET_KEY.fingerprint, Passphrase("s3cret"), options),
+    ]
+
+
+def test_retry_after_a_mid_batch_failure_skips_keys_already_signed(qtbot, monkeypatch):
+    calls = []
+    fail = [True]
+
+    class _FlakyBackend:
+        def sign_key(self, fingerprint, passphrase, **kwargs):
+            calls.append(fingerprint)
+            if fingerprint == _OTHER_TARGET_KEY.fingerprint and fail[0]:
+                fail[0] = False
+                raise GPGBackendError("boom")
+            return _TARGET_KEY
+
+    monkeypatch.setattr(gpg_backend, "default_backend", _FlakyBackend)
+    dialog = SignKeyDialog([_TARGET_KEY, _OTHER_TARGET_KEY], [_MY_KEY])
+    qtbot.addWidget(dialog)
+
+    dialog._ui.buttonBox.accepted.emit()
+    qtbot.waitUntil(lambda: "boom" in dialog._ui.lblStatus.text())
+    dialog._ui.buttonBox.accepted.emit()
+
+    qtbot.waitUntil(lambda: dialog.updated_key is _TARGET_KEY)
+    assert calls == [
+        _TARGET_KEY.fingerprint,
+        _OTHER_TARGET_KEY.fingerprint,
+        _OTHER_TARGET_KEY.fingerprint,
+    ]

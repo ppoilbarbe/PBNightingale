@@ -2300,6 +2300,7 @@ class GPGBackend:
                 "--with-colons",
                 "--keyserver",
                 keyserver,
+                *_keyserver_fetch_args(),
                 "--auto-key-locate",
                 "wkd,keyserver",
                 "--locate-keys",
@@ -2359,7 +2360,9 @@ class GPGBackend:
             return [
                 ImportedKey(self._find_key(fingerprint), fingerprint not in existing)
             ]
-        result = _clean_stderr(self._gpg.recv_keys(keyserver, query))
+        result = _clean_stderr(
+            self._gpg.recv_keys(keyserver, query, extra_args=_keyserver_fetch_args())
+        )
         if not result.fingerprints:
             if (
                 getattr(result, "count", 0)
@@ -2867,7 +2870,11 @@ class GPGBackend:
         errors: list[str] = []
         any_ok = False
         for keyserver in keyservers:
-            result = _clean_stderr(self._gpg.recv_keys(keyserver, *fingerprints))
+            result = _clean_stderr(
+                self._gpg.recv_keys(
+                    keyserver, *fingerprints, extra_args=_keyserver_fetch_args()
+                )
+            )
             stderr = str(result.stderr)
             if result.returncode != 0 and not _is_no_data_failure(stderr):
                 errors.append(stderr or f"Could not refresh keys from {keyserver}")
@@ -2984,7 +2991,9 @@ class GPGBackend:
         for identifier in identifiers:
             key = None
             for keyserver in keyservers:
-                result = self._gpg.recv_keys(keyserver, identifier)
+                result = self._gpg.recv_keys(
+                    keyserver, identifier, extra_args=_keyserver_fetch_args()
+                )
                 if result.fingerprints:
                     key = self._find_key(result.fingerprints[0])
             results.append(DownloadedSignature(identifier, key))
@@ -3085,6 +3094,54 @@ class GPGBackend:
             if key.fingerprint == fingerprint:
                 return key
         raise GPGBackendError(f"Key {fingerprint} not found in keyring")
+
+
+# ---------------------------------------------------------------------------
+# Third-party signatures from keyservers
+# ---------------------------------------------------------------------------
+
+# GnuPG (verified: 2.4.4, no system gpg.conf) applies its `self-sigs-only`
+# keyserver option to *every* keyserver fetch, not just as a fallback for
+# oversized keys: only the key owner's own self-signatures survive the
+# import, every third-party certification is dropped — even one whose
+# signer is already in the keyring. That default is GnuPG's defense against
+# certificate flooding (CVE-2019-13050), so turning it off is opt-in only,
+# via Preferences → Key Servers, applied by MainWindow at startup and
+# whenever Preferences are saved.
+# Module-level rather than a GPGBackend parameter: every keyserver fetch —
+# including the scratch-keyring backends preview_import_from_keyserver*()
+# creates internally — must honor it without threading it through each call.
+_keep_third_party_signatures = False
+
+
+def set_keep_third_party_signatures(enabled: bool) -> None:
+    """Choose whether keyserver fetches keep third-party signatures.
+
+    Parameters
+    ----------
+    enabled
+        ``True`` passes ``--keyserver-options no-self-sigs-only`` to every
+        keyserver fetch, so other people's certifications are imported
+        along with the key; ``False`` (GnuPG's own default) keeps only
+        the owner's self-signatures.
+    """
+    global _keep_third_party_signatures
+    _keep_third_party_signatures = enabled
+
+
+def _keyserver_fetch_args() -> list[str]:
+    """Return the extra gpg arguments every keyserver fetch must carry.
+
+    Returns
+    -------
+    :
+        ``["--keyserver-options", "no-self-sigs-only"]`` when third-party
+        signatures are kept (see ``set_keep_third_party_signatures()``),
+        else nothing.
+    """
+    if _keep_third_party_signatures:
+        return ["--keyserver-options", "no-self-sigs-only"]
+    return []
 
 
 # ---------------------------------------------------------------------------

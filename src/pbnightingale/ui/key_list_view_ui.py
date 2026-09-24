@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
@@ -65,6 +66,12 @@ class Ui_KeyListView:
             [_("Name"), "", _("Email"), _("Key ID"), _("Expires")]
         )
         self.treeKeys.setRootIsDecorated(True)
+        # Several keys can be selected at once (Ctrl/Shift-click): only the
+        # actions applying identically to all of them stay enabled then,
+        # and the detail panel is emptied — see KeyListView.selected_keys().
+        self.treeKeys.setSelectionMode(
+            QAbstractItemView.SelectionMode.ExtendedSelection
+        )
         # Sorting is applied manually within each "My keys"/"Other keys"
         # group (see KeyListView._on_header_section_clicked()) rather than
         # via QTreeWidget.setSortingEnabled(), which would sort the two
@@ -81,7 +88,10 @@ class Ui_KeyListView:
                 "remembered: unlocked if so, locked otherwise. "
                 "Double-click that icon to forget a remembered passphrase. "
                 "Click a column header to sort the keys within each group "
-                "by that column; click it again to reverse the order."
+                "by that column; click it again to reverse the order. "
+                "Ctrl-click or Shift-click to select several keys at once: "
+                "only the actions applying to all of them with the same "
+                "options stay available then."
             )
         )
 

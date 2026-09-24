@@ -1,4 +1,4 @@
-"""Publish Key dialog — picks which of the configured keyservers to publish a key to.
+"""Publish Key dialog — picks which of the configured keyservers to publish key(s) to.
 
 Lists every keyserver from Preferences ("Key Servers"), pre-checking
 whichever are checked there — the list itself isn't editable from here
@@ -9,6 +9,8 @@ goes to.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QDialog, QDialogButtonBox, QListWidgetItem
 
@@ -18,15 +20,16 @@ from pbnightingale.ui.publish_key_dialog_ui import Ui_PublishKeyDialog
 
 
 class PublishKeyDialog(GeometryMixin, QDialog):
-    """Lets the user pick which keyservers to publish a key to."""
+    """Lets the user pick which keyservers to publish one or several keys to."""
 
-    def __init__(self, keyid: str, parent=None) -> None:
+    def __init__(self, keyids: Sequence[str], parent=None) -> None:
         """Build the dialog, pre-checking every keyserver checked in Preferences.
 
         Parameters
         ----------
-        keyid
-            The key ID shown in the confirmation question.
+        keyids
+            The IDs of the keys to publish (at least one), shown in the
+            confirmation question.
         parent
             The owning window.
         """
@@ -35,7 +38,13 @@ class PublishKeyDialog(GeometryMixin, QDialog):
         self._ui.setupUi(self)
         self._init_geometry("publish_key_dialog")
 
-        self._ui.lblQuestion.setText(_("Publish {keyid} to:").format(keyid=keyid))
+        self._ui.lblQuestion.setText(
+            _("Publish {keyid} to:").format(keyid=keyids[0])
+            if len(keyids) == 1
+            else _("Publish these {n} keys ({keyids}) to:").format(
+                n=len(keyids), keyids=", ".join(keyids)
+            )
+        )
         self._ui.lblWarning.setText(
             _(
                 "Once a key is on a public keyserver, it generally cannot "

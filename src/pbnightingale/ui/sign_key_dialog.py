@@ -1,10 +1,13 @@
 """Sign Key dialog.
 
-Certifies every user ID of the selected key with one of the user's own
-secret keys, the foundation of the web of trust.
+Certifies every user ID of the selected key(s) with one of the user's own
+secret keys, the foundation of the web of trust. Several keys are signed
+with the same signer, verification level and passphrase.
 """
 
 from __future__ import annotations
+
+from collections.abc import Sequence
 
 from PySide6.QtWidgets import QDialog, QDialogButtonBox
 
@@ -36,13 +39,16 @@ def _format_key_choice(key: Key) -> str:
 class SignKeyDialog(GeometryMixin, KeyOperationDialog, QDialog):
     """Dialog for signing another key's user IDs."""
 
-    def __init__(self, target_key: Key, my_keys: list[Key], parent=None) -> None:
-        """Build the dialog for certifying *target_key*.
+    def __init__(
+        self, target_keys: Sequence[Key], my_keys: list[Key], parent=None
+    ) -> None:
+        """Build the dialog for certifying *target_keys*.
 
         Parameters
         ----------
-        target_key
-            The key being signed.
+        target_keys
+            The keys being signed (at least one), all with the same
+            options.
         my_keys
             Every key of the current user's own, to pick a signer from —
             only those with certify capability are offered.
@@ -50,15 +56,29 @@ class SignKeyDialog(GeometryMixin, KeyOperationDialog, QDialog):
             The owning widget, if any.
         """
         super().__init__(parent)
-        self._target_key = target_key
+        # Still to sign — pruned as each one succeeds, so retrying after a
+        # mid-batch failure doesn't try to re-sign an already-signed key.
+        self._pending = [key.fingerprint for key in target_keys]
         self._ui = Ui_SignKeyDialog()
         self._ui.setupUi(self)
         self._init_geometry("sign_key_dialog")
 
-        target_uid = target_key.uids[0].value if target_key.uids else target_key.keyid
-        self._ui.lblExplanation.setText(
-            _("Sign {uid} to vouch for it in the web of trust.").format(uid=target_uid)
-        )
+        if len(target_keys) == 1:
+            target_key = target_keys[0]
+            target_uid = (
+                target_key.uids[0].value if target_key.uids else target_key.keyid
+            )
+            explanation = _("Sign {uid} to vouch for it in the web of trust.").format(
+                uid=target_uid
+            )
+        else:
+            explanation = _(
+                "Sign these {n} keys to vouch for them in the web of trust: {keyids}."
+            ).format(
+                n=len(target_keys),
+                keyids=", ".join(key.keyid for key in target_keys),
+            )
+        self._ui.lblExplanation.setText(explanation)
 
         self._signers = [key for key in my_keys if key.can_certify]
         for key in self._signers:
@@ -111,20 +131,37 @@ class SignKeyDialog(GeometryMixin, KeyOperationDialog, QDialog):
         self._ok_button.setEnabled(enabled and bool(self._signers))
 
     def _on_sign(self) -> None:
-        """Sign the target key via the backend."""
+        """Sign every pending target key via the backend, one after the other."""
         signer: Key = self._ui.cmbSignAs.currentData()
         cert_level = self._ui.cmbCertLevel.currentData()
         local_only = self._ui.chkLocalOnly.isChecked()
         passphrase = Passphrase(self._ui.txtPassphrase.text())
+        pending = list(self._pending)
+        self._signed: list[str] = []
+        signed = self._signed
+
+        def _sign_all() -> Key:
+            backend = gpg_backend.default_backend()
+            key = None
+            for fingerprint in pending:
+                key = backend.sign_key(
+                    fingerprint,
+                    passphrase,
+                    signing_key_fingerprint=signer.fingerprint,
+                    cert_level=cert_level,
+                    local_only=local_only,
+                )
+                signed.append(fingerprint)
+            return key
 
         self._run_operation(
-            lambda: gpg_backend.default_backend().sign_key(
-                self._target_key.fingerprint,
-                passphrase,
-                signing_key_fingerprint=signer.fingerprint,
-                cert_level=cert_level,
-                local_only=local_only,
-            ),
+            _sign_all,
             busy_text=_("Signing key…"),
             error_template=_("Could not sign key: {error}"),
         )
+
+    def _on_operation_error(self, exc: Exception) -> None:
+        """Forget the keys already signed, then report *exc* as usual."""
+        done = set(self._signed)
+        self._pending = [fp for fp in self._pending if fp not in done]
+        super()._on_operation_error(exc)

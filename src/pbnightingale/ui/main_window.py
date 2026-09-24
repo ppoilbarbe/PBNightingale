@@ -56,6 +56,9 @@ class MainWindow(GeometryMixin, QMainWindow):
         self._pending_selection: tuple[
             str | None, str | None, str | None, int | None
         ] = (None, None, None, None)
+        # Set instead of _pending_selection when several keys were selected
+        # — there's no subkey/UID/photo sub-selection to restore then.
+        self._pending_multi_selection: list[str] = []
         self._pending_status_message: str | None = None
         self._refresh_progress: QProgressDialog | None = None
         self._signatures_progress: QProgressDialog | None = None
@@ -71,6 +74,9 @@ class MainWindow(GeometryMixin, QMainWindow):
         self._ui.actionServerRefresh.setEnabled(True)
         self._apply_toolbar_icon_size()
         activity_log.configure(preferences.get_activity_log_max_entries())
+        gpg_backend.set_keep_third_party_signatures(
+            preferences.get_keep_third_party_signatures()
+        )
         self.statusBar().showMessage(_("Ready"))
         self.refresh_keys()
 
@@ -208,22 +214,30 @@ class MainWindow(GeometryMixin, QMainWindow):
         )
 
     def _update_action_states(self) -> None:
-        """Enable/disable every selection-dependent action to match the key list's current selection."""
+        """Enable/disable every selection-dependent action to match the key list's current selection.
+
+        With several keys selected, ``selected_key()`` is ``None`` (the
+        detail panel is empty), so only the actions applying to every
+        selected key with the same options stay enabled: copy ID, export,
+        delete, sign, set owner trust and publish. Anything needing a
+        per-key passphrase or a single key's details stays disabled.
+        """
         key = self._ui.keyListView.selected_key()
+        any_key = bool(self._ui.keyListView.selected_keys())
         subkey = self._ui.keyListView.selected_subkey()
         uid = self._ui.keyListView.selected_uid()
         photo = self._ui.keyListView.selected_photo()
         has_secret = key is not None and key.has_secret
         # Copy/view actions are read-only, so available on any selected key
         # regardless of whether its secret part is held.
-        self._ui.actionKeyCopyId.setEnabled(key is not None)
+        self._ui.actionKeyCopyId.setEnabled(any_key)
         self._ui.actionKeySubkeyCopyId.setEnabled(subkey is not None)
         self._ui.actionKeyUidCopyEmail.setEnabled(uid is not None)
         self._ui.actionKeyPhotoShow.setEnabled(photo is not None)
-        self._ui.actionKeyExport.setEnabled(key is not None)
+        self._ui.actionKeyExport.setEnabled(any_key)
         self._ui.actionKeyBackup.setEnabled(has_secret)
         self._ui.actionKeyChangePassphrase.setEnabled(has_secret)
-        self._ui.actionKeyDelete.setEnabled(key is not None)
+        self._ui.actionKeyDelete.setEnabled(any_key)
         self._ui.actionKeySubkeyAdd.setEnabled(has_secret)
         self._ui.actionKeyExpire.setEnabled(has_secret)
         self._ui.actionKeyRevoke.setEnabled(
@@ -249,9 +263,9 @@ class MainWindow(GeometryMixin, QMainWindow):
         self._ui.actionKeyPhotoRevoke.setEnabled(
             has_secret and photo is not None and not photo.revoked
         )
-        self._ui.actionKeySign.setEnabled(key is not None)
-        self._ui.actionKeySetOwnerTrust.setEnabled(key is not None)
-        self._ui.actionServerPublish.setEnabled(key is not None)
+        self._ui.actionKeySign.setEnabled(any_key)
+        self._ui.actionKeySetOwnerTrust.setEnabled(any_key)
+        self._ui.actionServerPublish.setEnabled(any_key)
 
     def refresh_keys(
         self,
@@ -268,10 +282,16 @@ class MainWindow(GeometryMixin, QMainWindow):
             ``None`` for the default "N key(s) loaded" message.
         select_fingerprint
             Fingerprint to select once reloaded, or ``None`` to restore
-            whatever was already selected before the reload.
+            whatever was already selected (one key or several) before the
+            reload.
         """
+        self._pending_multi_selection = []
+        selected_keys = self._ui.keyListView.selected_keys()
         if select_fingerprint is not None:
             self._pending_selection = (select_fingerprint, None, None, None)
+        elif len(selected_keys) > 1:
+            self._pending_selection = (None, None, None, None)
+            self._pending_multi_selection = [key.fingerprint for key in selected_keys]
         else:
             key = self._ui.keyListView.selected_key()
             subkey = self._ui.keyListView.selected_subkey()
@@ -302,6 +322,8 @@ class MainWindow(GeometryMixin, QMainWindow):
             self._ui.keyListView.select_key(
                 fingerprint, subkey_keyid, uid_value, photo_index
             )
+        elif self._pending_multi_selection:
+            self._ui.keyListView.select_keys(self._pending_multi_selection)
         message = self._pending_status_message
         self._pending_status_message = None
         if message is not None:
@@ -463,10 +485,10 @@ class MainWindow(GeometryMixin, QMainWindow):
             self.refresh_keys()
 
     def _on_key_copy_id(self) -> None:
-        """Copy the selected key's fingerprint to the clipboard."""
-        key = self._ui.keyListView.selected_key()
-        if key is not None:
-            QApplication.clipboard().setText(key.fingerprint)
+        """Copy the selected keys' fingerprints to the clipboard, one per line."""
+        keys = self._ui.keyListView.selected_keys()
+        if keys:
+            QApplication.clipboard().setText("\n".join(k.fingerprint for k in keys))
 
     def _on_key_subkey_copy_id(self) -> None:
         """Copy the selected subkey's fingerprint to the clipboard."""
@@ -488,24 +510,24 @@ class MainWindow(GeometryMixin, QMainWindow):
         self._ui.keyListView.show_selected_photo()
 
     def _on_key_sign(self) -> None:
-        """Open the Sign Key dialog for the selected key and reload the keyring if a signature was added."""
+        """Open the Sign Key dialog for the selected key(s) and reload the keyring if a signature was added."""
         from pbnightingale.ui.sign_key_dialog import SignKeyDialog
 
-        key = self._ui.keyListView.selected_key()
-        if key is None:
+        keys = self._ui.keyListView.selected_keys()
+        if not keys:
             return
-        dialog = SignKeyDialog(key, self._ui.keyListView.my_keys(), self)
+        dialog = SignKeyDialog(keys, self._ui.keyListView.my_keys(), self)
         if dialog.exec() == SignKeyDialog.DialogCode.Accepted:
             self.refresh_keys()
 
     def _on_key_set_owner_trust(self) -> None:
-        """Open the Set Owner Trust dialog for the selected key and reload the keyring if its owner trust changed."""
+        """Open the Set Owner Trust dialog for the selected key(s) and reload the keyring if their owner trust changed."""
         from pbnightingale.ui.set_owner_trust_dialog import SetOwnerTrustDialog
 
-        key = self._ui.keyListView.selected_key()
-        if key is None:
+        keys = self._ui.keyListView.selected_keys()
+        if not keys:
             return
-        dialog = SetOwnerTrustDialog(key, self)
+        dialog = SetOwnerTrustDialog(keys, self)
         if dialog.exec() == SetOwnerTrustDialog.DialogCode.Accepted:
             self.refresh_keys()
 
@@ -573,38 +595,56 @@ class MainWindow(GeometryMixin, QMainWindow):
         return keyservers
 
     def _on_server_publish(self) -> None:
-        """Ask which keyservers to publish to, then publish the selected key in the background."""
-        key = self._ui.keyListView.selected_key()
-        if key is None:
+        """Ask which keyservers to publish to, then publish the selected key(s) in the background."""
+        keys = self._ui.keyListView.selected_keys()
+        if not keys:
             return
         from pbnightingale.ui.publish_key_dialog import PublishKeyDialog
 
-        dialog = PublishKeyDialog(key.keyid, self)
+        dialog = PublishKeyDialog([key.keyid for key in keys], self)
         if dialog.exec() != PublishKeyDialog.DialogCode.Accepted:
             return
         keyservers = dialog.selected_keyservers()
+        fingerprints = [key.fingerprint for key in keys]
         self._ui.actionServerPublish.setEnabled(False)
         self.statusBar().showMessage(_("Publishing…"))
+
+        def _publish_all() -> list[str]:
+            backend = gpg_backend.default_backend()
+            published: list[str] = []
+            for fingerprint in fingerprints:
+                for keyserver in backend.publish_to_keyservers(fingerprint, keyservers):
+                    if keyserver not in published:
+                        published.append(keyserver)
+            return published
+
         run_async(
             self._pool,
-            lambda: gpg_backend.default_backend().publish_to_keyservers(
-                key.fingerprint, keyservers
+            _publish_all,
+            on_success=lambda published: self._on_server_published(
+                published, len(fingerprints)
             ),
-            on_success=self._on_server_published,
             on_error=self._on_server_publish_failed,
         )
 
-    def _on_server_published(self, keyservers: list[str]) -> None:
+    def _on_server_published(self, keyservers: list[str], count: int = 1) -> None:
         """Report a successful keyserver publish in the status bar.
 
         Parameters
         ----------
         keyservers
-            The keyservers the key was actually published to.
+            The keyservers the key(s) were actually published to.
+        count
+            How many keys were published.
         """
         self._ui.actionServerPublish.setEnabled(True)
+        servers = ", ".join(keyservers)
         self.statusBar().showMessage(
-            _("Key published to {keyservers}").format(keyservers=", ".join(keyservers))
+            _("Key published to {keyservers}").format(keyservers=servers)
+            if count == 1
+            else _("{n} keys published to {keyservers}").format(
+                n=count, keyservers=servers
+            )
         )
 
     def _on_server_publish_failed(self, exc: Exception) -> None:
@@ -621,11 +661,13 @@ class MainWindow(GeometryMixin, QMainWindow):
             return
         from pbnightingale.ui.refresh_keys_dialog import RefreshKeysDialog
 
-        key = self._ui.keyListView.selected_key()
-        dialog = RefreshKeysDialog(has_selection=key is not None, parent=self)
+        keys = self._ui.keyListView.selected_keys()
+        dialog = RefreshKeysDialog(selected_count=len(keys), parent=self)
         if dialog.exec() != RefreshKeysDialog.DialogCode.Accepted:
             return
-        fingerprints = None if dialog.refresh_all() else [key.fingerprint]
+        fingerprints = (
+            None if dialog.refresh_all() else [key.fingerprint for key in keys]
+        )
 
         self._ui.actionServerRefresh.setEnabled(False)
         # A keyserver round-trip can take a while — a modal progress window
@@ -787,27 +829,34 @@ class MainWindow(GeometryMixin, QMainWindow):
             self.refresh_keys()
 
     def _on_key_export(self) -> None:
-        """Save the selected key's public part to a file chosen by the user."""
-        key = self._ui.keyListView.selected_key()
-        if key is None:
+        """Save the selected keys' public parts to a single file chosen by the user."""
+        keys = self._ui.keyListView.selected_keys()
+        if not keys:
             return
         path, _filter = QFileDialog.getSaveFileName(
             self,
             _("Export Key"),
-            f"{key.keyid}.asc",
+            f"{keys[0].keyid}.asc" if len(keys) == 1 else "keys.asc",
             _("ASCII-armored keys (*.asc)"),
         )
         if not path:
             return
         try:
-            armored = gpg_backend.default_backend().export_public_key(key.fingerprint)
+            backend = gpg_backend.default_backend()
+            # Concatenated armored blocks: gpg (and every OpenPGP tool)
+            # imports each block of such a file in turn.
+            armored = "".join(backend.export_public_key(k.fingerprint) for k in keys)
             Path(path).write_text(armored, encoding="utf-8")
         except (GPGBackendError, OSError) as exc:
             self.statusBar().showMessage(
                 _("Could not export key: {error}").format(error=str(exc))
             )
             return
-        self.statusBar().showMessage(_("Key exported to {path}").format(path=path))
+        self.statusBar().showMessage(
+            _("Key exported to {path}").format(path=path)
+            if len(keys) == 1
+            else _("{n} keys exported to {path}").format(n=len(keys), path=path)
+        )
 
     def _on_key_backup(self) -> None:
         """Open the Back Up Private Key dialog for the selected key."""
@@ -830,14 +879,17 @@ class MainWindow(GeometryMixin, QMainWindow):
             self.refresh_keys()
 
     def _on_key_delete(self) -> None:
-        """Open the Delete Key dialog for the selected key and reload the keyring if it was deleted."""
+        """Open the Delete Key dialog for the selected key(s) and reload the keyring if they were deleted."""
         from pbnightingale.ui.delete_key_dialog import DeleteKeyDialog
 
-        key = self._ui.keyListView.selected_key()
-        if key is None:
+        keys = self._ui.keyListView.selected_keys()
+        if not keys:
             return
-        dialog = DeleteKeyDialog(key, self)
-        if dialog.exec() == DeleteKeyDialog.DialogCode.Accepted:
+        dialog = DeleteKeyDialog(keys, self)
+        accepted = dialog.exec() == DeleteKeyDialog.DialogCode.Accepted
+        # Also after a cancel that followed a mid-batch failure: whatever
+        # was deleted before it is gone from the keyring either way.
+        if accepted or dialog.deleted_fingerprints:
             self.refresh_keys()
 
     def _on_settings(self) -> None:
@@ -848,6 +900,9 @@ class MainWindow(GeometryMixin, QMainWindow):
         if dialog.exec() == SettingsDialog.DialogCode.Accepted:
             self._apply_toolbar_icon_size()
             activity_log.configure(preferences.get_activity_log_max_entries())
+            gpg_backend.set_keep_third_party_signatures(
+                preferences.get_keep_third_party_signatures()
+            )
             if self._activity_log_dialog is not None:
                 self._activity_log_dialog.refresh()
 

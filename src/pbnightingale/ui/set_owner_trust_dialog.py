@@ -1,12 +1,15 @@
 """Set Owner Trust dialog.
 
 Records how much the current user trusts a key's owner to correctly
-certify *other* people's keys. A purely local judgment call: no
+certify *other* people's keys — for one key, or the same level for
+several at once. A purely local judgment call: no
 passphrase or secret key is involved (see
 ``core.gpg_backend.GPGBackend.set_owner_trust()``).
 """
 
 from __future__ import annotations
+
+from collections.abc import Sequence
 
 from PySide6.QtCore import QThreadPool
 from PySide6.QtWidgets import QDialog, QDialogButtonBox
@@ -34,32 +37,45 @@ _TRUST_CODE_TO_KEYWORD = {
 class SetOwnerTrustDialog(GeometryMixin, QDialog):
     """Dialog for setting how much a key's owner is trusted to certify others."""
 
-    def __init__(self, key: Key, parent=None) -> None:
-        """Build the dialog for *key*, preselecting its current owner trust.
+    def __init__(self, keys: Sequence[Key], parent=None) -> None:
+        """Build the dialog for *keys*, preselecting their current owner trust.
+
+        The combo box starts on the keys' current owner trust when they
+        all share it, on "Undefined" otherwise.
 
         Parameters
         ----------
-        key
-            The key whose owner trust is being set.
+        keys
+            The keys whose owner trust is being set (at least one).
         parent
             The owning widget, if any.
         """
         super().__init__(parent)
-        self._fingerprint = key.fingerprint
+        self._fingerprints = [key.fingerprint for key in keys]
         self._ui = Ui_SetOwnerTrustDialog()
         self._ui.setupUi(self)
         self._init_geometry("set_owner_trust_dialog")
         self._pool = QThreadPool(self)
         self.updated_key: Key | None = None
 
-        uid = key.uids[0].value if key.uids else key.keyid
-        self._ui.lblExplanation.setText(
-            _(
+        if len(keys) == 1:
+            key = keys[0]
+            uid = key.uids[0].value if key.uids else key.keyid
+            explanation = _(
                 "How much do you trust {uid} to correctly verify other "
                 "people's keys before signing them?"
             ).format(uid=uid)
-        )
-        keyword = _TRUST_CODE_TO_KEYWORD.get(key.owner_trust, "undefined")
+        else:
+            explanation = _(
+                "How much do you trust the owners of these {n} keys "
+                "({keyids}) to correctly verify other people's keys before "
+                "signing them?"
+            ).format(n=len(keys), keyids=", ".join(key.keyid for key in keys))
+        self._ui.lblExplanation.setText(explanation)
+        keywords = {
+            _TRUST_CODE_TO_KEYWORD.get(key.owner_trust, "undefined") for key in keys
+        }
+        keyword = keywords.pop() if len(keywords) == 1 else "undefined"
         idx = self._ui.cmbOwnerTrust.findData(keyword)
         if idx >= 0:
             self._ui.cmbOwnerTrust.setCurrentIndex(idx)
@@ -81,16 +97,25 @@ class SetOwnerTrustDialog(GeometryMixin, QDialog):
         )
 
     def _on_set(self) -> None:
-        """Apply the chosen owner trust via the backend."""
+        """Apply the chosen owner trust to every key via the backend."""
         trust = self._ui.cmbOwnerTrust.currentData()
+        fingerprints = list(self._fingerprints)
         self._set_form_enabled(False)
         self._ui.progress.setVisible(True)
         self._ui.lblStatus.setText(_("Setting owner trust…"))
+
+        def _set_all() -> Key:
+            backend = gpg_backend.default_backend()
+            key = None
+            # Idempotent, so a retry after a mid-batch failure can safely
+            # redo the keys already set.
+            for fingerprint in fingerprints:
+                key = backend.set_owner_trust(fingerprint, trust)
+            return key
+
         run_async(
             self._pool,
-            lambda: gpg_backend.default_backend().set_owner_trust(
-                self._fingerprint, trust
-            ),
+            _set_all,
             on_success=self._on_success,
             on_error=self._on_error,
         )
@@ -101,7 +126,7 @@ class SetOwnerTrustDialog(GeometryMixin, QDialog):
         Parameters
         ----------
         key
-            The key with its new owner trust applied.
+            The (last) key with its new owner trust applied.
         """
         self.updated_key = key
         self.accept()

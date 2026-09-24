@@ -76,9 +76,11 @@ Refreshing from keyservers
 
 |icon-server-refresh| **Refresh** (Keyservers toolbar/menu) re-fetches
 keys from every keyserver checked in :doc:`preferences`, merging in
-anything that has changed since you last imported them — new signatures
-from people who have since signed a key you hold, a since-added or
-since-revoked UID, or a revocation. A dialog first asks whether to
+anything that has changed since you last imported them — a since-added
+or since-revoked UID, a new expiration date, or a revocation. New
+signatures from other people only come along if **Import other people's
+signatures along with keys** is checked in :doc:`preferences` (off by
+default, see "Other people's signatures" there for why). A dialog first asks whether to
 refresh just the currently selected key or every key in your keyring; a
 progress indicator is shown while it runs (refreshing the whole keyring
 can take a while), and a report afterward lists exactly which keys

@@ -67,6 +67,17 @@ which ones were found — useful after importing a key with signatures
 from people you don't have yet, since a signature from a signer you
 cannot even look up contributes nothing to that key's computed validity.
 
+Where do those signatures come from? By default, not from keyservers:
+GnuPG discards other people's signatures whenever it fetches a key from
+one, to protect you against a key flooded with bogus signatures (see
+:ref:`third-party-signatures` in :doc:`preferences`, which also explains
+how to turn this off). Signatures you see here were therefore made in
+your own keyring, or arrived in a key imported from a file. The usual way
+to pass a signature on is exactly that: after signing someone's key, send
+them the signed key as a file (**Export…**), and they import it and
+publish it themselves, to a keyserver that keeps such signatures
+(``keyserver.ubuntu.com`` does, ``keys.openpgp.org`` does not).
+
 Setting owner trust
 -----------------------
 

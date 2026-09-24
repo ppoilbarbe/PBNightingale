@@ -45,3 +45,48 @@ reorderable list of keyserver URLs.
   (``keys.openpgp.org`` and ``keyserver.ubuntu.com``, checked, plus a few
   other reachable servers, unchecked) — handy if you have edited it into
   a state you no longer want.
+- **Import other people's signatures along with keys** — off by default;
+  see below before turning it on.
+
+.. _third-party-signatures:
+
+Other people's signatures
+-----------------------------
+
+When GnuPG fetches a key from a keyserver, it keeps by default only the
+signatures made by the key's **owner** (the ones that tie the key to its
+own user IDs) and silently discards every signature made by **other
+people**. This applies to everything PBNightingale fetches from a
+keyserver: **Import…**, **Search…**, **Refresh** and **Download Unknown
+Keys**.
+
+This default is a protection. Keyservers used to accept any signature
+from anyone, and in 2019 attackers exploited that to attach tens of
+thousands of bogus signatures to some well-known keys (a "certificate
+flooding" attack, CVE-2019-13050). A flooded key becomes so large that
+GnuPG slows to a crawl, or gives up, as soon as it is imported, which can
+make your whole keyring unusable. Keeping only the owner's own signatures
+makes that attack harmless.
+
+The price is that the web of trust (see :doc:`trust_and_signing`) no
+longer works from keyserver data: a signature someone made on a key can
+only reach you through a keyserver if this option is checked. What each
+server offers also differs:
+
+- ``keys.openpgp.org`` never distributes other people's signatures, with
+  or without this option.
+- ``keyserver.ubuntu.com`` does, and limits flooding on its side.
+
+Check **Import other people's signatures along with keys** only if you
+actually rely on the web of trust (for instance within a community that
+signs each other's keys, such as a Linux distribution's developers). The
+setting applies from the next keyserver operation on; it does not change
+keys already in your keyring. Leave it unchecked otherwise: verifying a
+fingerprint directly with its owner (see :doc:`trust_and_signing`) needs
+no third-party signature at all.
+
+Whatever this setting, a signature can always reach you as a file: the
+person who signed a key can export it and send it to you, or to the
+key's owner, and importing that file with **Import…** → **From file**
+keeps every signature it contains. This protection only concerns
+keyservers.

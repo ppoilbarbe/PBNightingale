@@ -130,3 +130,15 @@ def test_checked_keyserver_urls_returns_only_checked_ones_in_order():
         "hkps://b.example",
         "hkps://c.example",
     ]
+
+
+def test_keep_third_party_signatures_defaults_to_off():
+    assert preferences.get_keep_third_party_signatures() is False
+
+
+def test_keep_third_party_signatures_round_trips():
+    preferences.set_keep_third_party_signatures(True)
+    assert preferences.get_keep_third_party_signatures() is True
+
+    preferences.set_keep_third_party_signatures(False)
+    assert preferences.get_keep_third_party_signatures() is False

@@ -1,8 +1,8 @@
 """Refresh Keys dialog — picks the scope of a keyserver "Refresh".
 
 Lets the user choose whether "Refresh" (Keyservers toolbar/menu)
-re-fetches only the selected key or every key in the keyring, before the
-(possibly slow) network operation starts.
+re-fetches only the selected key(s) or every key in the keyring, before
+the (possibly slow) network operation starts.
 """
 
 from __future__ import annotations
@@ -14,17 +14,17 @@ from pbnightingale.ui.refresh_keys_dialog_ui import Ui_RefreshKeysDialog
 
 
 class RefreshKeysDialog(GeometryMixin, QDialog):
-    """Lets the user choose between refreshing the selected key or all of them, before the network operation starts."""
+    """Lets the user choose between refreshing the selected key(s) or all of them, before the network operation starts."""
 
-    def __init__(self, *, has_selection: bool, parent=None) -> None:
-        """Build the dialog, defaulting to "selected key" when possible.
+    def __init__(self, *, selected_count: int, parent=None) -> None:
+        """Build the dialog, defaulting to "selected key(s)" when possible.
 
         Parameters
         ----------
-        has_selection
-            Whether a key is currently selected — when ``False``, the
-            "selected key" option is disabled and "every key" is
-            pre-checked instead.
+        selected_count
+            How many keys are currently selected — when 0, the "selected
+            key(s)" option is disabled and "every key" is pre-checked
+            instead.
         parent
             The owning window.
         """
@@ -39,6 +39,11 @@ class RefreshKeysDialog(GeometryMixin, QDialog):
                 "signatures, identities or revocations."
             )
         )
+        if selected_count > 1:
+            self._ui.radioSelected.setText(
+                _("Refresh the {n} selected keys only").format(n=selected_count)
+            )
+        has_selection = selected_count > 0
         self._ui.radioSelected.setEnabled(has_selection)
         if has_selection:
             self._ui.radioSelected.setChecked(True)
@@ -55,6 +60,6 @@ class RefreshKeysDialog(GeometryMixin, QDialog):
         -------
         :
             ``True`` when the user chose "every key" over "the selected
-            key".
+            key(s)".
         """
         return self._ui.radioAll.isChecked()

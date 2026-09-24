@@ -44,6 +44,11 @@ DEFAULT_KEYSERVERS: tuple[tuple[str, bool], ...] = (
     ("hkps://keys.mailvelope.com", False),
 )
 
+_THIRD_PARTY_SIGNATURES_KEY = "keyservers/keep_third_party_signatures"
+#: Fallback for ``get_keep_third_party_signatures()``: off, GnuPG's own
+#: default — see ``core.gpg_backend.set_keep_third_party_signatures()``.
+DEFAULT_KEEP_THIRD_PARTY_SIGNATURES = False
+
 _ACTIVITY_LOG_MAX_ENTRIES_KEY = "ui/activity_log_max_entries"
 #: Fallback for ``get_activity_log_max_entries()`` when nothing is saved
 #: yet — also ``core/activity_log.py``'s own ring-buffer default.
@@ -196,6 +201,33 @@ def set_keyservers(servers: list[tuple[str, bool]]) -> None:
             settings.setValue("checked", checked)
     finally:
         settings.endArray()
+
+
+def get_keep_third_party_signatures() -> bool:
+    """Return whether keyserver fetches keep other people's signatures.
+
+    Returns
+    -------
+    :
+        ``DEFAULT_KEEP_THIRD_PARTY_SIGNATURES`` (off) if nothing is saved.
+    """
+    value = _settings().value(
+        _THIRD_PARTY_SIGNATURES_KEY, DEFAULT_KEEP_THIRD_PARTY_SIGNATURES
+    )
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() == "true"
+
+
+def set_keep_third_party_signatures(enabled: bool) -> None:
+    """Persist whether keyserver fetches keep other people's signatures.
+
+    Parameters
+    ----------
+    enabled
+        ``True`` to import third-party signatures along with a key.
+    """
+    _settings().setValue(_THIRD_PARTY_SIGNATURES_KEY, enabled)
 
 
 def get_activity_log_max_entries() -> int:

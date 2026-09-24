@@ -397,3 +397,29 @@ def test_ok_button_updates_after_restore_defaults(qtbot):
     dialog._ui.btnKeyserverRestoreDefaults.click()
 
     assert dialog._ok_button.isEnabled() is True
+
+
+def test_third_party_signatures_checkbox_is_unchecked_by_default(qtbot):
+    dialog = SettingsDialog()
+    qtbot.addWidget(dialog)
+
+    assert dialog._ui.chkThirdPartySignatures.isChecked() is False
+
+
+def test_accept_persists_the_third_party_signatures_choice(qtbot):
+    dialog = SettingsDialog()
+    qtbot.addWidget(dialog)
+    dialog._ui.chkThirdPartySignatures.setChecked(True)
+
+    dialog._ui.buttonBox.accepted.emit()
+
+    assert preferences.get_keep_third_party_signatures() is True
+
+
+def test_preselects_the_saved_third_party_signatures_choice(qtbot):
+    preferences.set_keep_third_party_signatures(True)
+
+    dialog = SettingsDialog()
+    qtbot.addWidget(dialog)
+
+    assert dialog._ui.chkThirdPartySignatures.isChecked() is True

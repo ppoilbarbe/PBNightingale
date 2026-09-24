@@ -1344,3 +1344,134 @@ def test_signatures_tab_widgets_have_whats_this_text(qtbot):
 
     assert view._ui.treeSignatures.whatsThis() != ""
     assert view._ui.btnDownloadUnknownSignatures.whatsThis() != ""
+
+
+# ── Multi-key selection ─────────────────────────────────────────────────
+
+
+def _select_both(view):
+    view._ui.treeKeys.topLevelItem(0).child(0).setSelected(True)
+    view._ui.treeKeys.topLevelItem(1).child(0).setSelected(True)
+
+
+def test_key_list_allows_extended_selection(qtbot):
+    from PySide6.QtWidgets import QAbstractItemView
+
+    view = KeyListView()
+    qtbot.addWidget(view)
+
+    assert (
+        view._ui.treeKeys.selectionMode()
+        == QAbstractItemView.SelectionMode.ExtendedSelection
+    )
+
+
+def test_several_selected_keys_report_no_single_selected_key(qtbot):
+    view = KeyListView()
+    qtbot.addWidget(view)
+    view.set_keys([_MY_KEY, _OTHER_KEY])
+
+    _select_both(view)
+
+    assert view.selected_key() is None
+    assert view.selected_keys() == [_MY_KEY, _OTHER_KEY]
+
+
+def test_several_selected_keys_empty_the_detail_panel(qtbot):
+    view = KeyListView()
+    qtbot.addWidget(view)
+    view.set_keys([_MY_KEY, _OTHER_KEY])
+    view._ui.treeKeys.topLevelItem(0).child(0).setSelected(True)
+    view._ui.treeSubkeys.topLevelItem(0).setSelected(True)
+    assert view.selected_subkey() is _SUBKEY
+
+    view._ui.treeKeys.topLevelItem(1).child(0).setSelected(True)
+
+    ui = view._ui
+    assert ui.stackDetail.currentWidget() is ui.lblNoSelection
+    assert ui.lblNoSelection.text() == "2 keys selected."
+    assert ui.treeSubkeys.topLevelItemCount() == 0
+    assert ui.lstUids.count() == 0
+    assert ui.lblFingerprint.text() == ""
+    assert view.selected_subkey() is None
+    assert view.selected_uid() is None
+
+
+def test_placeholder_text_goes_back_to_the_prompt_when_deselected(qtbot):
+    view = KeyListView()
+    qtbot.addWidget(view)
+    view.set_keys([_MY_KEY, _OTHER_KEY])
+    _select_both(view)
+
+    view._ui.treeKeys.clearSelection()
+
+    assert view._ui.lblNoSelection.text() == "Select a key to see its details."
+
+
+def test_several_selected_keys_do_not_request_signatures(qtbot):
+    view = KeyListView()
+    qtbot.addWidget(view)
+    view.set_keys([_MY_KEY, _OTHER_KEY])
+    view._ui.tabDetail.setCurrentIndex(1)
+    requested = []
+    view.signaturesRequested.connect(requested.append)
+
+    _select_both(view)
+
+    assert requested == [_MY_KEY.fingerprint]
+    assert view._ui.treeSignatures.topLevelItemCount() == 0
+
+
+def test_select_keys_selects_every_given_fingerprint(qtbot):
+    view = KeyListView()
+    qtbot.addWidget(view)
+    view.set_keys([_MY_KEY, _OTHER_KEY])
+    seen = []
+    view.selectionChanged.connect(lambda: seen.append(True))
+
+    view.select_keys([_MY_KEY.fingerprint, _OTHER_KEY.fingerprint, "0" * 40])
+
+    assert view.selected_keys() == [_MY_KEY, _OTHER_KEY]
+    assert len(seen) == 1
+
+
+def test_sorting_keeps_a_multi_key_selection(qtbot):
+    view = KeyListView()
+    qtbot.addWidget(view)
+    view.set_keys([*_SORTABLE_KEYS, _OTHER_KEY])
+    view.select_keys([_KEY_CHARLIE.fingerprint, _OTHER_KEY.fingerprint])
+
+    view._on_header_section_clicked(0)
+
+    assert {k.fingerprint for k in view.selected_keys()} == {
+        _KEY_CHARLIE.fingerprint,
+        _OTHER_KEY.fingerprint,
+    }
+
+
+def test_context_menu_on_a_selected_row_keeps_the_multi_selection(qtbot, monkeypatch):
+    monkeypatch.setattr(KeyListView, "_exec_menu", lambda self, menu, pos: None)
+    view = KeyListView()
+    qtbot.addWidget(view)
+    view.set_keys([_MY_KEY, _OTHER_KEY])
+    view.set_key_actions([QAction("Do key thing")])
+    _select_both(view)
+
+    item = view._ui.treeKeys.topLevelItem(1).child(0)
+    view._show_key_context_menu(view._ui.treeKeys.visualItemRect(item).center())
+
+    assert view.selected_keys() == [_MY_KEY, _OTHER_KEY]
+
+
+def test_context_menu_on_an_unselected_row_selects_only_it(qtbot, monkeypatch):
+    monkeypatch.setattr(KeyListView, "_exec_menu", lambda self, menu, pos: None)
+    view = KeyListView()
+    qtbot.addWidget(view)
+    view.set_keys([_MY_KEY, _OTHER_KEY])
+    view.set_key_actions([QAction("Do key thing")])
+    view._ui.treeKeys.topLevelItem(0).child(0).setSelected(True)
+
+    item = view._ui.treeKeys.topLevelItem(1).child(0)
+    view._show_key_context_menu(view._ui.treeKeys.visualItemRect(item).center())
+
+    assert view.selected_keys() == [_OTHER_KEY]

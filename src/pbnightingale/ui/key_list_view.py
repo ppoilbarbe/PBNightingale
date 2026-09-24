@@ -6,7 +6,16 @@ from collections.abc import Sequence
 from datetime import datetime
 from email.utils import parseaddr
 
-from PySide6.QtCore import QByteArray, QEvent, QObject, QPoint, Qt, QTimer, Signal
+from PySide6.QtCore import (
+    QByteArray,
+    QEvent,
+    QItemSelectionModel,
+    QObject,
+    QPoint,
+    Qt,
+    QTimer,
+    Signal,
+)
 from PySide6.QtGui import QAction, QIcon, QImage, QKeySequence, QPixmap, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
@@ -374,15 +383,40 @@ class KeyListView(QWidget):
             self._rebuild_tree(preserve_selection=True)
 
     def selected_key(self) -> Key | None:
-        """Report the currently selected key.
+        """Report the currently selected key, when exactly one is.
 
         Returns
         -------
         :
-            The selected key, or ``None`` if none is selected.
+            The selected key, or ``None`` if none — or several — are
+            selected (see ``selected_keys()``).
         """
-        items = self._ui.treeKeys.selectedItems()
-        return items[0].data(0, _KEY_ROLE) if items else None
+        keys = self.selected_keys()
+        return keys[0] if len(keys) == 1 else None
+
+    def selected_keys(self) -> list[Key]:
+        """Report every currently selected key, in display order.
+
+        Returns
+        -------
+        :
+            The selected keys; empty if none is selected.
+        """
+        return [
+            item.data(0, _KEY_ROLE) for item in self._key_items() if item.isSelected()
+        ]
+
+    def _key_items(self) -> list[QTreeWidgetItem]:
+        """Return every key row of the main key list (not group headers), in display order."""
+        tree = self._ui.treeKeys
+        items = []
+        for i in range(tree.topLevelItemCount()):
+            group = tree.topLevelItem(i)
+            for j in range(group.childCount()):
+                item = group.child(j)
+                if item.data(0, _KEY_ROLE) is not None:
+                    items.append(item)
+        return items
 
     def selected_subkey(self) -> Subkey | None:
         """Report the currently selected subkey.
@@ -441,20 +475,48 @@ class KeyListView(QWidget):
         photo_index
             If given, also re-select this photo of that key.
         """
-        for i in range(self._ui.treeKeys.topLevelItemCount()):
-            group = self._ui.treeKeys.topLevelItem(i)
-            for j in range(group.childCount()):
-                item = group.child(j)
-                key = item.data(0, _KEY_ROLE)
-                if key is not None and key.fingerprint == fingerprint:
-                    self._ui.treeKeys.setCurrentItem(item)
-                    if subkey_keyid is not None:
-                        self._select_subkey(subkey_keyid)
-                    if uid_value is not None:
-                        self._select_uid(uid_value)
-                    if photo_index is not None:
-                        self._select_photo(photo_index)
-                    return
+        for item in self._key_items():
+            if item.data(0, _KEY_ROLE).fingerprint == fingerprint:
+                self._ui.treeKeys.setCurrentItem(item)
+                if subkey_keyid is not None:
+                    self._select_subkey(subkey_keyid)
+                if uid_value is not None:
+                    self._select_uid(uid_value)
+                if photo_index is not None:
+                    self._select_photo(photo_index)
+                return
+
+    def select_keys(self, fingerprints: Sequence[str]) -> None:
+        """Re-select several keys at once, by fingerprint.
+
+        The multi-selection counterpart of ``select_key()``; fingerprints
+        not found (e.g. deleted keys) are skipped. A single fingerprint
+        behaves exactly like ``select_key()`` with no sub-selection.
+
+        Parameters
+        ----------
+        fingerprints
+            The keys to select.
+        """
+        wanted = set(fingerprints)
+        tree = self._ui.treeKeys
+        # One selectionChanged burst instead of one per row: the detail
+        # panel/actions only need refreshing once the whole set is in.
+        previous = tree.blockSignals(True)
+        try:
+            tree.clearSelection()
+            first = None
+            for item in self._key_items():
+                if item.data(0, _KEY_ROLE).fingerprint in wanted:
+                    item.setSelected(True)
+                    first = first or item
+            if first is not None:
+                tree.setCurrentItem(
+                    first, 0, QItemSelectionModel.SelectionFlag.NoUpdate
+                )
+        finally:
+            tree.blockSignals(previous)
+        self._on_selection_changed()
 
     def _select_subkey(self, subkey_keyid: str) -> None:
         """Re-select the subkey identified by *subkey_keyid*, if found."""
@@ -591,7 +653,10 @@ class KeyListView(QWidget):
         item = widget.itemAt(pos)
         if item is None:
             return
-        widget.setCurrentItem(item)
+        # Right-clicking inside a multi-key selection keeps it, so the menu
+        # acts on every selected key; anywhere else selects just that row.
+        if not item.isSelected():
+            widget.setCurrentItem(item)
         if not actions:
             return
         menu = QMenu(self)
@@ -769,13 +834,17 @@ class KeyListView(QWidget):
         Parameters
         ----------
         preserve_selection
-            Whether to re-select the currently selected key afterwards.
+            Whether to re-select the currently selected key(s) afterwards.
             Only for a local re-sort — a fresh ``set_keys()`` keyring
             reload always resets the selection to the placeholder, as
             before (callers re-select explicitly when appropriate, e.g.
-            via ``select_key()``).
+            via ``select_key()``/``select_keys()``).
         """
-        current = self.selected_key() if preserve_selection else None
+        current = (
+            [key.fingerprint for key in self.selected_keys()]
+            if preserve_selection
+            else []
+        )
         self._ui.treeKeys.clear()
         mine = [k for k in self._keys if k.has_secret]
         others = [k for k in self._keys if not k.has_secret]
@@ -799,9 +868,10 @@ class KeyListView(QWidget):
         self._ui.treeKeys.setColumnWidth(
             _LOCK_COLUMN, self._ui.treeKeys.iconSize().width() + 8
         )
-        if current is not None:
-            self.select_key(current.fingerprint)
-        self._on_selection_changed()
+        if current:
+            self.select_keys(current)
+        else:
+            self._on_selection_changed()
 
     def _add_group(self, label: str, keys: list[Key]) -> None:
         """Add a bold, non-selectable group header row, then its children.
@@ -836,15 +906,23 @@ class KeyListView(QWidget):
             group.addChild(item)
 
     def _on_selection_changed(self) -> None:
-        """React to a change of the selected key.
+        """React to a change of the selected key(s).
 
-        Shows its detail panel (or the empty placeholder), refreshes the
-        Signatures tab if it's active, and re-emits ``selectionChanged``
-        for ``MainWindow``.
+        Shows the key's detail panel when exactly one is selected, or
+        empties it back to the placeholder when none or several are;
+        refreshes the Signatures tab if it's active, and re-emits
+        ``selectionChanged`` for ``MainWindow``.
         """
+        count = len(self.selected_keys())
         key = self.selected_key()
         if key is None:
+            self._ui.lblNoSelection.setText(
+                _("{n} keys selected.").format(n=count)
+                if count > 1
+                else _("Select a key to see its details.")
+            )
             self._ui.stackDetail.setCurrentWidget(self._ui.lblNoSelection)
+            self._clear_detail()
             self._reset_signatures()
             self.selectionChanged.emit()
             return
@@ -932,6 +1010,29 @@ class KeyListView(QWidget):
         ]
         if identifiers:
             self.downloadUnknownSignaturesRequested.emit(identifiers)
+
+    def _clear_detail(self) -> None:
+        """Empty every detail-panel field, so nothing of a previously shown key lingers.
+
+        Also drops any UID/photo/subkey selection with it, so
+        ``selected_uid()`` and friends (and the actions they enable)
+        don't keep reporting a key that's no longer on display.
+        """
+        ui = self._ui
+        for label in (
+            ui.lblType,
+            ui.lblFingerprint,
+            ui.lblAlgorithm,
+            ui.lblCapabilities,
+            ui.lblCreated,
+            ui.lblExpires,
+            ui.lblTrust,
+            ui.lblOwnerTrust,
+        ):
+            label.clear()
+        ui.lstUids.clear()
+        ui.lstPhotos.clear()
+        ui.treeSubkeys.clear()
 
     def _show_key(self, key: Key) -> None:
         """Populate every detail-panel field (labels, UIDs, photos, subkeys) from *key*."""
