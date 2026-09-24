@@ -11,8 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - About dialog: shows the running Python and PySide6 versions
 - User manual: new "About PBNightingale" chapter, first in the manual —
   why the program exists, its features, the meaning of its icon (a key in
-  a wheat field, for the French expression « prendre la clef des champs »)
-  and of its name
+  a wheat field, for the French expression « prendre la clef des champs »,
+  displayed alongside its explanation) and of its name
 - `make docs LANG=fr` builds the manual in a given language (into
   `docs/_build/html-<lang>/`), without having to set
   `READTHEDOCS_LANGUAGE` by hand; a plain `make docs` still builds

@@ -1,12 +1,6 @@
 About PBNightingale
 ===================
 
-.. image:: /_static/pbnightingale.png
-   :alt: PBNightingale icon: a key lying in a wheat field under a cloudy
-         blue sky
-   :width: 160px
-   :align: right
-
 PBNightingale is a cross-platform graphical GPG key management utility,
 for Linux, Windows and macOS.
 
@@ -50,6 +44,12 @@ Features
 
 The icon
 --------
+
+.. image:: /_static/pbnightingale.png
+   :alt: PBNightingale icon: a key lying in a wheat field under a cloudy
+         blue sky
+   :width: 160px
+   :align: right
 
 PBNightingale's icon shows a key lying in a wheat field, under a cloudy
 blue sky. It illustrates the French expression *« prendre la clef des
