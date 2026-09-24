@@ -31,8 +31,14 @@ msgstr "Un utilitaire graphique de gestion de clefs GPG."
 msgid "Author:"
 msgstr "Auteur :"
 
-msgid "<b>License:</b>"
-msgstr "<b>Licence :</b>"
+msgid "License:"
+msgstr "Licence :"
+
+msgid "Python:"
+msgstr "Python :"
+
+msgid "PySide6:"
+msgstr "PySide6 :"
 
 msgid "Activity (advanced)"
 msgstr "Activité (avancé)"

@@ -31,8 +31,14 @@ msgstr "A graphical GPG key management utility."
 msgid "Author:"
 msgstr "Author:"
 
-msgid "<b>License:</b>"
-msgstr "<b>License:</b>"
+msgid "License:"
+msgstr "License:"
+
+msgid "Python:"
+msgstr "Python:"
+
+msgid "PySide6:"
+msgstr "PySide6:"
 
 msgid "Activity (advanced)"
 msgstr "Activity (advanced)"

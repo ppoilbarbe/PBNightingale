@@ -52,11 +52,20 @@ class Ui_AboutDialog:
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
         )
 
+        def bold(text: str) -> str:
+            return f"<b>{text}</b>"
+
         self.lblAuthor = QLabel("Marcel Spock &lt;mrspock@cardolan.net&gt;", dialog)
-        form.addRow("<b>" + _("Author:") + "</b>", self.lblAuthor)
+        form.addRow(bold(_("Author:")), self.lblAuthor)
 
         self.lblLicense = QLabel("GPLv3", dialog)
-        form.addRow(_("<b>" + "License:" + "</b>"), self.lblLicense)
+        form.addRow(bold(_("License:")), self.lblLicense)
+
+        self.lblPythonVersion = QLabel(dialog)
+        form.addRow(bold(_("Python:")), self.lblPythonVersion)
+
+        self.lblPySideVersion = QLabel(dialog)
+        form.addRow(bold(_("PySide6:")), self.lblPySideVersion)
 
         layout.addLayout(form)
 

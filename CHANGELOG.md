@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- About dialog: shows the running Python and PySide6 versions
+- User manual: new "About PBNightingale" chapter, first in the manual —
+  why the program exists, its features, the meaning of its icon (a key in
+  a wheat field, for the French expression « prendre la clef des champs »)
+  and of its name
+- `make docs LANG=fr` builds the manual in a given language (into
+  `docs/_build/html-<lang>/`), without having to set
+  `READTHEDOCS_LANGUAGE` by hand; a plain `make docs` still builds
+  English, whatever the user's own `LANG` locale
+
+### Changed
+
+- The Makefile now detects the supported application and documentation
+  languages from their `locale/<lang>/LC_MESSAGES/` directories instead of
+  hardcoded lists: adding a language no longer requires editing it
+- `make docs-translate` now drops obsolete entries (old translations) from
+  the documentation `.po` files, as `make translate` already did for the
+  application's; they remain available in Git history
+- README and manual: the "Why" section no longer suggests that only people
+  migrating to Linux shy away from encryption keys
+
+### Fixed
+
+- About dialog: the "License:" label's `<b>` markup was part of the
+  translatable string; bold formatting is now applied outside translation,
+  like every other label in the dialog
+
 ## [0.3.0] - 2026-09-22
 
 ### Added

@@ -10,10 +10,11 @@ A cross-platform graphical GPG key management utility built with Qt 6 (PySide6).
 
 ## Why
 
-People migrating to Linux tend to shy away from encryption keys because the
-tooling — GPG's command line in particular — is too intimidating. PBNightingale
-makes everyday GPG key management approachable on Linux, Windows and macOS,
-without hiding what it does.
+Many people shy away from encryption keys, whatever their operating system
+(Linux, Windows, macOS or other), because the tooling — GPG's command line in
+particular — is too intimidating. PBNightingale makes everyday GPG key
+management approachable on Linux, Windows and macOS, without hiding what it
+does.
 
 This program is a legacy (heavily improved) from an older Python
 program, itself an evolution of an ancient (~2014) Perl program.
@@ -54,7 +55,7 @@ New to GPG, or to PBNightingale? The user manual walks through every
 feature above, starting with the underlying GPG concepts. Read it online
 at [pbnightingale.readthedocs.io](https://pbnightingale.readthedocs.io/en/latest/)
 (also available in French), or locally under
-[`docs/manual/`](docs/manual/) (`make docs` builds it as HTML; the `.rst`
+[`docs/manual/`](docs/manual/) (`make docs` builds it as HTML, `make docs LANG=fr` in French; the `.rst`
 sources are also readable as plain text).
 
 See [CODING.md](CODING.md) for the full developer setup and workflow.

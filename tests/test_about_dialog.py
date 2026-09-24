@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import platform
+
+import PySide6
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
@@ -17,6 +20,14 @@ def test_shows_version_and_license(qtbot):
     assert dialog.windowTitle() == "About PBNightingale"
     assert dialog._ui.lblVersion.text() == __version__
     assert dialog._ui.lblLicense.text() == "GPLv3"
+
+
+def test_shows_python_and_pyside_versions(qtbot):
+    dialog = AboutDialog()
+    qtbot.addWidget(dialog)
+
+    assert dialog._ui.lblPythonVersion.text() == platform.python_version()
+    assert dialog._ui.lblPySideVersion.text() == PySide6.__version__
 
 
 def test_shows_the_application_icon_when_set(qtbot):

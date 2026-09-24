@@ -62,7 +62,7 @@ PBNightingale/
 ├── tests/
 ├── tools/
 │   ├── po_check.py              inspect .po files — use instead of grep/msgfmt
-│   └── fix_po_files.py          normalise .po headers after `pybabel update`
+│   └── fix_po_files.py          normalise .po files after `pybabel update`/`sphinx-intl update`
 ├── babel.cfg                    pybabel extraction config
 ├── hatch_build.py                build hook: compiles .po → .mo into the wheel
 ├── pyproject.toml                project metadata + [tool.pixi.*] env/deps
@@ -2247,7 +2247,14 @@ file's own path is what `make docs-translate` filters on) and
 `language = os.environ.get("READTHEDOCS_LANGUAGE", "en")` — RTD injects
 `READTHEDOCS_LANGUAGE` per project (see below), and a local build with no
 such env var falls back to English, this project's source language
-(`full-en` mode). `make docs-translate` (`sphinx-build -b gettext` scoped
+(`full-en` mode). Locally, `make docs LANG=fr` sets it for you and builds
+into `docs/_build/html-fr/` (English stays in `docs/_build/html/`). `LANG`
+is only honored on the make command line, never from the environment,
+where it is the user's own locale (`fr_FR.UTF-8`): a plain `make docs`
+always builds English. The recipe also drops `LANG` from sphinx-build's
+environment in that case, since make exports command-line variables to
+recipes and sphinx-build crashes in `locale.setlocale()` on `LANG=fr`.
+`make docs-translate` (`sphinx-build -b gettext` scoped
 to `docs/index.rst docs/manual/*.rst`, then `sphinx-intl update -d
 docs/locale -l fr`) extracts/syncs; `make docs-stats` (`sphinx-intl stat`)
 reports per-file translated/fuzzy/untranslated counts. Both are genuinely

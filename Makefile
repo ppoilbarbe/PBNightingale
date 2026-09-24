@@ -7,7 +7,10 @@ endif
 SRC        := src
 LOCALE_DIR := src/pbnightingale/locale
 POT_FILE   := $(LOCALE_DIR)/pbnightingale.pot
-PO_LOCALES := en fr
+# Every <lang>/LC_MESSAGES/ directory under a locale dir is a supported
+# language: adding one (e.g. via `make new-lang`) is enough, no list to edit.
+locales_in = $(sort $(patsubst $(1)/%/LC_MESSAGES/,%,$(wildcard $(1)/*/LC_MESSAGES/)))
+PO_LOCALES := $(call locales_in,$(LOCALE_DIR))
 
 # ── Docs ─────────────────────────────────────────────────────────────────────
 # Narrative pages only (index.rst + manual/) get translated — api.rst
@@ -16,11 +19,24 @@ PO_LOCALES := en fr
 # but is a wholly separate sphinx-intl catalog, one .po per source file.
 DOCS           := docs
 DOCS_LOCALE    := $(DOCS)/locale
-DOC_LOCALES    := fr
+# Translated docs languages, English (the source) excluded. To add one,
+# create docs/locale/<lang>/LC_MESSAGES/ and run `make docs-translate`.
+DOC_LOCALES    := $(call locales_in,$(DOCS_LOCALE))
 # sphinx-build -b gettext takes individual source files, not a directory —
 # passing docs/manual/ as-is is silently ignored (with a warning), so this
 # must be a real file list, not a directory glob pattern.
 DOCS_NARRATIVE := $(DOCS)/index.rst $(wildcard $(DOCS)/manual/*.rst)
+# `make docs LANG=fr` builds a translated manual. LANG is only honored when
+# given on the command line: it is also the standard locale environment
+# variable (e.g. fr_FR.UTF-8), which make imports like any other, and a plain
+# `make docs` must keep building the English source whatever the user's
+# locale. Passed to conf.py as READTHEDOCS_LANGUAGE, as Read the Docs does.
+# make also exports command-line variables to recipes, and sphinx-build
+# crashes on LANG=fr (not a valid system locale: `locale.setlocale` raises),
+# hence DOC_ENV dropping it from sphinx-build's environment in that case.
+DOC_LANG       := $(if $(filter command line,$(origin LANG)),$(LANG),en)
+DOC_ENV        := $(if $(filter command line,$(origin LANG)),env -u LANG)
+DOC_HTML       := $(DOCS)/_build/html$(if $(filter-out en,$(DOC_LANG)),-$(DOC_LANG))
 
 R  := \033[0m
 B  := \033[1m
@@ -108,9 +124,8 @@ new-lang: ## Scaffold a new translation (usage: make new-lang LOCALE=de)
 	@printf "$(Y)Next steps:$(R)\n"
 	@printf "  1. Edit the .po file and translate every msgstr entry.\n"
 	@printf "  2. Set the $(B)language_name$(R) msgstr to the language's own name (e.g. 'Deutsch').\n"
-	@printf "  3. Add $(B)$(LOCALE)$(R) to PO_LOCALES in the Makefile.\n"
-	@printf "  4. Run: $(G)make translate$(R)\n"
-	@printf "  5. Commit the .po and .mo files.\n"
+	@printf "  3. Run: $(G)make translate$(R)\n"
+	@printf "  4. Commit the .po and .mo files.\n"
 
 compile-translations: ## Compile the committed .po catalogues to .mo (no extraction)
 	$(CONDA_RUN) pybabel compile -d $(LOCALE_DIR) -D pbnightingale
@@ -144,9 +159,11 @@ format: ## Auto-format source code
 update-icons: ## Sync resources/ icons from PBIcons  (usage: make update-icons ARGS="--dry-run" or ARGS="quit.svg")
 	$(CONDA_RUN) python tools/update_icons.py $(ARGS)
 
-docs: ## Build HTML documentation (English source)
-	$(CONDA_RUN) sphinx-build -b html $(DOCS) $(DOCS)/_build/html
-	@printf "$(G)Open:$(R) $(DOCS)/_build/html/index.html\n"
+docs: ## Build HTML documentation  (usage: make docs [LANG=fr], default en)
+	@$(if $(filter $(DOC_LANG),en $(DOC_LOCALES)),:,\
+	    printf "Unknown docs language '$(DOC_LANG)' (expected: en $(DOC_LOCALES))\n" >&2; exit 1)
+	$(DOC_ENV) READTHEDOCS_LANGUAGE=$(DOC_LANG) $(CONDA_RUN) sphinx-build -b html $(DOCS) $(DOC_HTML)
+	@printf "$(G)Open:$(R) $(DOC_HTML)/index.html\n"
 
 docs-live: ## Build docs and watch for changes (hot reload)
 	$(CONDA_RUN) sphinx-autobuild $(DOCS) $(DOCS)/_build/html
@@ -157,6 +174,7 @@ docs-translate: ## Extract narrative-page strings and update docs/locale/*.po
 	@printf "$(C)Updating docs/locale/*.po...$(R)\n"
 	$(CONDA_RUN) sphinx-intl update -p $(DOCS)/_build/gettext -d $(DOCS_LOCALE) \
 	    $(foreach lang,$(DOC_LOCALES),-l $(lang))
+	$(CONDA_RUN) python tools/fix_po_files.py --docs $(DOCS_LOCALE)
 	@printf "$(G)Done.$(R) Translate every new msgstr under $(Y)$(DOCS_LOCALE)/$(R), then re-run to verify.\n"
 
 docs-stats: ## Report docs/locale/*.po translation completeness
