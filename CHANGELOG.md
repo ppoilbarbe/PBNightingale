@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.4.0](https://github.com/ppoilbarbe/PBNightingale/compare/v0.3.0...v0.4.0) - 2026-09-24
 
 ### Added
 
@@ -70,7 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   translatable string; bold formatting is now applied outside translation,
   like every other label in the dialog
 
-## [0.3.0] - 2026-09-22
+## [0.3.0](https://github.com/ppoilbarbe/PBNightingale/compare/v0.2.2...v0.3.0) - 2026-09-22
 
 ### Added
 
@@ -121,7 +121,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The single hardcoded default keyserver constant — every keyserver
   operation now sources its server list from Preferences
 
-## [0.2.2] - 2026-09-20
+## [0.2.2](https://github.com/ppoilbarbe/PBNightingale/compare/v0.2.1...v0.2.2) - 2026-09-20
 
 ### Added
 
@@ -129,7 +129,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `publish-pypi`, `verify-pypi`, `publish-testpypi`, `verify-testpypi`
 - Github/Codecov/Readthedocs badges in the README
 
-## [0.2.1] - 2026-09-20
+## [0.2.1](https://github.com/ppoilbarbe/PBNightingale/compare/v0.2.0...v0.2.1) - 2026-09-20
 
 ### Added
 
@@ -160,7 +160,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   passphrase from the logged command input; the real value sent to gpg is
   unaffected
 
-## [0.2.0] - 2026-09-17
+## [0.2.0](https://github.com/ppoilbarbe/PBNightingale/compare/v0.1.0...v0.2.0) - 2026-09-17
 
 ### Added
 
@@ -183,7 +183,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI: bumped `codecov-action` to v7 to pick up its own Node 24 runtime
   (it was pinned to a deprecated Node 20 build via `actions/github-script`)
 
-## [0.1.0] - 2026-09-16
+## [0.1.0](https://github.com/ppoilbarbe/PBNightingale/releases/tag/v0.1.0) - 2026-09-16
 
 This program is an evolution (heavily improved) of an older Python
 program, itself an evolution of an ancient (~2014) Perl program.
